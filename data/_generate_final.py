@@ -19,6 +19,11 @@ from datetime import date, timedelta
 
 random.seed(131313)
 
+# Scales every area's per-severity accident counts up/down while preserving the
+# relative area distribution, all correlations (cause/vehicle/time/weather) and
+# the schema. Base counts sum to 7291; 1.37 lands the total near ~10,000.
+COUNT_SCALE = 1.37
+
 LAT_MIN, LAT_MAX = 12.83, 13.22
 LNG_MIN, LNG_MAX = 80.03, 80.32
 START, END = date(2024, 7, 1), date(2026, 6, 30)
@@ -166,7 +171,7 @@ records = []
 for (area, lat, lng, f, s, l, night, rain, fog, cause, dense, trend) in AREAS:
     sigma = DENSE_SIGMA if dense else LOOSE_SIGMA
     for sev, n in (("fatal", f), ("serious", s), ("slight", l)):
-        for _ in range(n):
+        for _ in range(round(n * COUNT_SCALE)):
             la, ln = sample(lat, lng, sigma)
             dt = rand_dt(night, trend)
             hh = int(dt[11:13]); is_night = hh < 6 or hh >= 18
@@ -185,9 +190,26 @@ with open("accidents.json", "w") as fp:
 
 # ---- verification: totals + emerging (recent 6 mo vs prior 18 mo) ----
 from collections import Counter, defaultdict
-print("total:", len(records), "| areas:", len(AREAS))
+print("total:", len(records), "| areas:", len(AREAS), "| COUNT_SCALE:", COUNT_SCALE)
 print("causes:", len(set(r["cause"] for r in records)), "min:", Counter(r["cause"] for r in records).most_common()[-1])
 print("top cause:", Counter(r["cause"] for r in records).most_common(1)[0], "| top vehicle:", Counter(r["vehicle"] for r in records).most_common(1)[0])
+print("severity:", dict(Counter(r["severity"] for r in records)))
+print("vehicles:", dict(Counter(r["vehicle"] for r in records).most_common()))
+
+# ---- realism checks: the correlations must survive scaling ----
+def _share(pred, among=lambda r: True):
+    tot = sum(1 for r in records if among(r)) or 1
+    return sum(1 for r in records if among(r) and pred(r)) / tot
+_night = lambda r: (int(r["datetime"][11:13]) < 6 or int(r["datetime"][11:13]) >= 18)
+print("\nrealism checks (subset share vs overall):")
+print("  hit-and-run at night:  %.0f%% vs %.0f%%" % (
+    100 * _share(_night, lambda r: r["cause"] == "Hit and run"), 100 * _share(_night)))
+print("  pothole in rain/fog:   %.0f%% vs %.0f%%" % (
+    100 * _share(lambda r: r["weather"] in ("rain", "fog"), lambda r: r["cause"] == "Pothole / bad road"),
+    100 * _share(lambda r: r["weather"] in ("rain", "fog"))))
+print("  lorry-truck fatal:     %.0f%% vs %.0f%%" % (
+    100 * _share(lambda r: r["severity"] == "fatal", lambda r: r["vehicle"] == "Lorry / Truck"),
+    100 * _share(lambda r: r["severity"] == "fatal")))
 
 CUT = date(2026, 1, 1)          # last 6 months = Jan–Jun 2026
 rec = defaultdict(int); base = defaultdict(int)

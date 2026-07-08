@@ -487,7 +487,7 @@
 
     let data;
     try {
-      const res = await fetch('./data/accidents.json?v=7');
+      const res = await fetch('./data/accidents.json?v=8');
       if (!res.ok) throw new Error('HTTP ' + res.status);
       data = await res.json();
     } catch (err) {

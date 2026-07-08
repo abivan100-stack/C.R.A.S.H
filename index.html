@@ -687,8 +687,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="./report.js?v=phase5d"></script>
-<script src="./app.js?v=phase8f"></script>
-<script src="./analytics.js?v=phase8f"></script>
+<script src="./app.js?v=phase8g"></script>
+<script src="./analytics.js?v=phase8g"></script>
 
 <script>
 (function () {
@@ -756,7 +756,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
   var reportInited = false;
   function ensureReportData(cb) {
     if (window.CRASH_DATA) { cb(window.CRASH_DATA); return; }
-    fetch('./data/accidents.json?v=7').then(function (r) { return r.json(); }).then(function (j) { window.CRASH_DATA = j; cb(j); }).catch(function () {});
+    fetch('./data/accidents.json?v=8').then(function (r) { return r.json(); }).then(function (j) { window.CRASH_DATA = j; cb(j); }).catch(function () {});
   }
   function initReport() {
     if (reportInited) return; reportInited = true;
