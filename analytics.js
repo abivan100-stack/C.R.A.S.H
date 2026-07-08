@@ -481,6 +481,8 @@
     renderThemeToggle();
     const tt = document.getElementById('themeToggle');
     if (tt) tt.addEventListener('click', toggleTheme);
+    const rb = document.getElementById('reportBtn');
+    if (rb) rb.addEventListener('click', () => { if (window.CRASHReport && DATA.length) window.CRASHReport.city(DATA); });
 
     let data;
     try {

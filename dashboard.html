@@ -39,8 +39,9 @@
 html { transition: background 0.25s ease; }
 #themeToggle:hover { background: var(--row-hover) !important; color: var(--text) !important; }
 #themeToggle:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
-#analyticsLink:hover, #compareLink:hover { border-color: var(--accent); color: var(--accent); }
-#analyticsLink:focus-visible, #compareLink:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+#analyticsLink:hover, #compareLink:hover, #strategyBtn:hover { border-color: var(--accent); color: var(--accent); }
+#analyticsLink:focus-visible, #compareLink:focus-visible, #strategyBtn:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+#strategyBtn.active { border-color: var(--accent); color: var(--accent); background: rgba(67,176,204,0.12); }
 
 html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; }
 * { box-sizing: border-box; }
@@ -212,6 +213,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         <div style="font: 400 9px 'IBM Plex Mono', monospace; letter-spacing: 0.1em; color: var(--text-2); text-transform: uppercase; margin-top: 2px;">Highest risk</div>
       </div>
     </div>
+    <button type="button" id="strategyBtn" title="City strategy — leverage &amp; intervention priority" style="display: inline-flex; align-items: center; gap: 7px; font: 500 12px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; cursor: pointer; white-space: nowrap;">
+      <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2m0 1h8l-1.8 2.4L12 8H4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      Strategy
+    </button>
     <a href="./compare.html" id="compareLink" title="Compare two areas side by side" style="display: inline-flex; align-items: center; gap: 7px; font: 500 12px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; text-decoration: none; white-space: nowrap;">
       <svg width="14" height="14" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 6h9l-2.5-2.5M14 12H5l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Compare
@@ -315,6 +320,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
       <!-- City-wide contributing factors (injected in Phase 1) -->
       <div id="dossierCity" style="flex: 1; display: none; flex-direction: column; min-height: 0;"></div>
 
+      <!-- City strategy — leverage + intervention priority (Phase 3) -->
+      <div id="dossierStrategy" style="flex: 1; display: none; flex-direction: column; min-height: 0;"></div>
+
       <!-- Emerging hotspots — predictive watch list (Phase 2) -->
       <div id="dossierEmerging" style="flex: 1; display: none; flex-direction: column; min-height: 0;"></div>
 
@@ -343,6 +351,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="./intervention-model.js?v=1"></script>
-<script src="./app.js?v=phase4"></script>
+<script src="./vendor/jspdf.umd.min.js"></script>
+<script src="./vendor/jspdf.plugin.autotable.min.js"></script>
+<script src="./report.js?v=phase5c"></script>
+<script src="./app.js?v=phase5d"></script>
 </body>
 </html>

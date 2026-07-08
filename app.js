@@ -893,15 +893,35 @@ function priorityQueue() {
   return rows;
 }
 
-/* City-wide "Contributing factors" tab — leverage + intervention priority queue
-   (Phase 3, over all data) then full cause + vehicle distributions (filtered) */
+/* City-wide "Contributing factors" tab — cause + vehicle distributions across
+   the current (filtered) dataset. (Leverage + priority live in the Strategy tab.) */
 function renderCity() {
   const c = document.getElementById('dossierCity');
   if (!c) return;
   const recs = currentRecords();
   const anyFilter = app.filters.sev !== 'all' || app.filters.time !== 'all' || app.filters.weather !== 'all' ||
     app.filters.dow !== 'all' || app.filters.cause !== 'all';
+  c.innerHTML =
+    '<div style="flex:none; padding:15px 18px 13px; border-bottom:1px solid var(--border);">' +
+      '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">Contributing factors</div>' +
+      '<div style="display:flex; align-items:baseline; gap:9px; margin-top:5px;">' +
+        '<span style="font:600 30px \'Space Grotesk\',sans-serif; line-height:1; font-variant-numeric:tabular-nums;">' + fmt(recs.length) + '</span>' +
+        '<span style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2);">incidents' + (anyFilter ? ' · filtered' : ' · all data') + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<div style="flex:1; overflow-y:auto; min-height:0; padding-bottom:18px;">' +
+      dsLabel('Cause distribution' + (anyFilter ? ' · filtered' : '')) + rankedBars(recs, 'cause', CAUSES.length, 'var(--accent)') +
+      '<div style="margin-top:12px; border-top:1px solid var(--track);"></div>' +
+      dsLabel('Vehicles involved' + (anyFilter ? ' · filtered' : '')) + rankedBars(recs, 'vehicle', VEHICLES.length, 'var(--chart-day)') +
+    '</div>';
+}
 
+/* City "Strategy" tab (Phase 3, over ALL data) — the leverage headline, the
+   intervention priority queue, and the city-report download. Kept in its own
+   tab so it never has to be scrolled past the contributing-factors view. */
+function renderStrategy() {
+  const c = document.getElementById('dossierStrategy');
+  if (!c) return;
   const lev = cityLeverage();
   const queue = priorityQueue();
 
@@ -923,34 +943,33 @@ function renderCity() {
   c.innerHTML =
     '<div style="flex:none; padding:15px 18px 13px; border-bottom:1px solid var(--border);">' +
       '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">City strategy</div>' +
-      '<div style="display:flex; align-items:baseline; gap:9px; margin-top:5px;">' +
-        '<span style="font:600 30px \'Space Grotesk\',sans-serif; line-height:1; font-variant-numeric:tabular-nums;">' + fmt(recs.length) + '</span>' +
-        '<span style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2);">incidents' + (anyFilter ? ' · filtered' : ' · all data') + '</span>' +
-      '</div>' +
+      '<div style="font:400 11px \'IBM Plex Sans\',sans-serif; color:var(--text-2); margin-top:6px; line-height:1.5;">Where the harm concentrates — and the order to fix it.</div>' +
     '</div>' +
     '<div style="flex:1; overflow-y:auto; min-height:0; padding-bottom:18px;">' +
       // ---- leverage headline ----
-      '<div style="padding:15px 18px 2px;">' +
+      '<div style="padding:16px 18px 2px;">' +
         '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase;">The leverage</div>' +
-        '<div style="margin-top:10px; padding:14px 15px; background:rgba(67,176,204,0.07); border:1px solid rgba(67,176,204,0.22); border-radius:8px;">' +
-          '<div style="display:flex; align-items:baseline; gap:11px;">' +
-            '<span style="font:600 40px \'Space Grotesk\',sans-serif; color:var(--accent); line-height:0.85; font-variant-numeric:tabular-nums;">' + lev.pct + '%</span>' +
-            '<span style="font:400 12px \'IBM Plex Sans\',sans-serif; color:var(--text); line-height:1.5;">of the city’s severe crashes occur in just <b>' + lev.n + '</b> junction cells</span>' +
+        '<div style="margin-top:11px; padding:16px; background:rgba(67,176,204,0.07); border:1px solid rgba(67,176,204,0.22); border-radius:9px; text-align:left;">' +
+          '<div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">' +
+            '<span style="font:600 42px \'Space Grotesk\',sans-serif; color:var(--accent); line-height:1; font-variant-numeric:tabular-nums;">' + lev.pct + '%</span>' +
+            '<span style="font:500 13px \'IBM Plex Sans\',sans-serif; color:var(--text); line-height:1.4;">of severe crashes</span>' +
           '</div>' +
-          '<div style="font:400 10px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:9px; letter-spacing:0.02em;">' + fmt(lev.sevTop) + ' of ' + fmt(lev.sevCity) + ' fatal + serious incidents · 250 m cells · all data</div>' +
+          '<div style="font:400 13px \'IBM Plex Sans\',sans-serif; color:var(--text); line-height:1.55; margin-top:10px;">are concentrated in just <b>' + lev.n + '</b> junction cells across the whole city.</div>' +
+          '<div style="font:400 10px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:10px; letter-spacing:0.02em;">' + fmt(lev.sevTop) + ' of ' + fmt(lev.sevCity) + ' fatal + serious · 250 m cells</div>' +
         '</div>' +
       '</div>' +
       // ---- intervention priority queue ----
-      '<div style="padding:16px 18px 6px;">' +
+      '<div style="padding:18px 18px 6px;">' +
         '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">Intervention priority</div>' +
         '<div style="font:400 10.5px \'IBM Plex Sans\',sans-serif; color:var(--text-3); margin-top:4px; line-height:1.5;">Ranked by estimated severe crashes preventable if the fix targets each zone’s dominant cause. <span style="color:var(--text-3);">Planning estimate.</span></div>' +
       '</div>' +
       queueRows +
-      // ---- distributions (respond to filters) ----
-      '<div style="margin-top:16px; border-top:1px solid var(--track);"></div>' +
-      dsLabel('Cause distribution' + (anyFilter ? ' · filtered' : '')) + rankedBars(recs, 'cause', CAUSES.length, 'var(--accent)') +
-      '<div style="margin-top:12px; border-top:1px solid var(--track);"></div>' +
-      dsLabel('Vehicles involved' + (anyFilter ? ' · filtered' : '')) + rankedBars(recs, 'vehicle', VEHICLES.length, 'var(--chart-day)') +
+      // ---- download city report ----
+      '<div style="padding:18px 18px 2px;">' +
+        '<button data-citypdf type="button" title="Download the full city report as a PDF" style="width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px; font:500 11px \'IBM Plex Mono\',monospace; letter-spacing:0.04em; color:var(--accent); background:rgba(67,176,204,0.08); border:1px solid rgba(67,176,204,0.35); border-radius:7px; padding:10px; cursor:pointer;">' +
+          '<svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+          'Download city report (PDF)</button>' +
+      '</div>' +
     '</div>';
 
   c.querySelectorAll('[data-pq]').forEach((el) => {
@@ -960,6 +979,9 @@ function renderCity() {
     el.addEventListener('focus', () => { el.style.outline = '1px solid ' + ACCENT; el.style.outlineOffset = '-2px'; });
     el.addEventListener('blur', () => { el.style.outline = 'none'; });
   });
+
+  const cpdf = c.querySelector('[data-citypdf]');
+  if (cpdf) cpdf.addEventListener('click', () => { if (window.CRASHReport) window.CRASHReport.city(app.raw); });
 }
 
 /* Tiny 24-month trend sparkline; the recent window is drawn in the accent
@@ -1054,9 +1076,14 @@ function dossierHeaderHtml(h) {
     '<div style="font:500 19px \'Space Grotesk\',sans-serif; line-height:1.2; margin-top:4px;">' + h.area + '</div>' +
     '<div style="font:400 11.5px \'IBM Plex Sans\',sans-serif; color:var(--text-2); margin-top:3px;">' + SEV[h.dominant].label + '-dominant risk cell · 250 m</div>' +
     '<div style="font:400 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:7px; letter-spacing:0.04em;">' + h.lat.toFixed(4) + '° N · ' + h.lng.toFixed(4) + '° E</div>' +
-    '<a href="./compare.html?a=' + encodeURIComponent(h.area) + '" title="Compare ' + h.area + ' with another area" style="display:inline-flex; align-items:center; gap:6px; margin-top:10px; font:500 10.5px \'IBM Plex Mono\',monospace; letter-spacing:0.04em; color:var(--accent); text-decoration:none;">' +
-      '<svg width="12" height="12" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 6h9l-2.5-2.5M14 12H5l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
-      'Compare this area</a>' +
+    '<div style="display:flex; align-items:center; gap:16px; margin-top:11px; flex-wrap:wrap;">' +
+      '<a href="./compare.html?a=' + encodeURIComponent(h.area) + '" title="Compare ' + h.area + ' with another area" style="display:inline-flex; align-items:center; gap:6px; font:500 10.5px \'IBM Plex Mono\',monospace; letter-spacing:0.04em; color:var(--accent); text-decoration:none;">' +
+        '<svg width="12" height="12" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 6h9l-2.5-2.5M14 12H5l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        'Compare this area</a>' +
+      '<button data-zonepdf type="button" title="Download this zone as a PDF report" style="display:inline-flex; align-items:center; gap:6px; background:transparent; border:none; padding:0; cursor:pointer; font:500 10.5px \'IBM Plex Mono\',monospace; letter-spacing:0.04em; color:var(--accent);">' +
+        '<svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        'Download PDF</button>' +
+    '</div>' +
   '</div>';
 }
 
@@ -1119,30 +1146,25 @@ function renderDossier() {
   const full = document.getElementById('dossierFull');
   const aside = document.getElementById('dossier');
   const zone = document.getElementById('dossierZone');
-  const cityEl = document.getElementById('dossierCity');
-  const emergeEl = document.getElementById('dossierEmerging');
+  const panels = {
+    city: document.getElementById('dossierCity'),
+    strategy: document.getElementById('dossierStrategy'),
+    emerging: document.getElementById('dossierEmerging'),
+  };
 
-  // tab visuals
+  // tab visuals (Strategy lives in the header, not the tab bar)
   document.querySelectorAll('.dtab').forEach((b) => b.classList.toggle('active', b.dataset.tab === app.dossierTab));
+  const sBtn = document.getElementById('strategyBtn');
+  if (sBtn) sBtn.classList.toggle('active', app.dossierTab === 'strategy');
 
-  if (app.dossierTab === 'city') {
-    if (zone) zone.style.display = 'none';
-    if (emergeEl) emergeEl.style.display = 'none';
-    if (cityEl) cityEl.style.display = 'flex';
-    renderCity();
-    aside.setAttribute('data-open', 'true');
-    return;
-  }
-  if (app.dossierTab === 'emerging') {
-    if (zone) zone.style.display = 'none';
-    if (cityEl) cityEl.style.display = 'none';
-    if (emergeEl) emergeEl.style.display = 'flex';
-    renderEmerging();
-    aside.setAttribute('data-open', 'true');
-    return;
-  }
-  if (cityEl) cityEl.style.display = 'none';
-  if (emergeEl) emergeEl.style.display = 'none';
+  // hide every panel (and the zone view); the active branch re-shows its own
+  Object.keys(panels).forEach((k) => { if (panels[k]) panels[k].style.display = 'none'; });
+  if (zone) zone.style.display = 'none';
+
+  if (app.dossierTab === 'city') { if (panels.city) panels.city.style.display = 'flex'; renderCity(); aside.setAttribute('data-open', 'true'); return; }
+  if (app.dossierTab === 'strategy') { if (panels.strategy) panels.strategy.style.display = 'flex'; renderStrategy(); aside.setAttribute('data-open', 'true'); return; }
+  if (app.dossierTab === 'emerging') { if (panels.emerging) panels.emerging.style.display = 'flex'; renderEmerging(); aside.setAttribute('data-open', 'true'); return; }
+
   if (zone) zone.style.display = 'flex';
 
   const h = selectedCell();
@@ -1282,6 +1304,13 @@ function renderDossier() {
   wireDossierClose(full);
   wireZoneDayChips(full);
 
+  const zpdf = full.querySelector('[data-zonepdf]');
+  if (zpdf) zpdf.addEventListener('click', () => {
+    if (!window.CRASHReport) return;
+    const recs = accidentsForHotspot(h, app.raw);   // full-data profile for this cell
+    window.CRASHReport.zone(recs, { title: h.area, rank: h.rank, lat: h.lat, lng: h.lng });
+  });
+
   empty.style.display = 'none';
   full.style.display = 'flex';
   aside.setAttribute('data-open', 'true');
@@ -1311,6 +1340,8 @@ async function boot() {
   renderCauseFilter();
   setupFilterPanel();
   setupDossierTabs();
+  const sBtn = document.getElementById('strategyBtn');
+  if (sBtn) sBtn.addEventListener('click', () => { ensureDossierVisible(); setDossierTab('strategy'); });
   setupResizers();
   initMap();
 
