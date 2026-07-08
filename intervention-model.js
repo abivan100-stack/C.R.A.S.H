@@ -53,4 +53,30 @@
     byCause: BY_CAUSE, night: NIGHT, fallback: DEFAULT, costRank: COST_RANK,
     pick: pick, preventable: preventable,
   };
+
+  /* ===========================================================================
+     Authority mapping — for a given cause, which public authority a citizen would
+     file an official complaint with, and its verified grievance portal (opens in
+     a new tab from the report-submitted confirmation). Links checked Jul 2026.
+     ======================================================================== */
+  var AUTHORITY = {
+    traffic:   { name: 'Greater Chennai Traffic Police', url: 'https://www.gctp.in/' },
+    civic:     { name: 'Greater Chennai Corporation',    url: 'https://erp.chennaicorporation.gov.in/pgr/citizen/BeforeReg.do' },
+    police:    { name: 'Tamil Nadu Police',              url: 'https://eservices.tnpolice.gov.in/' },
+    transport: { name: 'Tamil Nadu Transport Department', url: 'https://tnsta.gov.in/' },
+  };
+  // driver-behaviour / enforcement -> traffic police; road & lighting defects ->
+  // the city corporation; a criminal hit-and-run -> the police; an unroadworthy
+  // vehicle -> the transport authority.
+  var CAUSE_AUTHORITY = {
+    'Over-speeding': 'traffic', 'Signal jumping': 'traffic', 'Drunken driving': 'traffic',
+    'Improper overtaking': 'traffic', 'Mobile phone use': 'traffic', 'Wrong-side driving': 'traffic',
+    'Pedestrian crossing error': 'traffic',
+    'Pothole / bad road': 'civic', 'Poor visibility': 'civic',
+    'Hit and run': 'police',
+    'Vehicle defect': 'transport',
+  };
+  function authorityFor(cause) { return AUTHORITY[CAUSE_AUTHORITY[cause] || 'traffic']; }
+
+  root.CRASH_AUTHORITIES = { for: authorityFor, byKey: AUTHORITY, byCause: CAUSE_AUTHORITY };
 })(typeof window !== 'undefined' ? window : this);

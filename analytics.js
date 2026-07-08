@@ -497,7 +497,9 @@
       return;
     }
 
-    DATA = data;
+    let seed = [];
+    try { const sres = await fetch('./data/citizen_seed.json?v=1'); if (sres.ok) seed = await sres.json(); } catch (e) { /* optional */ }
+    DATA = data.concat(loadSeed(seed)).concat(loadCitizen());   // base + shipped seed + this browser's reports
     precompute();
     AGG = computeAgg();
     buildAll();
@@ -514,4 +516,32 @@
   // the charts are built while the Analytics section is hidden (0-size); the
   // shell calls this once the section becomes visible so they size correctly
   window.__crashResizeAnalytics = function () { charts.forEach(function (c) { try { c.resize(); } catch (e) {} }); };
+
+  /* citizen reports saved by the Reports-section form (same localStorage key as
+     app.js). Kept self-sufficient so analytics.html works standalone too. */
+  function validReport(r) {
+    return r && typeof r.lat === 'number' && typeof r.lng === 'number' && SEV[r.severity] &&
+      typeof r.datetime === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d/.test(r.datetime) &&
+      typeof r.cause === 'string' && typeof r.vehicle === 'string' && typeof r.area === 'string';
+  }
+  function loadCitizen() {
+    try {
+      var raw = localStorage.getItem('citizen_reports');
+      if (!raw) return [];
+      var arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(validReport);
+    } catch (e) { return []; }
+  }
+  function loadSeed(arr) { return Array.isArray(arr) ? arr.filter(validReport) : []; }
+
+  /* the shell calls this after a new citizen report is added, with the live
+     dataset (app.raw), so the heatmap + KPI stats update immediately */
+  window.__crashRebuildAnalytics = function (records) {
+    if (!Array.isArray(records)) return;
+    DATA = records;
+    precompute();
+    AGG = computeAgg();
+    buildAll();
+  };
 })();

@@ -47,6 +47,7 @@ const EMERGE_TOP_N = 6;       // how many distinct emerging junctions to surface
 
 /* Segmented filter definitions (wired live in Phase 5) */
 const SEGMENTS = {
+  source:  { id: 'segSource',  options: [['All', 'all'], ['Citizen only', 'citizen']] },
   sev:     { id: 'segSev',     options: [['All', 'all'], ['Fatal + serious', 'fs'], ['Fatal', 'f']] },
   time:    { id: 'segTime',    options: [['All', 'all'], ['Day', 'day'], ['Night', 'night']] },
   weather: { id: 'segWeather', options: [['All', 'all'], ['Clear', 'clear'], ['Rain', 'rain'], ['Fog', 'fog']] },
@@ -77,7 +78,7 @@ const app = {
   selInfo: null,           // stable info for the selection (survives filter changes)
   tileLayer: null,         // basemap layer (swapped on theme change)
   dossierTab: 'zone',      // 'zone' (selected hotspot) | 'city' (contributing factors)
-  filters: { sev: 'all', time: 'all', weather: 'all', dow: 'all', cause: 'all' },
+  filters: { sev: 'all', time: 'all', weather: 'all', dow: 'all', cause: 'all', source: 'all' },
 };
 
 /* ---- Small helpers ---- */
@@ -133,8 +134,9 @@ function onSegmentClick(key, value) {
    Live filters (Phase 5) — every change re-runs the whole engine on the subset
    ========================================================================== */
 function filterRecords() {
-  const { sev, time, weather, dow, cause } = app.filters;
+  const { sev, time, weather, dow, cause, source } = app.filters;
   return app.raw.filter((a) => {
+    if (source === 'citizen' && !a.citizen) return false;        // isolate citizen reports
     if (sev === 'fs' && a.severity === 'slight') return false;   // Fatal + serious
     if (sev === 'f' && a.severity !== 'fatal') return false;     // Fatal only
     if (time === 'day' && a._night) return false;
@@ -160,14 +162,15 @@ function updateFilterNote() {
   const el = document.getElementById('filterNote');
   if (!el) return;
   const f = app.filters;
-  el.textContent = (f.sev !== 'all' || f.time !== 'all' || f.weather !== 'all' || f.dow !== 'all' || f.cause !== 'all')
-    ? 'Counts reflect active filters' : '';
+  el.textContent = (f.source !== 'all' || f.sev !== 'all' || f.time !== 'all' || f.weather !== 'all' || f.dow !== 'all' || f.cause !== 'all')
+    ? (f.source === 'citizen' ? 'Citizen reports only' : 'Counts reflect active filters') : '';
 }
 
 /* Active-filter count badge on the Filters button */
 function updateFilterCount() {
   const f = app.filters;
   let n = 0;
+  if (f.source !== 'all') n++;
   if (f.sev !== 'all') n++;
   if (f.time !== 'all') n++;
   if (f.weather !== 'all') n++;
@@ -189,8 +192,8 @@ function setupFilterPanel() {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') open(false); });
   const reset = document.getElementById('filterReset');
   if (reset) reset.addEventListener('click', () => {
-    app.filters.sev = 'all'; app.filters.time = 'all'; app.filters.weather = 'all';
-    app.filters.dow = 'all'; app.filters.cause = 'all';
+    app.filters.source = 'all'; app.filters.sev = 'all'; app.filters.time = 'all';
+    app.filters.weather = 'all'; app.filters.dow = 'all'; app.filters.cause = 'all';
     renderSegments();
     const cs = document.getElementById('filterCause'); if (cs) cs.value = 'all';
     applyFilters();
@@ -316,6 +319,7 @@ function applyFilters() {
 
   renderPoints();
   renderBlooms();
+  syncEmergeVisibility();   // hide the full-data emerging overlay under "Citizen only"
   syncFocusRing();
   renderRail();
   renderDossier();
@@ -393,14 +397,20 @@ function renderPoints() {
 
   currentRecords().forEach((a) => {
     const sev = SEV[a.severity] || SEV.slight;
-    const m = L.circleMarker([a.lat, a.lng], {
-      renderer: canvas,
-      radius: 3.2,
-      stroke: false,
-      fillColor: sev.color,
-      fillOpacity: 0.5,
-      bubblingMouseEvents: false,   // dot click shows only its popup, not the cell select
-    });
+    const m = a.citizen
+      // citizen report — severity-coloured core inside a bright accent ring, so
+      // community submissions stand out from the base incident points
+      ? L.circleMarker([a.lat, a.lng], {
+          renderer: canvas, radius: 5,
+          stroke: true, color: ACCENT, weight: 2, opacity: 0.95,
+          fillColor: sev.color, fillOpacity: 0.85,
+          bubblingMouseEvents: false,
+        })
+      : L.circleMarker([a.lat, a.lng], {
+          renderer: canvas, radius: 3.2,
+          stroke: false, fillColor: sev.color, fillOpacity: 0.5,
+          bubblingMouseEvents: false,   // dot click shows only its popup, not the cell select
+        });
     m.bindPopup(popupHtml(a), { closeButton: true, autoPan: true });
     app.pointLayer.addLayer(m);
   });
@@ -413,10 +423,20 @@ function popupHtml(a) {
   return (
     '<div class="acc-pop-sev"><span class="acc-pop-dot" style="background:' + sev.color + '"></span>' +
       sev.label + '</div>' +
+    (a.citizen ? '<div class="acc-pop-row" style="color:' + ACCENT + '; font-weight:600;">◎ Citizen report</div>' : '') +
     '<div class="acc-pop-row">' + a.datetime + '</div>' +
     '<div class="acc-pop-row">Weather · ' + a.weather + '</div>' +
     '<div class="acc-pop-area">' + a.area + '</div>'
   );
+}
+
+/* "N citizen reports" counter under the Source filter (shell only; guarded so the
+   standalone dashboard is unaffected). Isolation itself is the Source filter. */
+function citizenTotal() { return app.raw.reduce((s, a) => s + (a.citizen ? 1 : 0), 0); }
+function updateCitizenControls() {
+  const n = citizenTotal();
+  const note = document.getElementById('citizenCountNote');
+  if (note) note.textContent = n + ' citizen report' + (n === 1 ? '' : 's');
 }
 
 /* =============================================================================
@@ -753,7 +773,16 @@ function renderEmergeMarkers() {
     m.on('click', () => selectHotspot(e.id, { pan: true }));
     app.emergeLayer.addLayer(m);
   });
-  app.emergeLayer.addTo(app.map);
+  syncEmergeVisibility();
+}
+
+/* The emerging markers are a full-data strategic overlay; hide them when the map
+   is isolated to citizen reports so only citizen data is shown. */
+function syncEmergeVisibility() {
+  if (!app.emergeLayer || !app.map) return;
+  const hide = app.filters.source === 'citizen';
+  if (hide) { if (app.map.hasLayer(app.emergeLayer)) app.emergeLayer.remove(); }
+  else if (!app.map.hasLayer(app.emergeLayer)) app.emergeLayer.addTo(app.map);
 }
 
 /* =============================================================================
@@ -1185,6 +1214,11 @@ function renderDossier() {
   if (acc.length === 0) acc = accidentsForHotspot(h, app.raw);
   const n = acc.length || 1;
 
+  // when the map is isolated to citizen reports, the dossier is showing
+  // user-reported data — the engineering "recommended intervention" is not
+  // meaningful for a handful of unverified reports, so it is dropped as bloat.
+  const userReported = app.filters.source === 'citizen';
+
   let fatal = 0, serious = 0, slight = 0, night = 0, rain = 0, fog = 0, clear = 0;
   const hours = new Array(24).fill(0);
   const dow = new Array(7).fill(0);
@@ -1296,10 +1330,11 @@ function renderDossier() {
         '<div style="padding:14px 18px 8px; font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">Weather at incident</div>' +
         weatherRow('clear', clear) + weatherRow('rain', rain) + weatherRow('fog', fog) +
       '</div>' +
-      '<div style="margin-top:14px; border-top:1px solid var(--track); padding:14px 18px 0;">' +
-        '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase;">Recommended intervention</div>' +
-        recBlock +
-      '</div>' +
+      (userReported ? '' :
+        '<div style="margin-top:14px; border-top:1px solid var(--track); padding:14px 18px 0;">' +
+          '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase;">Recommended intervention</div>' +
+          recBlock +
+        '</div>') +
     '</div>';
 
   wireDossierClose(full);
@@ -1358,22 +1393,17 @@ async function boot() {
     return;
   }
 
-  app.raw = data;
+  // shipped seed of scattered citizen reports (optional file) + any this browser
+  // has saved. Both feed every engine exactly like the base data; the seed is
+  // never written back to localStorage (see persistCitizenReports).
+  let seed = [];
+  try { const sres = await fetch('./data/citizen_seed.json?v=1'); if (sres.ok) seed = await sres.json(); }
+  catch (e) { /* seed is optional */ }
+  app.raw = data.concat(loadSeedReports(seed)).concat(loadCitizenReports());
   // precompute time fields once (hour, night flag, weekday 0=Mon, month index)
   // for fast filtering + the emerging-trend analysis
-  let minYM = Infinity, maxYM = -Infinity;
-  app.raw.forEach((a) => {
-    a._hour = parseInt(a.datetime.slice(11, 13), 10);
-    a._night = a._hour < 6 || a._hour >= 18;
-    const d = a.datetime.slice(0, 10).split('-');
-    a._dow = (new Date(+d[0], +d[1] - 1, +d[2]).getDay() + 6) % 7;
-    a._ym = (+d[0]) * 12 + (+d[1] - 1);                    // absolute year-month
-    if (a._ym < minYM) minYM = a._ym;
-    if (a._ym > maxYM) maxYM = a._ym;
-  });
-  app.monthCount = maxYM - minYM + 1;                       // ~24
-  app.lastMonth = app.monthCount - 1;
-  app.raw.forEach((a) => { a._month = a._ym - minYM; });    // 0 .. monthCount-1
+  app.raw.forEach(prepRecord);
+  recomputeMonths();                                        // monthCount, lastMonth, _month
 
   runHotspotEngine();
   app.cellByIdFull = app.cellById;   // snapshot full-data cells (survives filtering)
@@ -1386,6 +1416,7 @@ async function boot() {
   renderRail();
   renderDossier();
   renderHeader();
+  updateCitizenControls();  // initial "N citizen reports" count (incl. any merged from localStorage)
   enableMapClickSelect(); // click anywhere on the map to inspect that cell
 
   // fade the "calibrating basemap" overlay once everything is mounted
@@ -1403,6 +1434,10 @@ async function boot() {
     clearTimeout(rt);
     rt = setTimeout(() => app.map.invalidateSize(), 150);
   });
+
+  // signal the shell's citizen-report form that the live dataset is ready
+  window.CRASH_READY = true;
+  try { document.dispatchEvent(new Event('crash:ready')); } catch (e) {}
 }
 
 document.addEventListener('DOMContentLoaded', boot);
@@ -1418,3 +1453,138 @@ document.addEventListener('crash:themechange', function () {
   if (app.tileLayer) app.tileLayer.setUrl(TILES[currentTheme()]);
 });
 window.__crashRefreshMap = function () { if (app.map) app.map.invalidateSize(); };
+
+/* =============================================================================
+   Citizen-report bridge (Phase 8)
+   The Reports section hosts a "Report an accident" form. app.js owns the single
+   live dataset, so the form talks to the map through this small API instead of
+   keeping its own copy. Area helpers resolve a dropped pin to an area (and an
+   area back to a point), judged against the same records that drive the map.
+   ========================================================================== */
+const CITIZEN_KEY = 'citizen_reports';
+
+/* derive the fast-filter fields for one record (hour, night, weekday, year-month) */
+function prepRecord(a) {
+  a._hour = parseInt(a.datetime.slice(11, 13), 10);
+  a._night = a._hour < 6 || a._hour >= 18;
+  const d = a.datetime.slice(0, 10).split('-');
+  a._dow = (new Date(+d[0], +d[1] - 1, +d[2]).getDay() + 6) % 7;
+  a._ym = (+d[0]) * 12 + (+d[1] - 1);                       // absolute year-month
+  return a;
+}
+/* (re)derive the month span across the whole dataset and each record's _month */
+function recomputeMonths() {
+  let minYM = Infinity, maxYM = -Infinity;
+  app.raw.forEach((a) => { if (a._ym < minYM) minYM = a._ym; if (a._ym > maxYM) maxYM = a._ym; });
+  app.monthCount = maxYM - minYM + 1;
+  app.lastMonth = app.monthCount - 1;
+  app.raw.forEach((a) => { a._month = a._ym - minYM; });
+}
+
+/* a stored report must be well-formed before we trust it in the engines */
+function isValidReport(r) {
+  return r && typeof r === 'object' &&
+    typeof r.lat === 'number' && isFinite(r.lat) &&
+    typeof r.lng === 'number' && isFinite(r.lng) &&
+    SEV[r.severity] &&
+    typeof r.datetime === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d/.test(r.datetime) &&
+    typeof r.cause === 'string' && typeof r.vehicle === 'string' && typeof r.area === 'string';
+}
+function loadCitizenReports() {
+  try {
+    const raw = localStorage.getItem(CITIZEN_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(isValidReport).map((r) => { r.citizen = true; delete r.seed; return r; });
+  } catch (e) { return []; }
+}
+/* shipped seed reports — validated, flagged citizen + seed (seed never persisted) */
+function loadSeedReports(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.filter(isValidReport).map((r) => { r.citizen = true; r.seed = true; return r; });
+}
+/* persist just the USER-submitted citizen reports (not the shipped seed), in the
+   base accidents.json schema (no derived fields) */
+function persistCitizenReports() {
+  try {
+    const out = app.raw.filter((a) => a.citizen && !a.seed).map((a) => ({
+      id: a.id, lat: a.lat, lng: a.lng, severity: a.severity, datetime: a.datetime,
+      weather: a.weather, cause: a.cause, vehicle: a.vehicle, area: a.area, citizen: true,
+    }));
+    localStorage.setItem(CITIZEN_KEY, JSON.stringify(out));
+  } catch (e) {}
+}
+
+let _areaCentroids = null;                        // { area: [lat, lng] }, cached
+function areaCentroids() {
+  if (_areaCentroids) return _areaCentroids;
+  const acc = {};
+  app.raw.forEach((a) => {
+    const c = acc[a.area] || (acc[a.area] = { lat: 0, lng: 0, n: 0 });
+    c.lat += a.lat; c.lng += a.lng; c.n++;
+  });
+  _areaCentroids = {};
+  Object.keys(acc).forEach((k) => { _areaCentroids[k] = [acc[k].lat / acc[k].n, acc[k].lng / acc[k].n]; });
+  return _areaCentroids;
+}
+function invalidateAreaCache() { _areaCentroids = null; }
+function uniqueAreas() { return Object.keys(areaCentroids()).sort(); }
+function nearestAreaTo(lat, lng) {
+  // nearest actual record's area — robust for irregularly-shaped areas
+  let best = null, bestD = Infinity;
+  for (let i = 0; i < app.raw.length; i++) {
+    const a = app.raw[i];
+    const dLat = a.lat - lat, dLng = a.lng - lng;
+    const d = dLat * dLat + dLng * dLng;
+    if (d < bestD) { bestD = d; best = a.area; }
+  }
+  return best;
+}
+
+window.CRASH_APP = {
+  onReady: function (cb) {
+    if (window.CRASH_READY) cb();
+    else document.addEventListener('crash:ready', function () { cb(); }, { once: true });
+  },
+  areas: function () { return uniqueAreas(); },
+  causes: function () { return CAUSES.slice(); },
+  vehicles: function () { return VEHICLES.slice(); },
+  areaCentroid: function (area) { return areaCentroids()[area] || null; },
+  nearestArea: function (lat, lng) { return nearestAreaTo(lat, lng); },
+  bbox: function () { return { latMin: BBOX.latMin, latMax: BBOX.latMax, lngMin: BBOX.lngMin, lngMax: BBOX.lngMax }; },
+  center: function () { return CHENNAI.center.slice(); },
+  tileUrl: function () { return TILES[currentTheme()]; },
+  citizenCount: function () { return citizenTotal(); },
+
+  /* Add a citizen report to the live dataset: derive its fields, recompute the
+     full-data snapshots (ranking + emerging), re-render the map + rail + header
+     under the active filter, refresh the analytics (heatmap + KPI stats), and
+     persist to localStorage. Returns the stored record. */
+  addReport: function (rec) {
+    rec.id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    rec.citizen = true;
+    prepRecord(rec);
+    app.raw.push(rec);
+    invalidateAreaCache();                 // a brand-new area may now exist
+    recomputeMonths();
+
+    // refresh the strategy/emerging snapshots over ALL data (filter-independent)
+    app.filtered = null;
+    runHotspotEngine();
+    app.cellByIdFull = app.cellById;
+    app.hotspotsFull = app.hotspots.slice();
+    runEmergingEngine();
+    renderEmergeMarkers();
+
+    // re-run the interactive filter → repaints points, blooms, rail, dossier, header
+    applyFilters();
+    updateCitizenControls();   // bump the "N citizen reports" counter
+
+    // keep the analytics section (heatmap + KPI stats) in lock-step, live
+    if (typeof window.__crashRebuildAnalytics === 'function') window.__crashRebuildAnalytics(app.raw);
+
+    persistCitizenReports();
+    return rec;
+  },
+};

@@ -19,6 +19,7 @@
 <style>
 /* ===================== theme palette (merged, unchanged colours) ===================== */
 :root, :root[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0C1218; --bg-deep: #090E13; --panel: #131C26; --panel-2: #16212D;
   --border: #223140; --border-soft: #182430; --row-hover: #17222E; --track: #1A2733; --row-alt: #1A2733;
   --text: #E9EEF3; --text-2: #8296A9; --text-3: #5C7185; --text-4: #4E6377;
@@ -28,6 +29,7 @@
   --fatal: #E4404E; --serious: #F2933E; --slight: #E7C64B;
 }
 :root[data-theme="light"] {
+  color-scheme: light;
   --bg: #EDF1F5; --bg-deep: #E1E7ED; --panel: #FFFFFF; --panel-2: #F6F8FB;
   --border: #D6DEE6; --border-soft: #E6EBF0; --row-hover: #EEF2F7; --track: #E5EAF0; --row-alt: #EEF2F7;
   --text: #16202B; --text-2: #566472; --text-3: #7E8D9C; --text-4: #A4B0BC;
@@ -254,6 +256,48 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .rc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 500 12.5px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; color: var(--accent-ink); background: var(--accent); border: 1px solid var(--accent); border-radius: 8px; padding: 11px 14px; cursor: pointer; margin-top: 4px; }
 .rc-btn:hover { background: var(--accent-2); border-color: var(--accent-2); }
 .rc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rc-btn.ghost { background: transparent; color: var(--text-2); border-color: var(--border); }
+.rc-btn.ghost:hover { background: var(--row-hover); color: var(--text); border-color: var(--border); }
+
+/* ---- Report an accident (citizen form) ---- */
+.af-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 22px 22px 20px; }
+.af-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 18px; }
+@media (max-width: 720px) { .af-grid { grid-template-columns: 1fr; } }
+.af-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.af-field.full { grid-column: 1 / -1; }
+.af-label { font: 500 8.5px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; color: var(--text-2); text-transform: uppercase; }
+.af-input, .af-select { width: 100%; font: 500 12px 'IBM Plex Mono', monospace; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 9px 10px; }
+.af-select { cursor: pointer; }
+.af-input:hover, .af-select:hover { border-color: var(--accent); }
+.af-input:focus, .af-select:focus { outline: none; border-color: var(--accent); }
+.af-select option { background: var(--panel); color: var(--text); }
+.af-input.invalid, .af-select.invalid, .af-sev.invalid { border-color: var(--fatal); }
+.af-map { width: 100%; height: 264px; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--bg); }
+.af-hint { font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-3); line-height: 1.5; }
+.af-readout { font: 500 11.5px 'IBM Plex Mono', monospace; color: var(--text-2); background: var(--bg); border: 1px dashed var(--border); border-radius: 7px; padding: 9px 10px; line-height: 1.5; }
+.af-readout b { color: var(--accent); font-weight: 600; }
+.af-pin { filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45)); }
+.af-sev { display: flex; gap: 8px; border: none; padding: 0; margin: 0; }
+.af-sev button { flex: 1; font: 500 11.5px 'IBM Plex Mono', monospace; padding: 10px 8px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); color: var(--text-2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; transition: border-color .15s ease, color .15s ease, background .15s ease; }
+.af-sev button:hover { border-color: var(--text-3); }
+.af-sev button .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.af-sev button[aria-pressed="true"] { color: var(--text); background: rgba(255,255,255,0.03); }
+.af-err { color: var(--fatal); font: 500 11px 'IBM Plex Mono', monospace; min-height: 15px; }
+.af-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
+.af-actions .rc-btn { margin-top: 0; }
+.af-confirm { display: flex; align-items: flex-start; gap: 14px; margin-top: 16px; padding: 16px 18px; background: linear-gradient(120deg, rgba(67,176,204,0.12), rgba(67,176,204,0.03)); border: 1px solid rgba(67,176,204,0.35); border-radius: 12px; }
+.af-confirm[hidden] { display: none; }
+.af-confirm-icon { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; }
+.af-confirm-body { flex: 1; min-width: 0; }
+.af-confirm-title { font: 600 15px 'Space Grotesk', sans-serif; }
+.af-confirm-text { font: 400 12.5px 'IBM Plex Sans', sans-serif; color: var(--text-2); line-height: 1.55; margin-top: 3px; }
+.af-confirm-text b { color: var(--text); font-weight: 600; }
+.af-confirm-action { margin-top: 10px; }
+.af-confirm-link { display: inline-flex; align-items: center; gap: 7px; font: 500 12px 'IBM Plex Mono', monospace; color: var(--accent-ink); background: var(--accent); border: 1px solid var(--accent); border-radius: 7px; padding: 8px 12px; }
+.af-confirm-link:hover { background: var(--accent-2); border-color: var(--accent-2); color: var(--accent-ink); }
+.af-confirm-note { font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-3); margin-top: 6px; line-height: 1.5; }
+.af-confirm-close { flex: none; align-self: flex-start; font: 500 11.5px 'IBM Plex Mono', monospace; color: var(--text-2); background: transparent; border: 1px solid var(--border); border-radius: 7px; padding: 8px 12px; cursor: pointer; }
+.af-confirm-close:hover { color: var(--text); border-color: var(--accent); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
@@ -319,6 +363,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             </button>
           </div>
           <div id="filterPanel" role="group" aria-label="Filters" style="pointer-events: auto; display: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 13px 14px; width: min(300px, 64vw);">
+            <div class="fgroup"><div class="flabel">Source</div><div id="segSource" class="segctl" style="display: flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--bg);"></div><div id="citizenCountNote" style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-3); margin-top: 6px;">0 citizen reports</div></div>
             <div class="fgroup"><div class="flabel">Severity</div><div id="segSev" class="segctl" style="display: flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--bg);"></div></div>
             <div class="fgroup"><div class="flabel">Time of day</div><div id="segTime" class="segctl" style="display: flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--bg);"></div></div>
             <div class="fgroup"><div class="flabel">Weather</div><div id="segWeather" class="segctl" style="display: flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--bg);"></div></div>
@@ -333,6 +378,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E4404E;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Fatal</span></span>
             <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #F2933E;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Serious</span></span>
             <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E7C64B;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Slight</span></span>
+            <span style="width: 1px; height: 12px; background: var(--border);"></span>
+            <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--accent); box-sizing: border-box; background: transparent;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Citizen</span></span>
             <span style="width: 1px; height: 12px; background: var(--border);"></span>
             <span id="legendNote" style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-3);">Incident points · coloured by severity</span>
           </div>
@@ -536,6 +583,88 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         </div>
       </div>
       <div class="footnote" style="margin-top:20px;">Impact figures in the reports are indicative planning estimates, not measured outcomes.</div>
+
+      <!-- ---- Report an accident (citizen form) ---- -->
+      <div class="section" id="reportFormSection">
+        <div class="slabel">Contribute</div>
+        <div class="stitle">Report an accident</div>
+        <div class="sdesc">Saw a crash that isn't on the map? Add it here. Reports are saved in this browser only — nothing is uploaded — and instantly update the map, hotspots and statistics.</div>
+
+        <div class="af-card">
+          <div class="af-grid">
+            <div class="af-field full">
+              <div class="af-label">Location</div>
+              <div id="reportMap" class="af-map"></div>
+              <div class="af-hint">Click the map to drop a pin, or pick an area below — either one sets the location. Drag the pin to fine-tune.</div>
+            </div>
+
+            <div class="af-field">
+              <label class="af-label" for="afArea">Area</label>
+              <select class="af-select" id="afArea"><option value="">Loading areas…</option></select>
+            </div>
+            <div class="af-field">
+              <div class="af-label">Selected location</div>
+              <div class="af-readout" id="afReadout">No location set yet.</div>
+            </div>
+
+            <div class="af-field">
+              <label class="af-label" for="afWhen">Date &amp; time</label>
+              <input class="af-input" type="datetime-local" id="afWhen">
+            </div>
+            <div class="af-field">
+              <label class="af-label" for="afWeather">Weather</label>
+              <select class="af-select" id="afWeather">
+                <option value="clear">Clear</option>
+                <option value="rain">Rain</option>
+                <option value="fog">Fog</option>
+              </select>
+            </div>
+
+            <div class="af-field full">
+              <div class="af-label">Severity</div>
+              <div class="af-sev" id="afSev" role="group" aria-label="Severity">
+                <button type="button" data-sev="fatal" aria-pressed="false"><span class="dot" style="background:var(--fatal)"></span>Fatal</button>
+                <button type="button" data-sev="serious" aria-pressed="false"><span class="dot" style="background:var(--serious)"></span>Serious</button>
+                <button type="button" data-sev="slight" aria-pressed="false"><span class="dot" style="background:var(--slight)"></span>Slight</button>
+              </div>
+            </div>
+
+            <div class="af-field">
+              <label class="af-label" for="afCause">Cause</label>
+              <select class="af-select" id="afCause"><option value="">Select a cause…</option></select>
+            </div>
+            <div class="af-field">
+              <label class="af-label" for="afVehicle">Vehicle</label>
+              <select class="af-select" id="afVehicle"><option value="">Select a vehicle…</option></select>
+            </div>
+
+            <div class="af-field full">
+              <div class="af-err" id="afErr"></div>
+              <div class="af-actions">
+                <button class="rc-btn" id="afSubmit" type="button">
+                  <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.5 6.5 13 14 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Submit report
+                </button>
+                <button class="rc-btn ghost" id="afReset" type="button">Reset</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="af-confirm" id="afConfirm" hidden>
+          <div class="af-confirm-icon">
+            <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.5 6.5 13 14 3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="af-confirm-body">
+            <div class="af-confirm-title">Report saved</div>
+            <div class="af-confirm-text" id="afConfirmText"></div>
+            <div class="af-confirm-action" id="afConfirmAction"></div>
+          </div>
+          <button class="af-confirm-close" id="afConfirmClose" type="button">Report another</button>
+        </div>
+
+        <div class="footnote" style="margin-top:14px;">Citizen reports are community-submitted and unverified. They are marked distinctly on the map and stored only on this device.</div>
+      </div>
     </div>
   </section>
 
@@ -554,12 +683,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="./vendor/chart.umd.js"></script>
-<script src="./intervention-model.js?v=1"></script>
+<script src="./intervention-model.js?v=2"></script>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="./report.js?v=phase5d"></script>
-<script src="./app.js?v=phase6"></script>
-<script src="./analytics.js?v=phase6"></script>
+<script src="./app.js?v=phase8f"></script>
+<script src="./analytics.js?v=phase8f"></script>
 
 <script>
 (function () {
@@ -607,7 +736,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // the map and the charts were sized while hidden — refresh them once visible
     if (name === 'map') requestAnimationFrame(function () { if (window.__crashRefreshMap) window.__crashRefreshMap(); });
     if (name === 'analytics') requestAnimationFrame(function () { if (window.__crashResizeAnalytics) window.__crashResizeAnalytics(); });
-    if (name === 'report') initReport();
+    if (name === 'report') { initReport(); initReportForm(); requestAnimationFrame(function () { if (afMap) afMap.invalidateSize(); }); }
   }
   pills.forEach(function (p) { p.addEventListener('click', function () { show(p.dataset.section); }); });
   var brand = document.getElementById('brandHome');
@@ -652,6 +781,228 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         window.CRASHReport.zone(recs.filter(function (a) { return a.area === area; }), { title: area, subtitle: 'Area safety report' });
       });
     });
+  }
+
+  /* ---- Report an accident (citizen form) ---- */
+  var PIN_HTML =
+    '<svg class="af-pin" width="28" height="36" viewBox="0 0 28 36" aria-hidden="true">' +
+    '<path d="M14 35S25 22.5 25 13A11 11 0 1 0 3 13C3 22.5 14 35 14 35Z" fill="#43B0CC" stroke="#06121A" stroke-width="1.6" stroke-linejoin="round"/>' +
+    '<circle cx="14" cy="13" r="4.2" fill="#06121A"/></svg>';
+
+  var formInited = false;
+  var afMap = null, afTiles = null, afMarker = null;
+  var af = { lat: null, lng: null, area: null, sev: null };
+
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function nowLocalInput() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+  function round6(n) { return Math.round(n * 1e6) / 1e6; }
+  function setErr(msg, ok) {
+    var e = document.getElementById('afErr');
+    if (!e) return;
+    e.textContent = msg || '';
+    e.style.color = ok ? 'var(--accent)' : 'var(--fatal)';
+  }
+  function clearInvalid() {
+    ['afArea', 'afWhen', 'afCause', 'afVehicle', 'afSev', 'afReadout'].forEach(function (id) {
+      var el = document.getElementById(id); if (el) el.classList.remove('invalid');
+    });
+  }
+  function updateReadout() {
+    var r = document.getElementById('afReadout');
+    if (!r) return;
+    if (af.lat == null) { r.innerHTML = 'No location set yet.'; return; }
+    r.innerHTML = '<b>' + af.area + '</b> &middot; ' + af.lat.toFixed(5) + ', ' + af.lng.toFixed(5);
+  }
+
+  // move/create the pin and record the coordinates (does NOT touch the area)
+  function setPin(lat, lng, pan) {
+    af.lat = round6(lat); af.lng = round6(lng);
+    if (!afMarker) {
+      var icon = L.divIcon({ className: '', html: PIN_HTML, iconSize: [28, 36], iconAnchor: [14, 35] });
+      afMarker = L.marker([lat, lng], { icon: icon, draggable: true, keyboard: false });
+      afMarker.on('dragend', function () {
+        var p = afMarker.getLatLng();
+        af.lat = round6(p.lat); af.lng = round6(p.lng);
+        af.area = window.CRASH_APP.nearestArea(p.lat, p.lng);
+        syncAreaSelect(); updateReadout(); clearInvalid(); setErr('');
+      });
+      afMarker.addTo(afMap);
+    } else {
+      afMarker.setLatLng([lat, lng]);
+    }
+    if (pan && afMap) afMap.panTo([lat, lng], { animate: true });
+  }
+  function syncAreaSelect() {
+    var sel = document.getElementById('afArea');
+    if (sel && af.area != null) sel.value = af.area;
+  }
+
+  function initReportForm() {
+    if (formInited) return; formInited = true;
+
+    // build the pin-drop map straight away (the section is visible on first open)
+    afMap = L.map('reportMap', {
+      center: [13.05, 80.23], zoom: 11, zoomControl: true, attributionControl: false,
+      zoomSnap: 0.25, minZoom: 10, maxZoom: 18,
+    });
+    afTiles = L.tileLayer('https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(afMap);
+    document.addEventListener('crash:themechange', function () { if (afTiles && window.CRASH_APP) afTiles.setUrl(window.CRASH_APP.tileUrl()); });
+    afMap.on('click', function (e) {
+      setPin(e.latlng.lat, e.latlng.lng, false);
+      af.area = window.CRASH_APP.nearestArea(e.latlng.lat, e.latlng.lng);
+      syncAreaSelect(); updateReadout(); clearInvalid(); setErr('');
+    });
+
+    // populate selects + lock the map to Chennai once the live dataset is ready
+    window.CRASH_APP.onReady(function () {
+      afTiles.setUrl(window.CRASH_APP.tileUrl());
+      var bb = window.CRASH_APP.bbox();
+      var bounds = L.latLngBounds([bb.latMin, bb.lngMin], [bb.latMax, bb.lngMax]);
+      afMap.setMaxBounds(bounds.pad(0.08));
+      afMap.invalidateSize();
+
+      var areaSel = document.getElementById('afArea');
+      if (areaSel) {
+        areaSel.innerHTML = '<option value="">Select an area…</option>' +
+          window.CRASH_APP.areas().map(function (a) { return '<option value="' + a + '">' + a + '</option>'; }).join('');
+      }
+      var causeSel = document.getElementById('afCause');
+      if (causeSel) {
+        causeSel.innerHTML = '<option value="">Select a cause…</option>' +
+          window.CRASH_APP.causes().map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+      }
+      var vehSel = document.getElementById('afVehicle');
+      if (vehSel) {
+        vehSel.innerHTML = '<option value="">Select a vehicle…</option>' +
+          window.CRASH_APP.vehicles().map(function (v) { return '<option value="' + v + '">' + v + '</option>'; }).join('');
+      }
+    });
+
+    // area select → drop the pin on that area's centroid
+    var areaSel = document.getElementById('afArea');
+    if (areaSel) areaSel.addEventListener('change', function () {
+      var area = areaSel.value;
+      if (!area) { return; }
+      var c = window.CRASH_APP.areaCentroid(area);
+      af.area = area;
+      if (c) setPin(c[0], c[1], true);
+      updateReadout(); clearInvalid(); setErr('');
+    });
+
+    // severity segmented control
+    var sevWrap = document.getElementById('afSev');
+    if (sevWrap) sevWrap.addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-sev]'); if (!btn) return;
+      af.sev = btn.dataset.sev;
+      var colors = { fatal: '#E4404E', serious: '#F2933E', slight: '#E7C64B' };
+      Array.prototype.forEach.call(sevWrap.querySelectorAll('button'), function (b) {
+        var on = b === btn;
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        b.style.borderColor = on ? colors[b.dataset.sev] : '';
+        b.style.color = on ? colors[b.dataset.sev] : '';
+      });
+      sevWrap.classList.remove('invalid'); setErr('');
+    });
+
+    // date & time defaults to now, capped at now (no future reports)
+    var whenEl = document.getElementById('afWhen');
+    if (whenEl) { whenEl.value = nowLocalInput(); whenEl.max = nowLocalInput(); }
+
+    var submitBtn = document.getElementById('afSubmit');
+    if (submitBtn) submitBtn.addEventListener('click', handleSubmit);
+    var resetBtn = document.getElementById('afReset');
+    if (resetBtn) resetBtn.addEventListener('click', resetForm);
+    var closeBtn = document.getElementById('afConfirmClose');
+    if (closeBtn) closeBtn.addEventListener('click', function () { var b = document.getElementById('afConfirm'); if (b) b.hidden = true; });
+  }
+
+  function validateAndBuild() {
+    clearInvalid(); setErr('');
+    var errors = [];
+    if (af.lat == null || af.area == null) {
+      var ro = document.getElementById('afReadout'); if (ro) ro.classList.add('invalid');
+      errors.push(['afReadout', 'Set a location — drop a pin or pick an area.']);
+    }
+    var whenEl = document.getElementById('afWhen');
+    var whenVal = whenEl ? whenEl.value : '';
+    if (!whenVal) { errors.push(['afWhen', 'Pick the date and time.']); }
+    else if (new Date(whenVal).getTime() > Date.now() + 60000) { errors.push(['afWhen', 'The date and time cannot be in the future.']); }
+    if (!af.sev) { errors.push(['afSev', 'Choose a severity.']); }
+    var causeEl = document.getElementById('afCause');
+    if (!causeEl || !causeEl.value) { errors.push(['afCause', 'Choose a cause.']); }
+    var vehEl = document.getElementById('afVehicle');
+    if (!vehEl || !vehEl.value) { errors.push(['afVehicle', 'Choose a vehicle.']); }
+
+    if (errors.length) {
+      errors.forEach(function (er) { var el = document.getElementById(er[0]); if (el) el.classList.add('invalid'); });
+      setErr(errors[0][1]);
+      return null;
+    }
+    var weatherEl = document.getElementById('afWeather');
+    return {
+      lat: af.lat, lng: af.lng,
+      severity: af.sev,
+      datetime: whenVal.replace('T', ' ').slice(0, 16),
+      weather: weatherEl ? weatherEl.value : 'clear',
+      cause: causeEl.value,
+      vehicle: vehEl.value,
+      area: af.area,
+      citizen: true,
+    };
+  }
+
+  function handleSubmit() {
+    var rec = validateAndBuild();
+    if (!rec) return;
+    var saved;
+    try {
+      if (!window.CRASH_APP || !window.CRASH_APP.addReport) throw new Error('the live map is still loading — try again in a moment');
+      saved = window.CRASH_APP.addReport(rec);
+    } catch (e) { setErr('Could not save the report — ' + (e.message || e)); return; }
+    showConfirm(saved || rec);
+    resetForm();
+  }
+
+  var SEV_LABEL = { fatal: 'Fatal', serious: 'Serious', slight: 'Slight' };
+  function showConfirm(rec) {
+    var txt = document.getElementById('afConfirmText');
+    if (txt) {
+      txt.innerHTML = '<b>' + (SEV_LABEL[rec.severity] || rec.severity) + '</b> crash at <b>' + rec.area + '</b> on ' +
+        rec.datetime + ' is now on the map and counted in the hotspots, heatmap and statistics. Saved on this device only.';
+    }
+    // surface the authority a citizen would file an official complaint with,
+    // matched to this accident's cause (opens the grievance portal in a new tab)
+    var action = document.getElementById('afConfirmAction');
+    if (action) {
+      var auth = window.CRASH_AUTHORITIES && window.CRASH_AUTHORITIES.for(rec.cause);
+      action.innerHTML = auth
+        ? '<div class="af-confirm-note">You can also file an official complaint about this ' + rec.cause.toLowerCase() + ' incident:</div>' +
+          '<a class="af-confirm-link" href="' + auth.url + '" target="_blank" rel="noopener noreferrer">' +
+            '<svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.2h6.8V10M12.8 3.2 4 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            auth.name +
+          '</a>'
+        : '';
+    }
+    var box = document.getElementById('afConfirm');
+    if (box) { box.hidden = false; try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {} }
+  }
+
+  function resetForm() {
+    af = { lat: null, lng: null, area: null, sev: null };
+    if (afMarker && afMap) { afMap.removeLayer(afMarker); afMarker = null; }
+    clearInvalid(); setErr('');
+    var ids = ['afArea', 'afCause', 'afVehicle'];
+    ids.forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
+    var weatherEl = document.getElementById('afWeather'); if (weatherEl) weatherEl.value = 'clear';
+    var whenEl = document.getElementById('afWhen'); if (whenEl) whenEl.value = nowLocalInput();
+    var sevWrap = document.getElementById('afSev');
+    if (sevWrap) Array.prototype.forEach.call(sevWrap.querySelectorAll('button'), function (b) {
+      b.setAttribute('aria-pressed', 'false'); b.style.borderColor = ''; b.style.color = '';
+    });
+    updateReadout();
   }
 })();
 </script>
