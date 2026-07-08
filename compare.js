@@ -28,7 +28,7 @@
   let DATA = [], MONTHS = 0, LASTM = 0, MIN_YM = 0;
   let STATS = {}, ORDER = [], MAXSCORE = 1, NORM = {};
   let charts = [];
-  const state = { a: null, b: null };
+  const state = { a: null, b: null, swapped: false };   // swapped = user overrode the rank ordering
 
   const fmt = (n) => Number(n).toLocaleString('en-US');
   const pct0 = (x) => Math.round(x) + '%';
@@ -230,7 +230,7 @@
       { label: 'Incidents', a: A.total, b: B.total, fmt: fmt },
       { label: 'Fatalities', a: A.fatal, b: B.fatal, fmt: fmt },
       { label: 'Severe (F+S)', a: A.severe, b: B.severe, fmt: fmt },
-      { label: 'Risk index', a: A.normScore, b: B.normScore, fmt: (x) => x, suffix: ' /100' },
+      { label: 'Risk /100', a: A.normScore, b: B.normScore, fmt: (x) => x },
       { label: 'Fatality rate', a: A.fatalRate * 100, b: B.fatalRate * 100, fmt: pct1 },
       { label: 'Night share', a: A.nightShare * 100, b: B.nightShare * 100, fmt: pct0 },
       { label: 'Weekend share', a: A.weekendShare * 100, b: B.weekendShare * 100, fmt: pct0 },
@@ -243,16 +243,13 @@
       const lo = Math.min(m.a, m.b), hi = Math.max(m.a, m.b);
       const delta = lo > 0 ? mult(hi / lo) : (hi > 0 ? '—' : '=');
       const dColor = aWin ? 'var(--cmpA)' : bWin ? 'var(--cmpB)' : 'var(--text-3)';
+      const wStr = (v, w) => v > 0 ? 'max(3px, ' + w.toFixed(1) + '%)' : '0';
       return '<div class="h2h-row">' +
-          '<div class="h2h-side a">' +
-            '<span class="h2h-val ' + (bWin ? 'dim' : '') + '" style="color:var(--cmpA)">' + m.fmt(m.a) + (m.suffix || '') + '</span>' +
-            '<span class="h2h-bar ' + (bWin ? 'dim' : '') + '" style="width:' + wa.toFixed(1) + '%; background:var(--cmpA)"></span>' +
-          '</div>' +
+          '<div class="h2h-track a"><span class="h2h-bar ' + (bWin ? 'dim' : '') + '" style="width:' + wStr(m.a, wa) + '; background:var(--cmpA)"></span></div>' +
+          '<div class="h2h-val a ' + (bWin ? 'dim' : '') + '" style="color:var(--cmpA)">' + m.fmt(m.a) + '</div>' +
           '<div class="h2h-mid"><div class="h2h-metric">' + m.label + '</div><div class="h2h-delta" style="color:' + dColor + '">' + (aWin || bWin ? delta : '=') + '</div></div>' +
-          '<div class="h2h-side b">' +
-            '<span class="h2h-bar ' + (aWin ? 'dim' : '') + '" style="width:' + wb.toFixed(1) + '%; background:var(--cmpB)"></span>' +
-            '<span class="h2h-val ' + (aWin ? 'dim' : '') + '" style="color:var(--cmpB)">' + m.fmt(m.b) + (m.suffix || '') + '</span>' +
-          '</div>' +
+          '<div class="h2h-val b ' + (aWin ? 'dim' : '') + '" style="color:var(--cmpB)">' + m.fmt(m.b) + '</div>' +
+          '<div class="h2h-track b"><span class="h2h-bar ' + (aWin ? 'dim' : '') + '" style="width:' + wStr(m.b, wb) + '; background:var(--cmpB)"></span></div>' +
         '</div>';
     }).join('');
   }
@@ -357,11 +354,15 @@
     const other = side === 'a' ? 'b' : 'a';
     if (name === state[other]) state[other] = state[side];   // keep the two distinct by swapping
     state[side] = name;
+    state.swapped = false;                                    // fresh pick re-applies rank ordering
     render();
   }
-  function swap() { const t = state.a; state.a = state.b; state.b = t; render(); }
+  function swap() { const t = state.a; state.a = state.b; state.b = t; state.swapped = true; render(); }
 
   function render() {
+    // present the higher-risk (lower rank number) area as A, unless the user
+    // explicitly swapped — so the comparison always reads worst-first by default.
+    if (!state.swapped && STATS[state.a].rank > STATS[state.b].rank) { const t = state.a; state.a = state.b; state.b = t; }
     const A = STATS[state.a], B = STATS[state.b];
     comboA.setDisplay(A.area); comboB.setDisplay(B.area);
     document.getElementById('nameA').textContent = A.area;
