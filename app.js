@@ -294,6 +294,7 @@ function applyTheme(theme) {
 function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); }
 
 function renderThemeToggle() {
+  if (window.CRASH_SHELL) return;   // the shell owns the single header theme toggle
   const btn = document.getElementById('themeToggle');
   if (!btn) return;
   const light = currentTheme() === 'light';
@@ -1335,7 +1336,7 @@ function setText(id, v) { const el = document.getElementById(id); if (el) el.tex
 async function boot() {
   renderThemeToggle();
   const tt = document.getElementById('themeToggle');
-  if (tt) tt.addEventListener('click', toggleTheme);
+  if (tt && !window.CRASH_SHELL) tt.addEventListener('click', toggleTheme);
   renderSegments();
   renderCauseFilter();
   setupFilterPanel();
@@ -1405,3 +1406,15 @@ async function boot() {
 }
 
 document.addEventListener('DOMContentLoaded', boot);
+
+/* =============================================================================
+   Shell integration (index.html single-page shell)
+   The one header theme toggle lives in the shell and dispatches
+   'crash:themechange'; keep the basemap tiles in sync. And expose a hook so the
+   shell can re-fit the map after the Map section becomes visible again (Leaflet
+   sizes to 0 while its container is display:none).
+   ========================================================================== */
+document.addEventListener('crash:themechange', function () {
+  if (app.tileLayer) app.tileLayer.setUrl(TILES[currentTheme()]);
+});
+window.__crashRefreshMap = function () { if (app.map) app.map.invalidateSize(); };

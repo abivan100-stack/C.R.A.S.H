@@ -251,7 +251,7 @@
     const doc = newDoc(); if (!doc) return;
     meta = meta || {};
     const d = zoneData(records), t = d.total || 1;
-    const sub = (meta.rank ? 'Hotspot ' + pad2(meta.rank) + ' · ' : '') + 'Zone safety report · 250 m cell';
+    const sub = meta.subtitle || ((meta.rank ? 'Hotspot ' + pad2(meta.rank) + ' · ' : '') + 'Zone safety report · 250 m cell');
     const metaLines = [];
     if (meta.lat != null && meta.lng != null) metaLines.push(meta.lat.toFixed(4) + '° N · ' + meta.lng.toFixed(4) + '° E');
     metaLines.push('Generated ' + today());

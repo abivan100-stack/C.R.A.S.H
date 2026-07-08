@@ -1,903 +1,658 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CRASH — Chennai Road Accident Safety Hub</title>
-<meta name="description" content="CRASH maps two years of Greater Chennai road-accident data, ranks the deadliest junctions by severity-weighted risk, and turns every hotspot into an evidence-based intervention.">
+<title>CRASH · Chennai Road Accident Safety Hub</title>
+<script>
+  /* set theme before first paint to avoid a flash */
+  (function () {
+    try { var t = localStorage.getItem('cra-theme'); document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark'); }
+    catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
-  :root {
-    --night: #0B1117;      /* cartographic night ground */
-    --night-2: #0E151D;
-    --panel: #131C26;      /* elevated dark surface */
-    --border-d: #223140;   /* dark hairline */
-    --paper: #EEF1F5;      /* cool off-white light ground */
-    --paper-2: #E4E9EF;
-    --ink: #10181F;        /* text on light */
-    --ink-2: #47586A;      /* muted on light */
-    --mist: #E9EEF3;       /* text on dark */
-    --mist-2: #8B9CAD;     /* muted on dark */
-    --accent: #43B0CC;     /* interactive teal */
-    --accent-deep: #2C93AE;
-    --fatal: #E4404E;      /* severity — data encoding, not the accent */
-    --serious: #F2933E;
-    --slight: #E7C64B;
+/* ===================== theme palette (merged, unchanged colours) ===================== */
+:root, :root[data-theme="dark"] {
+  --bg: #0C1218; --bg-deep: #090E13; --panel: #131C26; --panel-2: #16212D;
+  --border: #223140; --border-soft: #182430; --row-hover: #17222E; --track: #1A2733; --row-alt: #1A2733;
+  --text: #E9EEF3; --text-2: #8296A9; --text-3: #5C7185; --text-4: #4E6377;
+  --accent: #43B0CC; --accent-2: #74C8DC; --accent-ink: #06121A;
+  --dow-text: #C7D3DE; --chart-day: #6E8BA3; --chart-night: #33475C; --hist: #46617A; --hist-peak: #8FB3CC;
+  --attrib-bg: rgba(12,18,24,0.72);
+  --fatal: #E4404E; --serious: #F2933E; --slight: #E7C64B;
+}
+:root[data-theme="light"] {
+  --bg: #EDF1F5; --bg-deep: #E1E7ED; --panel: #FFFFFF; --panel-2: #F6F8FB;
+  --border: #D6DEE6; --border-soft: #E6EBF0; --row-hover: #EEF2F7; --track: #E5EAF0; --row-alt: #EEF2F7;
+  --text: #16202B; --text-2: #566472; --text-3: #7E8D9C; --text-4: #A4B0BC;
+  --accent: #1B8FAC; --accent-2: #2C6F8C; --accent-ink: #FFFFFF;
+  --dow-text: #33475C; --chart-day: #7C93A8; --chart-night: #45607A; --hist: #93A6B8; --hist-peak: #256E8B;
+  --attrib-bg: rgba(255,255,255,0.80);
+  --fatal: #E4404E; --serious: #F2933E; --slight: #E7C64B;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; }
+html { transition: background 0.25s ease; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-2); }
+::selection { background: rgba(67,176,204,0.28); }
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
 
-    --maxw: 1200px;
-    --gutter: clamp(20px, 5vw, 64px);
+/* ===================== shell header ===================== */
+.app-header {
+  position: sticky; top: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  height: 58px; padding: 0 20px; background: var(--bg); border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; text-decoration: none; color: inherit; background: none; border: none; padding: 0; cursor: pointer; }
+.brand-mark { flex: none; width: 30px; height: 30px; border-radius: 7px; background: var(--accent); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center; font: 700 16px 'Space Grotesk', sans-serif; }
+.brand-text { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.brand-name { font: 600 16px 'Space Grotesk', sans-serif; letter-spacing: 0.01em; line-height: 1.15; white-space: nowrap; }
+.brand-tag { font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-2); line-height: 1.2; margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav { display: flex; align-items: center; gap: 8px; flex: none; }
+.nav-pills { display: flex; align-items: center; gap: 6px; }
+.pill { font: 500 12.5px 'IBM Plex Mono', monospace; letter-spacing: 0.01em; color: var(--text-2);
+  background: transparent; border: 1px solid transparent; border-radius: 20px; padding: 8px 16px; cursor: pointer;
+  white-space: nowrap; transition: background .15s ease, color .15s ease, border-color .15s ease; }
+.pill:hover { color: var(--text); background: var(--row-hover); }
+.pill.active { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.pill.active:hover { background: var(--accent-2); }
+.pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.icon-btn { width: 34px; height: 34px; flex: none; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--text-2); padding: 0; }
+.icon-btn:hover { color: var(--text); background: var(--row-hover); }
+.icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.nav-toggle { display: none; }
 
-    --f-display: 'Space Grotesk', system-ui, sans-serif;
-    --f-body: 'IBM Plex Sans', system-ui, sans-serif;
-    --f-mono: 'IBM Plex Mono', ui-monospace, monospace;
-  }
+/* ===================== shell sections (renamed to avoid clashing with analytics .section) ===================== */
+.app-section { display: none; }
+.app-section.active { display: block; }
+.placeholder { min-height: calc(100vh - 58px); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; text-align: center; padding: 40px 24px; }
+.ph-eyebrow { font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); }
+.ph-title { font: 600 26px 'Space Grotesk', sans-serif; letter-spacing: -0.01em; }
+.ph-note { font: 400 13px 'IBM Plex Sans', sans-serif; color: var(--text-2); max-width: 440px; line-height: 1.65; }
+.ph-dot { display: inline-flex; gap: 6px; margin-top: 4px; }
+.ph-dot i { width: 8px; height: 8px; border-radius: 50%; }
 
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
-  body {
-    margin: 0; background: var(--night); color: var(--mist);
-    font-family: var(--f-body); font-size: 16px; line-height: 1.6;
-    -webkit-font-smoothing: antialiased; overflow-x: hidden;
-  }
-  a { color: inherit; text-decoration: none; }
-  h1, h2, h3 { margin: 0; font-family: var(--f-display); text-wrap: balance; }
-  p { margin: 0; }
+@media (max-width: 768px) {
+  .brand-tag { display: none; }
+  .nav-toggle { display: inline-flex; }
+  .nav-pills { position: absolute; top: 58px; right: 0; left: 0; flex-direction: column; align-items: stretch; gap: 6px;
+    padding: 12px 16px 16px; background: var(--panel); border-bottom: 1px solid var(--border); box-shadow: 0 14px 34px rgba(0,0,0,0.42); display: none; }
+  .nav-pills.open { display: flex; }
+  .nav-pills .pill { width: 100%; text-align: left; border-radius: 10px; padding: 11px 14px; }
+}
 
-  .wrap { max-width: var(--maxw); margin: 0 auto; padding-inline: var(--gutter); }
-  .eyebrow {
-    font-family: var(--f-mono); font-size: 11px; font-weight: 500;
-    letter-spacing: 0.22em; text-transform: uppercase;
-  }
-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+/* ===================== MAP section (from the dashboard) ===================== */
+.map-root { position: relative; display: flex; min-height: 0; height: calc(100vh - 58px); }
+@keyframes bloomIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+@keyframes sweep { from { transform: translateX(-48px); } to { transform: translateX(168px); } }
+#railList::-webkit-scrollbar, #dossierBody::-webkit-scrollbar { width: 8px; }
+#railList::-webkit-scrollbar-thumb, #dossierBody::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+#railList::-webkit-scrollbar-track, #dossierBody::-webkit-scrollbar-track { background: transparent; }
+@media (max-width: 1180px) { #rail { width: 250px !important; } }
+@media (max-width: 980px) {
+  #dossier { position: fixed !important; top: 58px; right: 0; bottom: 0; width: min(360px, 94vw) !important; z-index: 50; transform: translateX(103%); transition: transform 0.3s ease; }
+  #dossier[data-open="true"] { transform: translateX(0); }
+}
+@media (max-width: 740px) {
+  #rail { position: fixed !important; left: 0; right: 0; bottom: 0; top: auto !important; width: auto !important; height: 42vh; z-index: 40; border-right: none !important; border-top: 1px solid var(--border); }
+  #dossier { top: 0 !important; width: 100vw !important; }
+  #maplegend { display: none !important; }
+}
+/* Leaflet integration */
+#map { position: absolute; inset: 0; z-index: 0; background: var(--bg); }
+.leaflet-container { background: var(--bg); font-family: 'IBM Plex Sans', sans-serif; outline: none; }
+.leaflet-popup-content-wrapper { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 8px 28px rgba(0,0,0,0.55); }
+.leaflet-popup-tip { background: var(--panel); border: 1px solid var(--border); }
+.leaflet-popup-content { margin: 10px 12px; line-height: 1.5; }
+.leaflet-popup-close-button { color: var(--text-2) !important; }
+.leaflet-popup-close-button:hover { color: var(--text) !important; }
+.acc-pop-sev { font: 600 12.5px 'Space Grotesk', sans-serif; letter-spacing: 0.02em; display: flex; align-items: center; gap: 7px; }
+.acc-pop-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.acc-pop-row { font: 400 10.5px 'IBM Plex Mono', monospace; color: var(--text-2); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.acc-pop-area { font: 500 11.5px 'IBM Plex Sans', sans-serif; color: var(--text); margin-top: 6px; }
+.leaflet-control-attribution { background: var(--attrib-bg) !important; color: var(--text-4) !important; font: 400 9px 'IBM Plex Mono', monospace !important; padding: 2px 7px !important; }
+.leaflet-control-attribution a { color: var(--text-3) !important; }
+.leaflet-control-zoom { margin: 0 14px 14px 0 !important; box-shadow: 0 4px 16px rgba(0,0,0,0.45) !important; }
+.leaflet-bar { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.leaflet-bar a { width: 32px; height: 32px; line-height: 32px; font-size: 19px; font-weight: 500; background: var(--panel); color: var(--text-2); border-bottom: 1px solid var(--border); }
+.leaflet-bar a:first-child { border-radius: 6px 6px 0 0; }
+.leaflet-bar a:last-child { border-radius: 0 0 6px 6px; border-bottom: none; }
+.leaflet-bar a:hover { background: var(--row-hover); color: var(--text); }
+.leaflet-bar a:active { background: rgba(67,176,204,0.18); color: var(--accent); }
+.leaflet-bar a.leaflet-disabled { background: var(--bg-deep); color: var(--text-4); }
+/* risk blooms */
+.bloom-icon { background: transparent; border: none; }
+.bloom { position: relative; animation: bloomIn 0.7s cubic-bezier(0.2,0.7,0.3,1) both; }
+.bloom-glow { position: absolute; inset: 0; border-radius: 50%; }
+.bloom-core { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; }
+.bloom-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 50%; border: 1.4px solid var(--accent); opacity: 0; transition: opacity 0.25s ease; pointer-events: none; }
+.bloom.is-selected .bloom-ring { opacity: 1; }
+.bloom-icon:focus { outline: none; }
+.bloom-icon:focus .bloom { filter: brightness(1.45); }
+.bloom-icon:focus .bloom-ring { opacity: 0.8; }
+.leaflet-marker-icon.bloom-icon:hover .bloom { filter: brightness(1.3); }
+.focus-ring { transition: opacity 0.25s ease; }
+/* emerging pulse markers */
+@keyframes emPulse { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.85; } 70% { opacity: 0; } 100% { transform: translate(-50%, -50%) scale(2.7); opacity: 0; } }
+.em-icon { background: transparent; border: none; }
+.em-mark { position: relative; width: 34px; height: 34px; }
+.em-pulse { position: absolute; top: 50%; left: 50%; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--accent); transform: translate(-50%, -50%); animation: emPulse 2.4s ease-out infinite; pointer-events: none; }
+.em-core { position: absolute; top: 50%; left: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.em-icon:hover .em-core { filter: brightness(1.35); }
+/* resizers */
+#rail, #dossier { overflow: hidden; }
+.resizer { flex: none; width: 7px; cursor: col-resize; background: transparent; position: relative; z-index: 35; align-self: stretch; }
+.resizer::before { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: transparent; transition: background .15s ease; }
+.resizer:hover::before, .resizer.dragging::before, .resizer:focus-visible::before { background: var(--accent); }
+.resizer:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+body.col-resizing { cursor: col-resize; user-select: none; }
+@media (max-width: 980px) { .resizer { display: none; } }
+/* filters toolbar + popover */
+#filtersBtn { display: inline-flex; align-items: center; gap: 7px; font: 500 12px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; cursor: pointer; }
+#filtersBtn:hover { border-color: var(--accent); }
+#filtersBtn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+#filtersBtn .chev { transition: transform .2s ease; }
+#filtersBtn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+#filterCount { display: none; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent); color: #06121A; font: 600 10px 'IBM Plex Mono', monospace; align-items: center; justify-content: center; }
+#filterCount.on { display: inline-flex; }
+#filterPanel { box-shadow: 0 12px 34px rgba(0,0,0,0.42); max-height: 72vh; overflow: auto; }
+.fgroup + .fgroup { margin-top: 12px; }
+.flabel { font: 500 8.5px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; color: var(--text-2); text-transform: uppercase; margin-bottom: 5px; }
+#filterReset { margin-top: 14px; width: 100%; font: 500 11px 'IBM Plex Mono', monospace; color: var(--text-2); background: transparent; border: 1px solid var(--border); border-radius: 5px; padding: 7px; cursor: pointer; }
+#filterReset:hover { border-color: var(--accent); color: var(--accent); }
+/* Strategy button in the map toolbar (opens the leverage + priority dossier) */
+#strategyBtn { display: inline-flex; align-items: center; gap: 7px; font: 500 12px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; cursor: pointer; }
+#strategyBtn:hover { border-color: var(--accent); color: var(--accent); }
+#strategyBtn.active { border-color: var(--accent); color: var(--accent); background: rgba(67,176,204,0.12); }
+#strategyBtn:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+/* dossier tabs */
+.dtab { flex: 1; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; font: 500 11px 'IBM Plex Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); padding: 11px 8px; }
+.dtab:hover { color: var(--text); }
+.dtab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.dtab:focus-visible { outline: 1px solid var(--accent); outline-offset: -2px; }
+/* cause select */
+.fselect { width: 100%; font: 500 11px 'IBM Plex Mono', monospace; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 7px 8px; cursor: pointer; }
+.fselect:hover { border-color: var(--accent); }
+.fselect:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.fselect option { background: var(--panel); color: var(--text); }
 
-  /* ---------- buttons ---------- */
-  .btn {
-    display: inline-flex; align-items: center; gap: 9px;
-    font-family: var(--f-mono); font-weight: 600; font-size: 13.5px;
-    letter-spacing: 0.03em; padding: 13px 20px; border: 1.5px solid transparent;
-    cursor: pointer; will-change: transform;
-    transition: transform .2s cubic-bezier(.2,.7,.2,1), background .18s ease, color .18s ease, border-color .18s ease, box-shadow .25s ease;
-  }
-  .btn svg { width: 15px; height: 15px; }
-  .btn-primary { background: var(--accent); color: #06121A; }
-  .btn-primary:hover { background: #57C2DC; box-shadow: 0 10px 34px rgba(67,176,204,0.34); }
-  /* while the magnetic script drives transform inline, don't fight it with a hover translate */
-  .btn-primary.is-magnetic:hover { transform: none; }
-  .btn-ghost { border-color: var(--border-d); color: var(--mist); }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-ghost.on-light { border-color: rgba(16,24,31,0.25); color: var(--ink); }
-  .btn-ghost.on-light:hover { border-color: var(--accent-deep); color: var(--accent-deep); }
-  .btn:focus-visible, a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* ===================== ANALYTICS section (from analytics page; main -> .ana-root) ===================== */
+.ana-root { max-width: 1180px; margin: 0 auto; padding: 30px 22px 80px; }
+.eyebrow { font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: 0.22em; color: var(--accent); text-transform: uppercase; }
+.h-hero { font: 600 32px 'Space Grotesk', sans-serif; letter-spacing: -0.01em; margin: 12px 0 8px; line-height: 1.1; }
+.sub { font: 400 14px 'IBM Plex Sans', sans-serif; color: var(--text-2); line-height: 1.6; max-width: 720px; }
+.section { margin-top: 46px; }
+.section > .slabel { font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: 0.2em; color: var(--text-2); text-transform: uppercase; }
+.section > .stitle { font: 600 21px 'Space Grotesk', sans-serif; margin: 8px 0 5px; letter-spacing: -0.01em; }
+.section > .sdesc { font: 400 12.5px 'IBM Plex Sans', sans-serif; color: var(--text-2); line-height: 1.6; max-width: 700px; margin-bottom: 18px; }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: 1fr 1fr; }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+.g-kpi { grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); }
+@media (max-width: 860px) { .g2, .g3 { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 17px 15px; }
+.card .clabel { font: 500 9.5px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; color: var(--text-2); text-transform: uppercase; }
+.card .cnote { font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-3); margin-top: 3px; line-height: 1.5; }
+.chartbox { position: relative; width: 100%; height: 260px; margin-top: 12px; }
+.chartbox.tall { height: 320px; }
+.chartbox.short { height: 210px; }
+.kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 15px 16px; }
+.kpi .v { font: 600 30px 'Space Grotesk', sans-serif; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .v.accent { color: var(--accent); }
+.kpi .l { font: 400 9.5px 'IBM Plex Mono', monospace; letter-spacing: 0.1em; color: var(--text-2); text-transform: uppercase; margin-top: 8px; }
+.lev { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; background: linear-gradient(120deg, rgba(67,176,204,0.10), rgba(67,176,204,0.02)); border: 1px solid rgba(67,176,204,0.28); border-radius: 12px; padding: 20px 22px; }
+.lev .big { font: 700 58px 'Space Grotesk', sans-serif; color: var(--accent); line-height: 0.85; font-variant-numeric: tabular-nums; }
+.lev .txt { font: 400 15px 'IBM Plex Sans', sans-serif; color: var(--text); line-height: 1.5; max-width: 460px; }
+.lev .txt b { font-weight: 600; }
+.lev .meta { font: 400 11px 'IBM Plex Mono', monospace; color: var(--text-2); margin-top: 7px; }
+.heat { margin-top: 14px; overflow-x: auto; }
+.heat-grid { display: grid; grid-template-columns: 34px repeat(24, 1fr); gap: 2px; min-width: 620px; }
+.heat-cell { height: 17px; border-radius: 2px; }
+.heat-rowlabel { font: 500 9.5px 'IBM Plex Mono', monospace; color: var(--text-2); display: flex; align-items: center; }
+.heat-collabel { font: 400 8px 'IBM Plex Mono', monospace; color: var(--text-3); text-align: center; }
+.heat-legend { display: flex; align-items: center; gap: 8px; margin-top: 12px; font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-3); }
+.heat-swatch { width: 13px; height: 13px; border-radius: 2px; }
+.pq { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+@media (max-width: 860px) { .pq { grid-template-columns: 1fr; } }
+.pqcard { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 15px; }
+.pqcard .rank { font: 500 11px 'IBM Plex Mono', monospace; color: var(--text-2); }
+.pqcard .area { font: 600 16px 'Space Grotesk', sans-serif; margin-top: 2px; }
+.pqcard .fix { font: 400 12px 'IBM Plex Sans', sans-serif; color: var(--text-2); line-height: 1.5; margin-top: 8px; }
+.pqcard .row { display: flex; align-items: center; gap: 9px; margin-top: 11px; flex-wrap: wrap; }
+.pqcard .prevent { font: 600 20px 'Space Grotesk', sans-serif; color: var(--accent); font-variant-numeric: tabular-nums; }
+.pqcard .prevent small { font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2); }
+.costdot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-left: 2px; }
+.tag { font: 500 9px 'IBM Plex Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
+.footnote { font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-3); line-height: 1.6; margin-top: 10px; }
+.legendline { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
+.legendline .li { display: flex; align-items: center; gap: 6px; font: 400 10.5px 'IBM Plex Mono', monospace; color: var(--text-2); }
+.legendline .sw { width: 9px; height: 9px; border-radius: 2px; }
 
-  /* ---------- nav ---------- */
-  .nav {
-    position: sticky; top: 0; z-index: 50;
-    background: rgba(11,17,23,0.86); backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border-d);
-  }
-  .nav-inner { display: flex; align-items: center; gap: 24px; height: 62px; }
-  .brand { display: flex; align-items: center; gap: 11px; }
-  .brand-mark {
-    width: 30px; height: 30px; border-radius: 7px; background: var(--accent); color: #06121A;
-    display: grid; place-items: center; font-family: var(--f-display); font-weight: 700; font-size: 18px;
-  }
-  .brand-word { font-family: var(--f-display); font-weight: 600; font-size: 18px; letter-spacing: 0.04em; }
-  .brand-sub { font-family: var(--f-mono); font-size: 9px; letter-spacing: 0.16em; color: var(--mist-2); text-transform: uppercase; margin-top: 1px; }
-  .nav-links { display: flex; gap: 26px; margin-left: 14px; }
-  .nav-links a {
-    font-family: var(--f-mono); font-size: 13px; color: var(--mist-2);
-    letter-spacing: 0.02em; transition: color .15s;
-  }
-  .nav-links a:hover { color: var(--mist); }
-  .nav-cta { margin-left: auto; }
-  .nav-toggle { display: none; margin-left: auto; background: none; border: 1px solid var(--border-d); color: var(--mist); width: 40px; height: 36px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+/* ===================== REPORT section ===================== */
+.report-root { max-width: 880px; margin: 0 auto; padding: 40px 22px 80px; }
+.report-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 22px 22px 20px; display: flex; flex-direction: column; gap: 11px; }
+.rc-badge { width: 40px; height: 40px; border-radius: 9px; background: rgba(67,176,204,0.10); border: 1px solid rgba(67,176,204,0.25); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.rc-title { font: 600 18px 'Space Grotesk', sans-serif; }
+.rc-desc { font: 400 12.5px 'IBM Plex Sans', sans-serif; color: var(--text-2); line-height: 1.6; flex: 1; }
+.rc-label { font: 500 8.5px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; color: var(--text-2); text-transform: uppercase; margin-top: 2px; }
+.rc-select { width: 100%; font: 500 12px 'IBM Plex Mono', monospace; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 9px 10px; cursor: pointer; }
+.rc-select:hover { border-color: var(--accent); }
+.rc-select option { background: var(--panel); color: var(--text); }
+.rc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 500 12.5px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; color: var(--accent-ink); background: var(--accent); border: 1px solid var(--accent); border-radius: 8px; padding: 11px 14px; cursor: pointer; margin-top: 4px; }
+.rc-btn:hover { background: var(--accent-2); border-color: var(--accent-2); }
+.rc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  /* ---------- hero ---------- */
-  .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--border-d); }
-  #heroCanvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
-  .hero-veil {
-    position: absolute; inset: 0; z-index: 1; pointer-events: none;
-    background:
-      radial-gradient(120% 80% at 50% -10%, transparent 40%, rgba(11,17,23,0.55) 100%),
-      linear-gradient(to bottom, rgba(11,17,23,0.35), rgba(11,17,23,0.15) 45%, var(--night) 99%);
-  }
-  .hero-inner { position: relative; z-index: 2; padding: clamp(64px, 12vh, 128px) 0 clamp(56px, 9vh, 104px); text-align: center; }
-  .hero .eyebrow {
-    display: inline-block; color: var(--mist);
-    border: 1px solid var(--border-d); background: rgba(19,28,38,0.7);
-    padding: 7px 14px; border-radius: 100px; margin-bottom: 28px;
-  }
-  .hero h1 {
-    font-weight: 700; text-transform: uppercase; letter-spacing: -0.015em;
-    line-height: 0.99; font-size: clamp(2.5rem, 7vw, 5.1rem);
-    max-width: 15ch; margin: 0 auto;
-  }
-  .hero h1 .tint { color: var(--accent); }
-  .hero-sub {
-    max-width: 60ch; margin: 26px auto 0; color: var(--mist-2);
-    font-size: clamp(1rem, 1.5vw, 1.18rem); line-height: 1.6;
-  }
-  .hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 38px; }
-  .trust { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 34px;
-    font-family: var(--f-mono); font-size: 12px; color: var(--mist-2); letter-spacing: 0.02em; }
-  .sev-dots { display: inline-flex; gap: 5px; }
-  .sev-dots i { width: 8px; height: 8px; border-radius: 50%; display: block; }
-  .trust .divider { width: 1px; height: 12px; background: var(--border-d); }
-
-  /* hero headline — masked, staggered word reveal (blur-to-sharp slide-up) */
-  .hero h1 .w-mask { display: inline-block; overflow: hidden; vertical-align: top; padding: 0 0.02em; }
-  .hero h1 .w-in {
-    display: inline-block; transform: translateY(115%); filter: blur(12px); opacity: 0;
-    will-change: transform, filter, opacity;
-    transition: transform .85s cubic-bezier(.16,1,.3,1), filter .85s cubic-bezier(.16,1,.3,1), opacity .7s ease;
-  }
-  .hero h1 .w-in.w-tint { color: var(--accent); }
-  .hero.head-in h1 .w-in { transform: none; filter: blur(0); opacity: 1; }
-
-  /* stat unit (m / mo) */
-  .stat .num .unit { font-size: .5em; letter-spacing: 0; }
-
-  /* ---------- generic section ---------- */
-  .band { padding: clamp(64px, 9vw, 112px) 0; }
-  .band-light { background: var(--paper); color: var(--ink); }
-  .band-mist { background: var(--paper-2); color: var(--ink); }
-  .band-dark { background: var(--night); color: var(--mist); }
-  .band-head { max-width: 62ch; }
-  .band-light .eyebrow, .band-mist .eyebrow { color: var(--accent-deep); }
-  .band-dark .eyebrow { color: var(--accent); }
-  .band h2 {
-    font-weight: 700; text-transform: uppercase; letter-spacing: -0.01em; line-height: 1.02;
-    font-size: clamp(1.9rem, 4.2vw, 3.1rem); margin-top: 14px;
-  }
-  .band-sub { margin-top: 16px; max-width: 56ch; }
-  .band-light .band-sub, .band-mist .band-sub { color: var(--ink-2); }
-  .band-dark .band-sub { color: var(--mist-2); }
-
-  /* ---------- stats ---------- */
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(20px, 3vw, 40px); }
-  .stat .num {
-    display: inline-block; font-family: var(--f-display); font-weight: 700;
-    font-size: clamp(2.6rem, 5vw, 3.9rem); line-height: 1; letter-spacing: -0.02em;
-    background: var(--ink); color: var(--paper); padding: 10px 16px 8px;
-    font-variant-numeric: tabular-nums;
-  }
-  .stat .cap {
-    display: block; margin-top: 2px; font-family: var(--f-mono); font-size: 12.5px; line-height: 1.4;
-    color: var(--ink); background: var(--accent); padding: 8px 10px; max-width: max-content;
-  }
-  .stat.sev-f .num { background: var(--fatal); color: #fff; }
-  .stat.sev-f .cap { background: rgba(228,64,78,0.16); }
-
-  /* ---------- instruments grid ---------- */
-  .inst-grid { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 52px; }
-  .inst {
-    padding: 0 26px; border-left: 1px solid rgba(16,24,31,0.16);
-    display: flex; flex-direction: column; min-height: 240px;
-  }
-  .inst:first-child { padding-left: 0; border-left: none; }
-  .inst .ic { width: 40px; height: 40px; color: var(--ink); margin-bottom: 20px; }
-  .inst h3 { font-weight: 600; font-size: 1.05rem; text-transform: uppercase; letter-spacing: 0.02em; font-family: var(--f-mono); }
-  .inst p { margin-top: 10px; color: var(--ink-2); font-size: 14.5px; }
-  .inst .go { margin-top: auto; padding-top: 20px; color: var(--accent-deep); display: inline-flex; align-items: center; gap: 7px;
-    font-family: var(--f-mono); font-size: 13px; font-weight: 500; transition: gap .15s; }
-  .inst .go:hover { gap: 12px; }
-  .inst .go svg { width: 15px; height: 15px; }
-
-  /* ---------- capability cards ---------- */
-  .caps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 52px; }
-  .cap { padding: 30px 28px 34px; display: flex; flex-direction: column; min-height: 340px; border: 1px solid transparent; }
-  .cap .kick { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; }
-  .cap h3 { font-weight: 700; text-transform: uppercase; font-size: 1.5rem; line-height: 1.05; margin-top: 12px; letter-spacing: -0.01em; }
-  .cap p { margin-top: 14px; font-size: 15px; line-height: 1.6; }
-  .cap .art { margin-top: auto; padding-top: 24px; }
-  .cap-a { background: #fff; color: var(--ink); border-color: var(--paper-2); }
-  .cap-a .kick { color: var(--accent-deep); }
-  .cap-a p { color: var(--ink-2); }
-  .cap-b { background: var(--accent); color: #06121A; }
-  .cap-b .kick { color: #06121A; opacity: .7; }
-  .cap-c { background: var(--night); color: var(--mist); border-color: var(--border-d); }
-  .cap-c .kick { color: var(--accent); }
-  .cap-c p { color: var(--mist-2); }
-
-  /* mini heat strip artwork */
-  .heatstrip { display: flex; gap: 4px; align-items: flex-end; height: 46px; }
-  .heatstrip i { flex: 1; border-radius: 2px 2px 0 0; }
-  /* mini bars artwork */
-  .barart { display: flex; gap: 5px; align-items: flex-end; height: 46px; }
-  .barart i { flex: 1; background: #06121A; border-radius: 1px; opacity: .85; }
-  /* recommendation chip artwork */
-  .recchip { display: inline-flex; align-items: center; gap: 8px; font-family: var(--f-mono); font-size: 11.5px;
-    border: 1px solid var(--accent); color: var(--accent); padding: 7px 11px; border-radius: 5px; }
-  .recchip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
-
-  /* ---------- why it matters ---------- */
-  .why-lead { margin-top: 22px; font-family: var(--f-display); font-weight: 500;
-    font-size: clamp(1.15rem, 2.2vw, 1.6rem); line-height: 1.4; max-width: 32ch; color: var(--mist); }
-  .why-lead b { color: var(--accent); font-weight: 600; }
-  .why-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 52px; }
-  .why-card { border-top: 2px solid var(--border-d); padding-top: 18px; }
-  .why-card.c-f { border-top-color: var(--fatal); }
-  .why-card.c-s { border-top-color: var(--serious); }
-  .why-card.c-l { border-top-color: var(--slight); }
-  .why-card.c-a { border-top-color: var(--accent); }
-  .why-card .tag { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mist-2); }
-  .why-card h3 { font-family: var(--f-mono); font-weight: 600; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.02em; margin-top: 8px; }
-  .why-card p { margin-top: 10px; color: var(--mist-2); font-size: 14px; }
-
-  /* ---------- method (numbered sequence) ---------- */
-  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 52px; counter-reset: s; }
-  .step { border-top: 2px solid var(--border-d); padding-top: 18px; }
-  .step .n { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.14em; color: var(--accent); }
-  .step h3 { font-weight: 600; font-size: 1.1rem; margin-top: 12px; font-family: var(--f-display); }
-  .step p { margin-top: 9px; color: var(--mist-2); font-size: 14px; }
-  .step .formula { margin-top: 12px; font-family: var(--f-mono); font-size: 12px; color: var(--mist);
-    background: var(--panel); border: 1px solid var(--border-d); padding: 7px 9px; display: inline-block; }
-
-  /* ---------- audience ---------- */
-  .aud { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 48px; }
-  .aud-card { border: 1px solid var(--paper-2); background: #fff; padding: 22px 20px 24px; }
-  .aud-card .ic { width: 30px; height: 30px; color: var(--accent-deep); }
-  .aud-card h3 { font-family: var(--f-mono); font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 16px; }
-  .aud-card p { margin-top: 8px; color: var(--ink-2); font-size: 13.5px; }
-
-  /* ---------- closing CTA ---------- */
-  .cta-band { position: relative; background: var(--night-2); border-top: 1px solid var(--border-d); border-bottom: 1px solid var(--border-d); overflow: hidden; }
-  .cta-band .glow { position: absolute; inset: 0; z-index: 0; pointer-events: none;
-    background: radial-gradient(60% 120% at 50% 120%, rgba(67,176,204,0.18), transparent 70%); }
-  .cta-inner { position: relative; z-index: 1; text-align: center; padding: clamp(64px, 10vw, 108px) 0; }
-  .cta-inner h2 { font-weight: 700; text-transform: uppercase; font-size: clamp(2rem, 5vw, 3.4rem); letter-spacing: -0.01em; }
-  .cta-inner p { margin: 16px auto 0; max-width: 52ch; color: var(--mist-2); }
-  .cta-inner .hero-cta { margin-top: 34px; }
-
-  /* ---------- footer ---------- */
-  .foot { background: var(--night); border-top: 1px solid var(--border-d); padding: 54px 0 40px; }
-  .foot-top { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 40px; }
-  .foot p.desc { color: var(--mist-2); font-size: 14px; margin-top: 16px; max-width: 42ch; }
-  .foot h4 { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--mist-2); margin: 0 0 14px; font-weight: 500; }
-  .foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-  .foot ul a { font-size: 14px; color: var(--mist); }
-  .foot ul a:hover { color: var(--accent); }
-  .foot-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
-  .foot-legend span { display: inline-flex; align-items: center; gap: 7px; font-family: var(--f-mono); font-size: 12px; color: var(--mist-2); }
-  .foot-legend i { width: 8px; height: 8px; border-radius: 50%; }
-  .foot-bottom { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-    margin-top: 40px; padding-top: 22px; border-top: 1px solid var(--border-d);
-    font-family: var(--f-mono); font-size: 11.5px; color: var(--mist-2); letter-spacing: 0.02em; }
-
-  /* ---------- reveal ---------- */
-  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
-  .reveal.in { opacity: 1; transform: none; }
-  @media (prefers-reduced-motion: reduce) {
-    .reveal { opacity: 1; transform: none; transition: none; }
-    .hero h1 .w-in { transform: none !important; filter: none !important; opacity: 1 !important; transition: none !important; }
-    .btn { will-change: auto; }
-  }
-
-  /* ---------- responsive ---------- */
-  @media (max-width: 940px) {
-    .stats { grid-template-columns: repeat(2, 1fr); gap: 32px 24px; }
-    .inst-grid { grid-template-columns: repeat(2, 1fr); gap: 40px 0; }
-    .inst { min-height: 0; }
-    .inst:nth-child(3) { padding-left: 0; border-left: none; }
-    .caps { grid-template-columns: 1fr; }
-    .cap { min-height: 0; }
-    .steps { grid-template-columns: repeat(2, 1fr); }
-    .why-grid { grid-template-columns: repeat(2, 1fr); }
-    .aud { grid-template-columns: repeat(2, 1fr); }
-    .foot-top { grid-template-columns: 1fr 1fr; }
-  }
-  @media (max-width: 640px) {
-    .nav-links, .nav-cta { display: none; }
-    .nav-toggle { display: block; }
-    .nav[data-open="true"] .nav-links {
-      display: flex; position: absolute; top: 62px; left: 0; right: 0; flex-direction: column;
-      gap: 0; background: var(--night); border-bottom: 1px solid var(--border-d); padding: 8px var(--gutter) 16px;
-    }
-    .nav[data-open="true"] .nav-links a { padding: 12px 0; border-bottom: 1px solid var(--border-d); }
-    .nav[data-open="true"] .nav-cta { display: block; margin: 12px var(--gutter) 0; }
-    .stats { grid-template-columns: 1fr; }
-    .steps, .why-grid, .aud, .foot-top { grid-template-columns: 1fr; }
-    .hero h1 { letter-spacing: -0.01em; }
-  }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
 
-<!-- ===================== NAV ===================== -->
-<header class="nav" id="nav" data-open="false">
-  <div class="wrap nav-inner">
-    <a class="brand" href="./index.html" aria-label="CRASH home">
-      <span class="brand-mark">C</span>
-      <span>
-        <span class="brand-word">CRASH</span>
-        <span class="brand-sub">Chennai Road Accident Safety Hub</span>
-      </span>
-    </a>
-    <nav class="nav-links" aria-label="Primary">
-      <a href="#why">Why</a>
-      <a href="#instruments">Capabilities</a>
-      <a href="#stages">How it helps</a>
-      <a href="#method">Method</a>
-      <a href="./analytics.html">Analytics</a>
-      <a href="./compare.html">Compare</a>
-      <a href="#audience">Who it's for</a>
-    </nav>
-    <a class="btn btn-primary nav-cta" href="./dashboard.html">
-      Open the live map
-      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </a>
-    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">≡</button>
-  </div>
+<header class="app-header">
+  <button class="brand" id="brandHome" title="CRASH home">
+    <span class="brand-mark">C</span>
+    <span class="brand-text">
+      <span class="brand-name">CRASH</span>
+      <span class="brand-tag">Find Chennai's deadliest junctions — and fix them first.</span>
+    </span>
+  </button>
+  <nav class="nav" aria-label="Primary">
+    <div class="nav-pills" id="navPills" role="tablist">
+      <button class="pill active" data-section="map" role="tab" aria-selected="true">Map</button>
+      <button class="pill" data-section="analytics" role="tab" aria-selected="false">Analytics</button>
+      <button class="pill" data-section="report" role="tab" aria-selected="false">Report</button>
+      <button class="pill" data-section="simulate" role="tab" aria-selected="false">Simulate</button>
+    </div>
+    <button class="icon-btn" id="themeToggle" type="button" aria-label="Toggle theme"></button>
+    <button class="icon-btn nav-toggle" id="navToggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="navPills">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+  </nav>
 </header>
 
-<!-- ===================== HERO ===================== -->
-<section class="hero">
-  <canvas id="heroCanvas" aria-hidden="true"></canvas>
-  <div class="hero-veil"></div>
-  <div class="wrap hero-inner">
-    <span class="eyebrow">Chennai road-safety intelligence</span>
-    <h1>See where Chennai crashes — <span class="tint">and why.</span></h1>
-    <p class="hero-sub">
-      CRASH maps 7,291 incidents across Greater Chennai, ranks the deadliest junctions
-      by a severity-weighted risk score, flags where risk is climbing, and turns every
-      hotspot into an evidence-based intervention — from street lighting to speed control.
-    </p>
-    <div class="hero-cta">
-      <a class="btn btn-primary" href="./dashboard.html">
-        Open the live map
-        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </a>
-      <a class="btn btn-ghost" href="./analytics.html">Explore the analytics</a>
-    </div>
-    <div class="trust">
-      <span class="sev-dots" aria-hidden="true"><i style="background:var(--fatal)"></i><i style="background:var(--serious)"></i><i style="background:var(--slight)"></i></span>
-      <span>7,291 incidents</span><span class="divider"></span>
-      <span>10 ranked hotspots</span><span class="divider"></span>
-      <span>Jul 2024 – Jun 2026</span>
-    </div>
-  </div>
-</section>
-
-<!-- ===================== STATS ===================== -->
-<section class="band band-light">
-  <div class="wrap">
-    <div class="stats">
-      <div class="stat reveal">
-        <span class="num" data-count="7291">7,291</span>
-        <span class="cap">Incidents geo-analysed<br>across Greater Chennai</span>
-      </div>
-      <div class="stat sev-f reveal">
-        <span class="num" data-count="10">10</span>
-        <span class="cap">High-risk junctions<br>ranked by severity</span>
-      </div>
-      <div class="stat reveal">
-        <span class="num" data-count="250" data-suffix=" m">250<span class="unit"> m</span></span>
-        <span class="cap">Grid resolution for<br>hotspot detection</span>
-      </div>
-      <div class="stat reveal">
-        <span class="num" data-count="24" data-suffix=" mo">24<span class="unit"> mo</span></span>
-        <span class="cap">Rolling window of<br>incident history</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ===================== WHY IT MATTERS ===================== -->
-<section class="band band-dark" id="why">
-  <div class="wrap">
-    <div class="band-head reveal">
-      <span class="eyebrow">Why CRASH exists</span>
-      <h2>You can't fix the crashes<br>you can't see.</h2>
-      <p class="why-lead">Road crashes are among the leading causes of unnatural death in India — and nearly every one happens at a place someone could have flagged in advance. The records already exist. <b>What's missing is a way to read them.</b></p>
-    </div>
-
-    <div class="why-grid">
-      <article class="why-card c-f reveal">
-        <div class="tag">The concentration</div>
-        <h3>Risk isn't spread evenly</h3>
-        <p>A small set of junctions carries a large share of the serious crashes. Fix the worst ten first and you cut the most harm for the least spend — instead of thinning budgets across the whole city.</p>
-      </article>
-      <article class="why-card c-s reveal">
-        <div class="tag">The blind spot</div>
-        <h3>Counts hide severity</h3>
-        <p>Ten minor scrapes are not one fatal collision. Ranking by raw volume points enforcement at the busy corners, not the deadly ones. Severity-weighting surfaces where people are actually being killed.</p>
-      </article>
-      <article class="why-card c-l reveal">
-        <div class="tag">The signal</div>
-        <h3>Patterns name the fix</h3>
-        <p>A night-time, rain-linked, or high-speed signature tells you which intervention will work — lighting, drainage, or traffic calming. Without the pattern, spending is a guess.</p>
-      </article>
-      <article class="why-card c-a reveal">
-        <div class="tag">The case</div>
-        <h3>Evidence wins budgets</h3>
-        <p>"This corner feels dangerous" doesn't get funded. A ranked, transparent, severity-weighted map turns a hunch into a decision a council or police chief can sign off — and defend.</p>
-      </article>
-    </div>
-  </div>
-</section>
-
-<!-- ===================== INSTRUMENTS ===================== -->
-<section class="band band-mist" id="instruments">
-  <div class="wrap">
-    <div class="band-head reveal">
-      <span class="eyebrow">Explore the hub</span>
-      <h2>Four instruments,<br>one road-safety picture</h2>
-      <p class="band-sub">Everything runs live in the browser on a dark cartographic basemap — no setup, no login. Open the map and start reading the city.</p>
-    </div>
-
-    <div class="inst-grid">
-      <article class="inst reveal">
-        <svg class="ic" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-          <path d="M20 4C13 4 8 9 8 16c0 8 12 20 12 20s12-12 12-20c0-7-5-12-12-12Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-          <circle cx="20" cy="16" r="4" stroke="currentColor" stroke-width="2"/>
-        </svg>
-        <h3>Live hotspot map</h3>
-        <p>Every incident plotted by severity, with luminous risk blooms glowing over the densest, deadliest clusters.</p>
-        <a class="go" href="./dashboard.html">Open map <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-      </article>
-
-      <article class="inst reveal">
-        <svg class="ic" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-          <path d="M6 30V18M14 30V10M22 30V22M30 30V14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          <path d="M4 34h32" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <h3>Ranked danger index</h3>
-        <p>The top-10 junctions scored by severity-weighted incidents — fatal ×3, serious ×2, slight ×1 — so volume and harm count together.</p>
-        <a class="go" href="./dashboard.html">See the ranking <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-      </article>
-
-      <article class="inst reveal">
-        <svg class="ic" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-          <rect x="8" y="5" width="24" height="30" rx="2" stroke="currentColor" stroke-width="2"/>
-          <path d="M13 13h14M13 19h14M13 25h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <h3>Zone dossiers</h3>
-        <p>Click any cell for its severity split, hour-of-day and weekday patterns, weather breakdown, and a recommended intervention.</p>
-        <a class="go" href="./dashboard.html">Inspect a zone <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-      </article>
-
-      <article class="inst reveal">
-        <svg class="ic" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-          <path d="M8 12h24M8 20h24M8 28h24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="16" cy="12" r="3.4" fill="currentColor"/><circle cx="26" cy="20" r="3.4" fill="currentColor"/><circle cx="14" cy="28" r="3.4" fill="currentColor"/>
-        </svg>
-        <h3>Live filters</h3>
-        <p>Slice by severity, time of day, and weather. The heatmap, ranking, blooms, and headline numbers all re-rank in the same instant.</p>
-        <a class="go" href="./dashboard.html">Try the filters <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-      </article>
-    </div>
-  </div>
-</section>
-
-<!-- ===================== CAPABILITY CARDS ===================== -->
-<section class="band band-light" id="stages">
-  <div class="wrap">
-    <div class="band-head reveal">
-      <span class="eyebrow">One hub, three moves</span>
-      <h2>See the risk. Understand it. Act on it.</h2>
-      <p class="band-sub">CRASH takes you from a map full of dots to a defensible, funded intervention — without leaving the browser.</p>
-    </div>
-
-    <div class="caps">
-      <article class="cap cap-a reveal">
-        <span class="kick">01 · See</span>
-        <h3>See the risk</h3>
-        <p>Toggle to the heat view and the city's danger lights up — soft risk blooms brightest over Kathipara, the OMR corridor, and T. Nagar.</p>
-        <div class="art heatstrip" aria-hidden="true">
-          <i style="height:30%;background:var(--slight)"></i><i style="height:55%;background:var(--slight)"></i>
-          <i style="height:78%;background:var(--serious)"></i><i style="height:100%;background:var(--fatal)"></i>
-          <i style="height:72%;background:var(--serious)"></i><i style="height:44%;background:var(--slight)"></i>
-          <i style="height:26%;background:var(--slight)"></i>
+<main>
+  <!-- =================== MAP =================== -->
+  <section class="app-section active" id="section-map" role="tabpanel" aria-label="Map">
+    <div class="map-root">
+      <aside id="rail" style="width: 296px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-right: 1px solid var(--border);">
+        <div style="padding: 14px 16px 11px; border-bottom: 1px solid var(--border); flex: none;">
+          <div style="font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: 0.18em; color: var(--text-2); text-transform: uppercase;">Ranked danger index</div>
+          <div style="font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-2); margin-top: 4px;">Top 10 junctions · Jul 2024 – Jun 2026</div>
+          <div id="filterNote" style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--accent); margin-top: 3px; min-height: 13px;"></div>
         </div>
-      </article>
-
-      <article class="cap cap-b reveal">
-        <span class="kick">02 · Understand</span>
-        <h3>Understand the pattern</h3>
-        <p>Each dossier reads the zone back to you: is it a night-time, rain-linked, or high-severity problem? The histograms make the story obvious.</p>
-        <div class="art barart" aria-hidden="true">
-          <i style="height:40%"></i><i style="height:30%"></i><i style="height:55%"></i><i style="height:48%"></i>
-          <i style="height:70%"></i><i style="height:100%"></i><i style="height:88%"></i><i style="height:62%"></i>
+        <div id="railList" style="flex: 1; overflow-y: auto; min-height: 0;">
+          <div id="railPlaceholder" style="padding: 18px 16px; font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-3); line-height: 1.6;">Loading incident data…</div>
         </div>
-      </article>
-
-      <article class="cap cap-c reveal">
-        <span class="kick">03 · Act</span>
-        <h3>Act on evidence</h3>
-        <p>Rules turn the numbers into a brief — street lighting for night-heavy zones, drainage for rain-linked ones, traffic calming where fatalities cluster.</p>
-        <div class="art" aria-hidden="true">
-          <span class="recchip">Prioritise street lighting</span>
+        <div style="flex: none; padding: 10px 16px 12px; border-top: 1px solid var(--border);">
+          <div style="font: 400 9.5px 'IBM Plex Mono', monospace; color: var(--text-3); line-height: 1.5;">Risk score = severity-weighted incidents (fatal ×3, serious ×2, slight ×1) per 250 m cell.</div>
         </div>
-      </article>
-    </div>
-  </div>
-</section>
+      </aside>
 
-<!-- ===================== METHOD (sequence) ===================== -->
-<section class="band band-dark" id="method">
-  <div class="wrap">
-    <div class="band-head reveal">
-      <span class="eyebrow">How the risk score works</span>
-      <h2>From raw incidents<br>to a ranked danger list</h2>
-      <p class="band-sub">A transparent, four-step pipeline you can explain in a council meeting — no black-box scoring.</p>
-    </div>
+      <div class="resizer" id="railResizer" role="separator" aria-orientation="vertical" aria-label="Resize ranked index panel (double-click to collapse)" tabindex="0"></div>
 
-    <div class="steps">
-      <div class="step reveal">
-        <div class="n">STEP 01</div>
-        <h3>Grid the city</h3>
-        <p>The bounding box is divided into ~250 m cells, so a "hotspot" is a real, walkable junction — not a vague neighbourhood.</p>
-        <span class="formula">cell ≈ 0.0022°</span>
-      </div>
-      <div class="step reveal">
-        <div class="n">STEP 02</div>
-        <h3>Weight by severity</h3>
-        <p>Each cell scores the harm it causes, not just the count — a fatal crash weighs three times a slight one.</p>
-        <span class="formula">fatal ×3 · serious ×2 · slight ×1</span>
-      </div>
-      <div class="step reveal">
-        <div class="n">STEP 03</div>
-        <h3>Suppress &amp; rank</h3>
-        <p>Neighbouring cells are merged so the top 10 are ten distinct junctions, then ranked by score.</p>
-        <span class="formula">non-max suppression · top 10</span>
-      </div>
-      <div class="step reveal">
-        <div class="n">STEP 04</div>
-        <h3>Brief the fix</h3>
-        <p>Time, weather, and severity patterns trigger plain-language intervention recommendations for each zone.</p>
-        <span class="formula">night&gt;60% → lighting</span>
-      </div>
-    </div>
-  </div>
-</section>
+      <div style="flex: 1; position: relative; min-width: 0; background: var(--bg); overflow: hidden;">
+        <div id="map"></div>
 
-<!-- ===================== AUDIENCE ===================== -->
-<section class="band band-light" id="audience">
-  <div class="wrap">
-    <div class="band-head reveal">
-      <span class="eyebrow">Built for</span>
-      <h2>The people who keep<br>Chennai's roads safe</h2>
-      <p class="band-sub">One shared picture of risk — so budgets and enforcement land where the harm actually is.</p>
-    </div>
+        <div style="position: absolute; top: 12px; left: 14px; z-index: 20; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; pointer-events: none;">
+          <div style="pointer-events: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button id="filtersBtn" type="button" aria-expanded="false" aria-controls="filterPanel">
+              <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              Filters
+              <span id="filterCount">0</span>
+              <svg class="chev" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5l3-3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button id="strategyBtn" type="button" title="City strategy — leverage &amp; intervention priority">
+              <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2m0 1h8l-1.8 2.4L12 8H4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>
+              Strategy
+            </button>
+          </div>
+          <div id="filterPanel" role="group" aria-label="Filters" style="pointer-events: auto; display: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 13px 14px; width: min(300px, 64vw);">
+            <div class="fgroup"><div class="flabel">Severity</div><div id="segSev" class="segctl" style="display: flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--bg);"></div></div>
+            <div class="fgroup"><div class="flabel">Time of day</div><div id="segTime" class="segctl" style="display: flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--bg);"></div></div>
+            <div class="fgroup"><div class="flabel">Weather</div><div id="segWeather" class="segctl" style="display: flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--bg);"></div></div>
+            <div class="fgroup"><div class="flabel">Day of week</div><div id="segDow" style="display: flex; flex-wrap: wrap; gap: 5px;"></div></div>
+            <div class="fgroup"><div class="flabel">Cause</div><select id="filterCause" class="fselect"></select></div>
+            <button id="filterReset" type="button">Reset all filters</button>
+          </div>
+        </div>
 
-    <div class="aud">
-      <div class="aud-card reveal">
-        <svg class="ic" viewBox="0 0 30 30" fill="none" aria-hidden="true"><path d="M15 3l10 4v7c0 7-4 11-10 13C9 25 5 21 5 14V7l10-4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M11 15l3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <h3>Traffic police</h3>
-        <p>Target enforcement and patrols at the junctions and hours that carry the most severe risk.</p>
-      </div>
-      <div class="aud-card reveal">
-        <svg class="ic" viewBox="0 0 30 30" fill="none" aria-hidden="true"><path d="M4 26V6l8-2v22M12 26V10l14 4v12" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M2 26h26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <h3>City &amp; transport planners</h3>
-        <p>Prioritise lighting, signals, and road works with a defensible, severity-weighted ranking.</p>
-      </div>
-      <div class="aud-card reveal">
-        <svg class="ic" viewBox="0 0 30 30" fill="none" aria-hidden="true"><circle cx="13" cy="13" r="8" stroke="currentColor" stroke-width="2"/><path d="M19 19l7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <h3>Road-safety researchers</h3>
-        <p>Explore time, weather, and severity patterns across the whole city in seconds, not spreadsheets.</p>
-      </div>
-      <div class="aud-card reveal">
-        <svg class="ic" viewBox="0 0 30 30" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="2"/><circle cx="21" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M4 25c0-4 3-6 6-6s6 2 6 6M17 25c0-3 2-5 4.5-5s4.5 2 4.5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <h3>Councillors &amp; NGOs</h3>
-        <p>Make the case for a specific fix on a specific corner, backed by two years of evidence.</p>
-      </div>
-    </div>
-  </div>
-</section>
+        <div id="maplegend" style="position: absolute; left: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 9px; z-index: 10;">
+          <div style="display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 5px; padding: 7px 11px;">
+            <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E4404E;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Fatal</span></span>
+            <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #F2933E;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Serious</span></span>
+            <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E7C64B;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Slight</span></span>
+            <span style="width: 1px; height: 12px; background: var(--border);"></span>
+            <span id="legendNote" style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-3);">Incident points · coloured by severity</span>
+          </div>
+        </div>
 
-<!-- ===================== CLOSING CTA ===================== -->
-<section class="cta-band">
-  <div class="glow"></div>
-  <div class="wrap cta-inner reveal">
-    <h2>Ready to see Chennai's risk map?</h2>
-    <p>Open the live hub — pan the city, rank the junctions, and pull up the dossier on the corner you care about.</p>
-    <div class="hero-cta">
-      <a class="btn btn-primary" href="./dashboard.html">
-        Open the live map
-        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </a>
-      <a class="btn btn-ghost" href="#method">Review the method</a>
-    </div>
-  </div>
-</section>
+        <div style="position: absolute; right: 14px; top: 12px; z-index: 10; text-align: center; pointer-events: none;">
+          <svg width="16" height="26" viewBox="0 0 16 26" aria-hidden="true">
+            <line x1="8" y1="24" x2="8" y2="6" style="stroke: var(--text-3); stroke-width: 1.2;"></line>
+            <path d="M8,2 L11.5,9 L8,7 L4.5,9 Z" style="fill: var(--text-2);"></path>
+          </svg>
+          <div style="font: 500 9px 'IBM Plex Mono', monospace; color: var(--text-3);">N</div>
+        </div>
 
-<!-- ===================== FOOTER ===================== -->
-<footer class="foot">
-  <div class="wrap">
-    <div class="foot-top">
-      <div>
-        <a class="brand" href="./index.html" aria-label="CRASH home">
-          <span class="brand-mark">C</span>
-          <span><span class="brand-word">CRASH</span><span class="brand-sub">Chennai Road Accident Safety Hub</span></span>
-        </a>
-        <p class="desc">A road-safety intelligence hub that turns Greater Chennai's accident record into a ranked, actionable map of risk.</p>
-        <div class="foot-legend" aria-label="Severity legend">
-          <span><i style="background:var(--fatal)"></i>Fatal</span>
-          <span><i style="background:var(--serious)"></i>Serious</span>
-          <span><i style="background:var(--slight)"></i>Slight</span>
+        <div style="position: absolute; right: 14px; bottom: 84px; z-index: 10; text-align: right; font: 400 9px 'IBM Plex Mono', monospace; color: var(--text-4); line-height: 1.6; pointer-events: none;">Basemap © OpenStreetMap · © CARTO · WGS 84<br>Incident data · Greater Chennai Traffic Police · Jul 2024 – Jun 2026</div>
+
+        <div id="loadOverlay" style="position: absolute; inset: 0; background: var(--bg); z-index: 30; display: flex; align-items: center; justify-content: center; pointer-events: none; opacity: 1; transition: opacity 0.6s ease 0.1s;">
+          <div style="text-align: center;">
+            <div style="font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: 0.22em; color: var(--text-2); text-transform: uppercase;">Calibrating basemap</div>
+            <div style="width: 160px; height: 1px; background: var(--border); margin: 12px auto 0; overflow: hidden; position: relative;">
+              <div style="width: 48px; height: 1px; background: var(--accent); animation: sweep 1.1s linear infinite;"></div>
+            </div>
+          </div>
         </div>
       </div>
-      <div>
-        <h4>The hub</h4>
-        <ul>
-          <li><a href="./dashboard.html">Live map</a></li>
-          <li><a href="./analytics.html">Analytics &amp; charts</a></li>
-          <li><a href="./compare.html">Compare areas</a></li>
-          <li><a href="#instruments">Capabilities</a></li>
-          <li><a href="#stages">How it helps</a></li>
-          <li><a href="#method">Method</a></li>
-        </ul>
+
+      <div class="resizer" id="dossierResizer" role="separator" aria-orientation="vertical" aria-label="Resize details panel (double-click to collapse)" tabindex="0"></div>
+
+      <aside id="dossier" data-open="false" style="width: 336px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-left: 1px solid var(--border);">
+        <div id="dossierTabs" style="flex: none; display: flex; border-bottom: 1px solid var(--border);">
+          <button type="button" class="dtab active" data-tab="zone">Zone</button>
+          <button type="button" class="dtab" data-tab="city">City</button>
+          <button type="button" class="dtab" data-tab="emerging">Emerging</button>
+        </div>
+        <div id="dossierCity" style="flex: 1; display: none; flex-direction: column; min-height: 0;"></div>
+        <div id="dossierStrategy" style="flex: 1; display: none; flex-direction: column; min-height: 0;"></div>
+        <div id="dossierEmerging" style="flex: 1; display: none; flex-direction: column; min-height: 0;"></div>
+        <div id="dossierZone" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+          <div id="dossierEmpty" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 32px; text-align: center;">
+            <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+              <circle cx="15" cy="15" r="10" style="fill: none; stroke: var(--text-4); stroke-width: 1.2;"></circle>
+              <line x1="15" y1="1" x2="15" y2="8" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
+              <line x1="15" y1="22" x2="15" y2="29" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
+              <line x1="1" y1="15" x2="8" y2="15" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
+              <line x1="22" y1="15" x2="29" y2="15" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
+            </svg>
+            <div style="font: 500 15px 'Space Grotesk', sans-serif;">Select a zone</div>
+            <div style="font: 400 12.5px 'IBM Plex Sans', sans-serif; line-height: 1.55; color: var(--text-2); max-width: 220px;">Choose a junction from the ranked index, or a bloom on the map, to open its dossier.</div>
+          </div>
+          <div id="dossierFull" style="display: none; flex-direction: column; min-height: 0; height: 100%;"></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- =================== ANALYTICS =================== -->
+  <section class="app-section" id="section-analytics" role="tabpanel" aria-label="Analytics">
+    <div class="ana-root">
+      <div class="eyebrow">Greater Chennai · Jul 2024 – Jun 2026</div>
+      <h1 class="h-hero">The full picture, in charts.</h1>
+      <p class="sub">Every dimension of the accident record — severity, cause, vehicle, time, weather, geography and the intervention case — analysed across the complete two-year dataset. Figures update from the same data that drives the live map.</p>
+
+      <div class="grid g-kpi" style="margin-top:26px;" id="kpiBand">
+        <div class="kpi"><div class="v" id="kpiTotal">—</div><div class="l">Total incidents</div></div>
+        <div class="kpi"><div class="v" id="kpiFatal">—</div><div class="l">Fatalities · 24 mo</div></div>
+        <div class="kpi"><div class="v" id="kpiSevere">—</div><div class="l">Severe (fatal+serious)</div></div>
+        <div class="kpi"><div class="v" id="kpiZones">—</div><div class="l">High-risk zones</div></div>
+        <div class="kpi"><div class="v accent" id="kpiEmerging">—</div><div class="l">Emerging hotspots</div></div>
+        <div class="kpi"><div class="v" id="kpiAvg">—</div><div class="l">Incidents / month</div></div>
       </div>
-      <div>
-        <h4>Data &amp; scope</h4>
-        <ul>
-          <li><a href="#method">Risk scoring</a></li>
-          <li><a href="#audience">Who it's for</a></li>
-          <li><a href="./dashboard.html">Filters &amp; layers</a></li>
-        </ul>
+
+      <section class="section">
+        <div class="slabel">The case for targeting</div>
+        <div class="stitle">Where the harm concentrates</div>
+        <div class="sdesc">Severe crashes are not spread evenly. A Pareto view of the worst junction cells shows how a small number of locations carry a large share of the city’s fatal and serious injuries — the argument for a location-first safety programme.</div>
+        <div class="lev" style="margin-bottom:16px;">
+          <div class="big" id="levPct">—</div>
+          <div>
+            <div class="txt">of the city’s <b>severe crashes</b> occur in the top <b id="levN">10</b> junction cells — a fraction of the mapped area.</div>
+            <div class="meta" id="levMeta">—</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="clabel">Pareto · severe crashes by junction cell</div>
+          <div class="cnote">Bars: severe (fatal+serious) incidents per 250 m cell, worst first. Line: cumulative share of all severe incidents.</div>
+          <div class="chartbox tall"><canvas id="chartPareto"></canvas></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="slabel">Outcome</div>
+        <div class="stitle">Severity of injury</div>
+        <div class="sdesc">The split between fatal, serious and slight outcomes overall, and how the monthly severe-injury load has moved across the record.</div>
+        <div class="grid g2">
+          <div class="card"><div class="clabel">Severity mix · all incidents</div><div class="chartbox"><canvas id="chartSeverity"></canvas></div></div>
+          <div class="card"><div class="clabel">Monthly incidents by severity</div><div class="cnote">Stacked · 24 months</div><div class="chartbox"><canvas id="chartMonthlySeverity"></canvas></div></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="slabel">Mechanism</div>
+        <div class="stitle">Why crashes happen — and what’s involved</div>
+        <div class="sdesc">Contributing cause across all incidents, and the vehicle types most often party to a crash. Over-speeding and two-wheelers dominate, consistent with Chennai’s traffic mix.</div>
+        <div class="grid g2">
+          <div class="card"><div class="clabel">Contributing cause</div><div class="chartbox tall"><canvas id="chartCauses"></canvas></div></div>
+          <div class="card"><div class="clabel">Vehicles involved</div><div class="chartbox tall"><canvas id="chartVehicles"></canvas></div></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="slabel">Timing</div>
+        <div class="stitle">When crashes happen</div>
+        <div class="sdesc">Distribution across the hour of day and day of week, the hour × weekday density, and the city-wide monthly trend with the recent six-month window highlighted.</div>
+        <div class="grid g2">
+          <div class="card"><div class="clabel">By hour of day</div><div class="chartbox short"><canvas id="chartHour"></canvas></div></div>
+          <div class="card"><div class="clabel">By day of week</div><div class="chartbox short"><canvas id="chartDow"></canvas></div></div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <div class="clabel">Density · hour of day × day of week</div>
+          <div class="cnote">Darker accent = more incidents in that hour/day slot.</div>
+          <div class="heat" id="heatmap"></div>
+          <div class="heat-legend"><span>fewer</span><span class="heat-swatch" id="hsw0"></span><span class="heat-swatch" id="hsw1"></span><span class="heat-swatch" id="hsw2"></span><span class="heat-swatch" id="hsw3"></span><span>more</span></div>
+        </div>
+        <div class="card" style="margin-top:16px;">
+          <div class="clabel">City-wide monthly trend</div>
+          <div class="cnote">Total incidents per month. The last 6 months (the emerging-hotspot window) are drawn in accent.</div>
+          <div class="chartbox short"><canvas id="chartMonthlyTrend"></canvas></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="slabel">Conditions</div>
+        <div class="stitle">Weather at the time of the crash</div>
+        <div class="sdesc">Most crashes happen in clear conditions simply because most driving does; the more useful question is whether wet or foggy conditions shift the severity mix.</div>
+        <div class="grid g2">
+          <div class="card"><div class="clabel">Weather mix</div><div class="chartbox"><canvas id="chartWeather"></canvas></div></div>
+          <div class="card"><div class="clabel">Severity by weather</div><div class="cnote">Share of each weather condition that was fatal / serious / slight</div><div class="chartbox"><canvas id="chartWeatherSeverity"></canvas></div></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="slabel">Geography</div>
+        <div class="stitle">The worst junctions</div>
+        <div class="sdesc">Top 10 junction cells by severity-weighted risk score (fatal ×3, serious ×2, slight ×1) — the same ranked index shown on the live map.</div>
+        <div class="card"><div class="clabel">Top 10 junction cells · risk score</div><div class="chartbox tall"><canvas id="chartTopJunctions"></canvas></div></div>
+      </section>
+
+      <section class="section">
+        <div class="slabel">Prediction</div>
+        <div class="stitle">Emerging hotspots</div>
+        <div class="sdesc">Junction cells whose incident rate in the recent 6 months has climbed sharply against their prior 18-month baseline — where to act before they reach the top index.</div>
+        <div class="card"><div class="clabel">Recent 6 mo vs prior 18 mo · monthly rate</div><div class="cnote">Bars compare the average monthly incident rate in each window; the % is the increase.</div><div class="chartbox tall"><canvas id="chartEmerging"></canvas></div></div>
+      </section>
+
+      <section class="section">
+        <div class="slabel">Action</div>
+        <div class="stitle">The intervention plan</div>
+        <div class="sdesc">For each top junction, the fix matched to its dominant cause, its capital-cost tier, and the estimated severe crashes preventable — ordered as a limited safety budget should work down the list. Impact figures are planning estimates.</div>
+        <div class="card" style="margin-bottom:18px;"><div class="clabel">Estimated preventable severe crashes · by junction</div><div class="chartbox tall"><canvas id="chartPreventable"></canvas></div></div>
+        <div class="pq" id="priorityCards"></div>
+        <div class="footnote" id="ivFootnote"></div>
+      </section>
+
+      <div class="footnote" style="margin-top:46px; border-top:1px solid var(--border); padding-top:16px;">
+        Simulated incident data for Greater Chennai, Jul 2024 – Jun 2026, modelled on real junction geography and traffic-police severity patterns. Built to demonstrate the analysis pipeline; not an official record.
       </div>
     </div>
-    <div class="foot-bottom">
-      <span>Greater Chennai · WGS 84 · Basemap © OpenStreetMap · © CARTO</span>
-      <span>Demo dataset — 7,291 records modelled on Chennai patterns. Swap in official data anytime.</span>
+  </section>
+
+  <!-- =================== REPORT =================== -->
+  <section class="app-section" id="section-report" role="tabpanel" aria-label="Report">
+    <div class="report-root">
+      <div class="eyebrow">Reports</div>
+      <h1 class="h-hero">Download a report.</h1>
+      <p class="sub">Branded PDF reports, generated in your browser from the current data — the same figures behind the map and the analytics. Nothing is uploaded.</p>
+
+      <div class="grid g2" style="margin-top:28px; align-items:stretch;">
+        <div class="report-card">
+          <div class="rc-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V5a1 1 0 0 1 1-1h9l6 6v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 4v6h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 13h8M8 16.5h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          </div>
+          <div class="rc-title">City-wide report</div>
+          <div class="rc-desc">The full safety report: headline KPIs, the leverage stat, the top-10 ranked junctions, cause &amp; vehicle breakdowns, emerging hotspots, and the intervention priority queue.</div>
+          <button class="rc-btn" id="reportCityBtn" type="button">
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download city report
+          </button>
+        </div>
+
+        <div class="report-card">
+          <div class="rc-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+          </div>
+          <div class="rc-title">Single-area report</div>
+          <div class="rc-desc">A focused report for one area: severity split, top causes, vehicles, timing, weather, and the recommended intervention with its cost tier and estimated preventable crashes.</div>
+          <label class="rc-label" for="reportZoneSelect">Choose an area</label>
+          <select class="rc-select" id="reportZoneSelect"><option value="">Loading areas…</option></select>
+          <button class="rc-btn" id="reportZoneBtn" type="button">
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download area report
+          </button>
+        </div>
+      </div>
+      <div class="footnote" style="margin-top:20px;">Impact figures in the reports are indicative planning estimates, not measured outcomes.</div>
     </div>
-  </div>
-</footer>
+  </section>
+
+  <!-- =================== SIMULATE (placeholder) =================== -->
+  <section class="app-section" id="section-simulate" role="tabpanel" aria-label="Simulate">
+    <div class="placeholder">
+      <div class="ph-eyebrow">Section 04</div>
+      <div class="ph-title">Simulate</div>
+      <div class="ph-note">Scenario simulation will live here — filled in a later phase.</div>
+    </div>
+  </section>
+</main>
+
+<!-- shell flag so app.js / analytics.js don't double-wire the shared theme toggle -->
+<script>window.CRASH_SHELL = true;</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="./vendor/chart.umd.js"></script>
+<script src="./intervention-model.js?v=1"></script>
+<script src="./vendor/jspdf.umd.min.js"></script>
+<script src="./vendor/jspdf.plugin.autotable.min.js"></script>
+<script src="./report.js?v=phase5d"></script>
+<script src="./app.js?v=phase6"></script>
+<script src="./analytics.js?v=phase6"></script>
 
 <script>
-/* =========================================================================
-   CRASH landing — modular motion layer.
-   Each effect is a self-contained module; flip a flag in FX_CONFIG to
-   toggle it. Everything is transform/opacity-based, lazy-initialised, and
-   fully disabled (or simplified) under prefers-reduced-motion.
-   ========================================================================= */
 (function () {
   'use strict';
 
-  var FX_CONFIG = {
-    nav: true,          // mobile menu
-    headline: true,     // staggered word reveal
-    ambient: true,      // canvas risk-bloom backdrop + cursor parallax/glow
-    counters: true,     // stat count-up
-    reveals: true,      // scroll-triggered section reveals
-    magnetic: true      // magnetic primary buttons
+  /* ---- theme toggle (single owner; app.js + analytics.js react to the event) ---- */
+  function currentTheme() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
+  function renderTheme() {
+    var b = document.getElementById('themeToggle'); if (!b) return;
+    var light = currentTheme() === 'light';
+    b.title = light ? 'Switch to dark theme' : 'Switch to light theme';
+    b.innerHTML = light
+      ? '<svg width="15" height="15" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="4" fill="none" stroke="currentColor" stroke-width="1.4"/><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="10" y1="1.5" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18.5"/><line x1="1.5" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18.5" y2="10"/><line x1="3.9" y1="3.9" x2="5.6" y2="5.6"/><line x1="14.4" y1="14.4" x2="16.1" y2="16.1"/><line x1="16.1" y1="3.9" x2="14.4" y2="5.6"/></g></svg>'
+      : '<svg width="15" height="15" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+  }
+  function toggleTheme() {
+    var n = currentTheme() === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', n);
+    try { localStorage.setItem('cra-theme', n); } catch (e) {}
+    renderTheme();
+    document.dispatchEvent(new Event('crash:themechange'));   // app.js swaps tiles, analytics rebuilds charts
+  }
+  var tt = document.getElementById('themeToggle');
+  if (tt) tt.addEventListener('click', toggleTheme);
+  renderTheme();
+
+  /* ---- nav: pill <-> section show/hide ---- */
+  var pills = Array.prototype.slice.call(document.querySelectorAll('.pill'));
+  var sections = {
+    map: document.getElementById('section-map'),
+    analytics: document.getElementById('section-analytics'),
+    report: document.getElementById('section-report'),
+    simulate: document.getElementById('section-simulate'),
   };
-
-  var RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var hasIO = 'IntersectionObserver' in window;
-
-  /* ---- mobile nav ---- */
-  function nav() {
-    var el = document.getElementById('nav');
-    var toggle = document.getElementById('navToggle');
-    if (!el || !toggle) return;
-    toggle.addEventListener('click', function () {
-      var open = el.getAttribute('data-open') === 'true';
-      el.setAttribute('data-open', String(!open));
-      toggle.setAttribute('aria-expanded', String(!open));
+  function show(name) {
+    if (!sections[name]) return;
+    pills.forEach(function (p) {
+      var on = p.dataset.section === name;
+      p.classList.toggle('active', on);
+      p.setAttribute('aria-selected', on ? 'true' : 'false');
     });
-    el.querySelectorAll('.nav-links a').forEach(function (a) {
-      a.addEventListener('click', function () {
-        el.setAttribute('data-open', 'false');
-        toggle.setAttribute('aria-expanded', 'false');
+    Object.keys(sections).forEach(function (k) { if (sections[k]) sections[k].classList.toggle('active', k === name); });
+    closeSheet();
+    window.scrollTo(0, 0);
+    // the map and the charts were sized while hidden — refresh them once visible
+    if (name === 'map') requestAnimationFrame(function () { if (window.__crashRefreshMap) window.__crashRefreshMap(); });
+    if (name === 'analytics') requestAnimationFrame(function () { if (window.__crashResizeAnalytics) window.__crashResizeAnalytics(); });
+    if (name === 'report') initReport();
+  }
+  pills.forEach(function (p) { p.addEventListener('click', function () { show(p.dataset.section); }); });
+  var brand = document.getElementById('brandHome');
+  if (brand) brand.addEventListener('click', function () { show('map'); });
+
+  /* ---- hamburger sheet (<768px) ---- */
+  var navToggle = document.getElementById('navToggle');
+  var navPills = document.getElementById('navPills');
+  function setSheet(open) { navPills.classList.toggle('open', open); if (navToggle) navToggle.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+  function closeSheet() { setSheet(false); }
+  if (navToggle) navToggle.addEventListener('click', function (e) { e.stopPropagation(); setSheet(!navPills.classList.contains('open')); });
+  navPills.addEventListener('click', function (e) { e.stopPropagation(); });
+  document.addEventListener('click', closeSheet);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
+
+  /* ---- Report section: generate PDFs via report.js (lazy, on first open) ---- */
+  var reportInited = false;
+  function ensureReportData(cb) {
+    if (window.CRASH_DATA) { cb(window.CRASH_DATA); return; }
+    fetch('./data/accidents.json?v=7').then(function (r) { return r.json(); }).then(function (j) { window.CRASH_DATA = j; cb(j); }).catch(function () {});
+  }
+  function initReport() {
+    if (reportInited) return; reportInited = true;
+    var sel = document.getElementById('reportZoneSelect');
+    ensureReportData(function (recs) {
+      if (!sel) return;
+      var counts = {};
+      recs.forEach(function (a) { counts[a.area] = (counts[a.area] || 0) + 1; });
+      sel.innerHTML = Object.keys(counts).sort().map(function (n) {
+        return '<option value="' + n + '">' + n + ' (' + counts[n] + ')</option>';
+      }).join('');
+    });
+    var cityBtn = document.getElementById('reportCityBtn');
+    if (cityBtn) cityBtn.addEventListener('click', function () {
+      ensureReportData(function (recs) { if (window.CRASHReport) window.CRASHReport.city(recs); });
+    });
+    var zoneBtn = document.getElementById('reportZoneBtn');
+    if (zoneBtn) zoneBtn.addEventListener('click', function () {
+      ensureReportData(function (recs) {
+        if (!window.CRASHReport || !sel || !sel.value) return;
+        var area = sel.value;
+        window.CRASHReport.zone(recs.filter(function (a) { return a.area === area; }), { title: area, subtitle: 'Area safety report' });
       });
     });
   }
-
-  /* ---- hero headline: masked, staggered, blur-to-sharp word reveal ---- */
-  function headline() {
-    var hero = document.querySelector('.hero');
-    var h1 = hero && hero.querySelector('h1');
-    if (!h1) return;
-    if (RM) { hero.classList.add('head-in'); return; }   // words already legible; skip the split
-
-    var frag = document.createDocumentFragment();
-    var i = 0;
-    function addWord(word, tint) {
-      var mask = document.createElement('span'); mask.className = 'w-mask';
-      var inner = document.createElement('span'); inner.className = 'w-in' + (tint ? ' w-tint' : '');
-      inner.textContent = word;
-      inner.style.transitionDelay = (i * 0.06).toFixed(3) + 's';
-      i++;
-      mask.appendChild(inner);
-      frag.appendChild(mask);
-      frag.appendChild(document.createTextNode(' '));
-    }
-    Array.prototype.forEach.call(h1.childNodes, function (node) {
-      var tint = node.nodeType === 1 && node.classList && node.classList.contains('tint');
-      (node.textContent || '').split(/\s+/).forEach(function (w) { if (w) addWord(w, tint); });
-    });
-    h1.textContent = '';
-    h1.appendChild(frag);
-    // trigger after paint so the transition runs from the masked state
-    requestAnimationFrame(function () { requestAnimationFrame(function () { hero.classList.add('head-in'); }); });
-  }
-
-  /* ---- ambient canvas: drifting risk blooms + faint grid, cursor parallax + glow ---- */
-  function ambient() {
-    var canvas = document.getElementById('heroCanvas');
-    if (!canvas) return;
-    var ctx = canvas.getContext('2d');
-    var W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
-    var COLORS = ['#E4404E', '#F2933E', '#E7C64B', '#43B0CC'];
-    var blooms = [];
-    var mouse = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5 };
-
-    function seed() {
-      blooms = [];
-      var n = Math.max(5, Math.round(W / 260));
-      for (var k = 0; k < n; k++) {
-        blooms.push({
-          x: Math.random(), y: Math.random() * 0.9, r: 90 + Math.random() * 190,
-          c: COLORS[k % COLORS.length], a: 0.05 + Math.random() * 0.09,
-          dx: (Math.random() - 0.5) * 0.00006, dy: (Math.random() - 0.5) * 0.00006,
-          ph: Math.random() * Math.PI * 2, depth: 0.3 + Math.random() * 0.9
-        });
-      }
-    }
-    function resize() {
-      var r = canvas.getBoundingClientRect();
-      W = r.width; H = r.height;
-      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (!blooms.length) seed();
-    }
-    function hexA(hex, a) {
-      var n = parseInt(hex.slice(1), 16);
-      return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a.toFixed(3) + ')';
-    }
-    function grid(px, py) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(120,150,175,0.06)'; ctx.lineWidth = 1;
-      var step = 66, ox = (px * 26) % step, oy = (py * 26) % step, x, y;
-      for (x = -step + ox; x <= W + step; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-      for (y = -step + oy; y <= H + step; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-      ctx.restore();
-    }
-    function frame(t, animate) {
-      mouse.x += (mouse.tx - mouse.x) * 0.06;
-      mouse.y += (mouse.ty - mouse.y) * 0.06;
-      var px = mouse.x - 0.5, py = mouse.y - 0.5;
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = '#0B1117'; ctx.fillRect(0, 0, W, H);
-      grid(px, py);
-      ctx.globalCompositeOperation = 'lighter';
-      for (var k = 0; k < blooms.length; k++) {
-        var b = blooms[k];
-        var pulse = animate ? (0.85 + 0.15 * Math.sin(t * 0.0006 + b.ph)) : 0.9;
-        var cx = b.x * W + px * 46 * b.depth;
-        var cy = b.y * H + py * 46 * b.depth;
-        var rr = b.r * pulse;
-        var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rr);
-        g.addColorStop(0, hexA(b.c, b.a));
-        g.addColorStop(0.4, hexA(b.c, b.a * 0.4));
-        g.addColorStop(1, hexA(b.c, 0));
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.fill();
-        if (animate) {
-          b.x += b.dx; b.y += b.dy;
-          if (b.x < -0.1) b.x = 1.1; if (b.x > 1.1) b.x = -0.1;
-          if (b.y < -0.1) b.y = 1.0; if (b.y > 1.0) b.y = -0.1;
-        }
-      }
-      // soft teal glow trailing the cursor
-      var gx = mouse.x * W, gy = mouse.y * H, gr = 190;
-      var cg = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
-      cg.addColorStop(0, hexA('#43B0CC', 0.11));
-      cg.addColorStop(1, hexA('#43B0CC', 0));
-      ctx.fillStyle = cg;
-      ctx.beginPath(); ctx.arc(gx, gy, gr, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
-    }
-
-    var raf = null, running = false;
-    function loop(t) { frame(t, true); raf = requestAnimationFrame(loop); }
-    function start() { if (!running) { running = true; raf = requestAnimationFrame(loop); } }
-    function stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = null; }
-
-    resize();
-    window.addEventListener('resize', function () { stop(); resize(); if (RM) frame(0, false); else start(); });
-
-    if (RM) { frame(0, false); return; }   // static single frame, no rAF, no listeners
-
-    var hero = document.querySelector('.hero');
-    hero.addEventListener('mousemove', function (e) {
-      var r = hero.getBoundingClientRect();
-      mouse.tx = (e.clientX - r.left) / r.width;
-      mouse.ty = (e.clientY - r.top) / r.height;
-    }, { passive: true });
-    hero.addEventListener('mouseleave', function () { mouse.tx = 0.5; mouse.ty = 0.5; });
-
-    // pause the loop when the hero scrolls out of view (perf)
-    if (hasIO) {
-      new IntersectionObserver(function (es) {
-        es.forEach(function (en) { if (en.isIntersecting) start(); else stop(); });
-      }, { threshold: 0 }).observe(canvas);
-    }
-    start();
-  }
-
-  /* ---- stat count-up (easeOutExpo) on scroll into view ---- */
-  function counters() {
-    var nums = document.querySelectorAll('.stat .num[data-count]');
-    if (!nums.length) return;
-    function render(el, val) {
-      var s = el.getAttribute('data-suffix') || '';
-      el.innerHTML = Math.round(val).toLocaleString('en-US') + (s ? '<span class="unit">' + s + '</span>' : '');
-    }
-    if (RM || !hasIO) { nums.forEach(function (el) { render(el, +el.getAttribute('data-count')); }); return; }
-    function run(el) {
-      var target = +el.getAttribute('data-count'), dur = 1600, t0 = null;
-      function step(ts) {
-        if (t0 === null) t0 = ts;
-        var p = Math.min(1, (ts - t0) / dur);
-        var e = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);   // easeOutExpo
-        render(el, target * e);
-        if (p < 1) requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
-    }
-    nums.forEach(function (el) { render(el, 0); });
-    var io = new IntersectionObserver(function (es) {
-      es.forEach(function (en) { if (en.isIntersecting) { run(en.target); io.unobserve(en.target); } });
-    }, { threshold: 0.4 });
-    nums.forEach(function (el) { io.observe(el); });
-  }
-
-  /* ---- scroll reveals with per-sibling stagger; never re-triggers ---- */
-  function reveals() {
-    var els = document.querySelectorAll('.reveal');
-    if (!els.length) return;
-    if (RM || !hasIO) { els.forEach(function (e) { e.classList.add('in'); }); return; }
-    var counts = new Map();
-    els.forEach(function (e) {
-      var p = e.parentNode, i = counts.get(p) || 0;
-      counts.set(p, i + 1);
-      e.style.transitionDelay = (i * 0.08).toFixed(3) + 's';
-    });
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
-      });
-    }, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
-    els.forEach(function (e) { io.observe(e); });
-  }
-
-  /* ---- magnetic primary buttons ---- */
-  function magnetic() {
-    if (RM) return;
-    document.querySelectorAll('.btn-primary').forEach(function (btn) {
-      btn.classList.add('is-magnetic');
-      var cx = 0, cy = 0, sc = 1, pending = false;
-      function apply() { btn.style.transform = 'translate(' + cx.toFixed(2) + 'px,' + cy.toFixed(2) + 'px) scale(' + sc.toFixed(3) + ')'; pending = false; }
-      function schedule() { if (!pending) { pending = true; requestAnimationFrame(apply); } }
-      btn.addEventListener('mousemove', function (e) {
-        var r = btn.getBoundingClientRect();
-        cx = (e.clientX - (r.left + r.width / 2)) * 0.28;
-        cy = (e.clientY - (r.top + r.height / 2)) * 0.34;
-        sc = 1.04; schedule();
-      });
-      btn.addEventListener('mouseenter', function () { sc = 1.04; schedule(); });
-      btn.addEventListener('mouseleave', function () { cx = 0; cy = 0; sc = 1; schedule(); });
-      btn.addEventListener('focus', function () { sc = 1.03; schedule(); });
-      btn.addEventListener('blur', function () { cx = 0; cy = 0; sc = 1; schedule(); });
-    });
-  }
-
-  /* ---- boot ---- */
-  function init() {
-    if (FX_CONFIG.nav) nav();
-    if (FX_CONFIG.headline) headline(); else { var h = document.querySelector('.hero'); if (h) h.classList.add('head-in'); }
-    if (FX_CONFIG.ambient) ambient();
-    if (FX_CONFIG.counters) counters();
-    if (FX_CONFIG.reveals) reveals(); else document.querySelectorAll('.reveal').forEach(function (e) { e.classList.add('in'); });
-    if (FX_CONFIG.magnetic) magnetic();
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
 })();
 </script>
 </body>

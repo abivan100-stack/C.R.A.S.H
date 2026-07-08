@@ -162,6 +162,7 @@
   function rgba(hex, a) { const c = hexToRgb(hex); return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + a + ')'; }
 
   function renderThemeToggle() {
+    if (window.CRASH_SHELL) return;   // the shell owns the single header theme toggle
     const btn = document.getElementById('themeToggle');
     if (!btn) return;
     const light = currentTheme() === 'light';
@@ -480,7 +481,7 @@
   async function boot() {
     renderThemeToggle();
     const tt = document.getElementById('themeToggle');
-    if (tt) tt.addEventListener('click', toggleTheme);
+    if (tt && !window.CRASH_SHELL) tt.addEventListener('click', toggleTheme);
     const rb = document.getElementById('reportBtn');
     if (rb) rb.addEventListener('click', () => { if (window.CRASHReport && DATA.length) window.CRASHReport.city(DATA); });
 
@@ -506,4 +507,11 @@
   }
 
   document.addEventListener('DOMContentLoaded', boot);
+
+  /* ---- shell integration (index.html single-page shell) ---- */
+  // the shell's single theme toggle dispatches this; recolour every chart
+  document.addEventListener('crash:themechange', function () { if (AGG) buildAll(); });
+  // the charts are built while the Analytics section is hidden (0-size); the
+  // shell calls this once the section becomes visible so they size correctly
+  window.__crashResizeAnalytics = function () { charts.forEach(function (c) { try { c.resize(); } catch (e) {} }); };
 })();
