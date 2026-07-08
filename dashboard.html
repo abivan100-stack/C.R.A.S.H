@@ -39,8 +39,8 @@
 html { transition: background 0.25s ease; }
 #themeToggle:hover { background: var(--row-hover) !important; color: var(--text) !important; }
 #themeToggle:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
-#analyticsLink:hover { border-color: var(--accent); color: var(--accent); }
-#analyticsLink:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+#analyticsLink:hover, #compareLink:hover { border-color: var(--accent); color: var(--accent); }
+#analyticsLink:focus-visible, #compareLink:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 
 html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; }
 * { box-sizing: border-box; }
@@ -212,6 +212,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         <div style="font: 400 9px 'IBM Plex Mono', monospace; letter-spacing: 0.1em; color: var(--text-2); text-transform: uppercase; margin-top: 2px;">Highest risk</div>
       </div>
     </div>
+    <a href="./compare.html" id="compareLink" title="Compare two areas side by side" style="display: inline-flex; align-items: center; gap: 7px; font: 500 12px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; text-decoration: none; white-space: nowrap;">
+      <svg width="14" height="14" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 6h9l-2.5-2.5M14 12H5l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Compare
+    </a>
     <a href="./analytics.html" id="analyticsLink" title="Open analytics &amp; charts" style="display: inline-flex; align-items: center; gap: 7px; font: 500 12px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; text-decoration: none; white-space: nowrap;">
       <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 13V1M1 13h12M4 10.5V7M7.5 10.5V4M11 10.5V8" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Analytics
@@ -339,6 +343,6 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="./intervention-model.js?v=1"></script>
-<script src="./app.js?v=phase3"></script>
+<script src="./app.js?v=phase4"></script>
 </body>
 </html>

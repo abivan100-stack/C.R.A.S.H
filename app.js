@@ -1054,6 +1054,9 @@ function dossierHeaderHtml(h) {
     '<div style="font:500 19px \'Space Grotesk\',sans-serif; line-height:1.2; margin-top:4px;">' + h.area + '</div>' +
     '<div style="font:400 11.5px \'IBM Plex Sans\',sans-serif; color:var(--text-2); margin-top:3px;">' + SEV[h.dominant].label + '-dominant risk cell · 250 m</div>' +
     '<div style="font:400 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:7px; letter-spacing:0.04em;">' + h.lat.toFixed(4) + '° N · ' + h.lng.toFixed(4) + '° E</div>' +
+    '<a href="./compare.html?a=' + encodeURIComponent(h.area) + '" title="Compare ' + h.area + ' with another area" style="display:inline-flex; align-items:center; gap:6px; margin-top:10px; font:500 10.5px \'IBM Plex Mono\',monospace; letter-spacing:0.04em; color:var(--accent); text-decoration:none;">' +
+      '<svg width="12" height="12" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 6h9l-2.5-2.5M14 12H5l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      'Compare this area</a>' +
   '</div>';
 }
 
