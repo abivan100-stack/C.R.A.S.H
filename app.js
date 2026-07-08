@@ -37,6 +37,9 @@ const SUPPRESS = 2;           // non-max suppression radius, in cells (~500 m):
                               // split halves of one cluster
 const HIGH_RISK_MIN = 40;     // severity-weighted score for a cell to count as a "high-risk zone"
 const SELECT_ZOOM = 15;       // zoom level when a hotspot is selected
+// shared fly animation — long-ish duration + low easeLinearity for a smooth,
+// gently-decelerating "buttery" zoom on both select (in) and deselect (out)
+const FLY = { duration: 0.9, easeLinearity: 0.18 };
 
 /* Emerging-hotspot engine (Phase 2) — flag cells whose recent monthly rate is
    climbing sharply against their own longer baseline. */
@@ -364,6 +367,14 @@ function frameToChennai() {
   app.map.fitBounds(bounds, { padding: [28, 28] });
   app.map.setMaxBounds(bounds.pad(0.10));           // hard leash a touch beyond the data
   app.map.setMinZoom(app.map.getZoom());            // can't zoom out past this city-wide frame
+  app.homeBounds = bounds;                          // remembered so deselect can zoom back out
+}
+
+/* Smoothly return to the original city-wide frame (used on deselect) */
+function flyHome() {
+  if (app.map && app.homeBounds) {
+    app.map.flyToBounds(app.homeBounds, { padding: [28, 28], duration: FLY.duration, easeLinearity: FLY.easeLinearity });
+  }
 }
 
 /* Click anywhere on the map to inspect the ~250 m cell under the cursor
@@ -820,7 +831,7 @@ function selectHotspot(id, opts) {
   syncFocusRing();            // accent ring on the map
 
   if (h && opts.pan) {
-    app.map.flyTo([h.lat, h.lng], Math.max(app.map.getZoom(), SELECT_ZOOM), { duration: 0.6 });
+    app.map.flyTo([h.lat, h.lng], Math.max(app.map.getZoom(), SELECT_ZOOM), FLY);
   }
   renderDossier();
 }
@@ -842,6 +853,7 @@ function clearSelection() {
   renderRail();
   refreshBloomSelection();
   renderDossier();
+  flyHome();                 // zoom back out to the original city-wide frame
 }
 
 /* =============================================================================
