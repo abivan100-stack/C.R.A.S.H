@@ -299,6 +299,147 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .af-confirm-close { flex: none; align-self: flex-start; font: 500 11.5px 'IBM Plex Mono', monospace; color: var(--text-2); background: transparent; border: 1px solid var(--border); border-radius: 7px; padding: 8px 12px; cursor: pointer; }
 .af-confirm-close:hover { color: var(--text); border-color: var(--accent); }
 
+/* ===================== SIMULATE section ===================== */
+.sim-root { height: calc(100vh - 58px); display: flex; flex-direction: column; min-height: 0; background: var(--bg); }
+.sim-header { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 18px 24px; flex-wrap: wrap;
+  padding: 13px 20px; border-bottom: 1px solid var(--border); background: var(--panel); }
+.sim-head-main { min-width: 0; }
+.sim-title { font: 600 20px 'Space Grotesk', sans-serif; letter-spacing: -0.01em; margin: 4px 0 0; line-height: 1.15; }
+.sim-disclaimer { display: flex; align-items: center; gap: 9px; max-width: 580px;
+  font: 400 12px 'IBM Plex Sans', sans-serif; color: var(--text-2); line-height: 1.45;
+  background: rgba(67,176,204,0.06); border: 1px solid rgba(67,176,204,0.22); border-radius: 8px; padding: 9px 13px; }
+.sim-disclaimer svg { flex: none; color: var(--accent); }
+.sim-body { flex: 1; display: flex; min-height: 0; position: relative; }
+/* filters float as a card ON the map (top-left), not a pre-simulation sidebar */
+.sim-controls { position: absolute; top: 12px; left: 12px; z-index: 600; width: 262px; max-height: calc(100% - 24px); overflow-y: auto;
+  padding: 15px 15px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.42); }
+.sim-results { width: 330px; flex: none; overflow-y: auto; padding: 18px 18px 24px; background: var(--panel); border-left: 1px solid var(--border); }
+.sim-panel-label { font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-2); margin-bottom: 14px; }
+.sim-map-wrap { flex: 1; position: relative; min-width: 0; background: var(--bg); overflow: hidden; }
+#simMap { position: absolute; inset: 0; background: var(--bg); }
+.sim-group { margin-bottom: 14px; }
+.sim-label { display: block; font: 500 8.5px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-2); margin-bottom: 8px; }
+.sim-seg { display: flex; width: 100%; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--bg); }
+.sim-seg button { flex: 1; font: 500 11px 'IBM Plex Mono', monospace; padding: 8px 6px; border: none; border-right: 1px solid var(--border); background: transparent; color: var(--text-2); cursor: pointer; transition: background .12s ease, color .12s ease; white-space: nowrap; }
+.sim-seg button:last-child { border-right: none; }
+.sim-seg button:hover { color: var(--text); }
+.sim-seg button[aria-pressed="true"] { background: rgba(67,176,204,0.12); color: var(--accent); }
+.sim-seg button:focus-visible { outline: 1px solid var(--accent); outline-offset: -2px; }
+.sim-hint { font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-3); margin-top: 6px; }
+.sim-select { width: 100%; font: 500 12px 'IBM Plex Mono', monospace; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 9px 10px; cursor: pointer; }
+.sim-select:hover { border-color: var(--accent); }
+.sim-select option { background: var(--panel); color: var(--text); }
+.sim-actions { display: flex; gap: 10px; margin-top: 0; }
+.sim-actions .rc-btn { margin-top: 0; flex: 1; }
+/* the projection horizon sits above the actions and stays editable pre-run */
+.sim-group-pre { padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid var(--border); }
+.sim-filter-hint { font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--accent); line-height: 1.5; margin: 12px 0 14px; }
+.sim-filters.locked { opacity: 0.4; pointer-events: none; filter: saturate(0.5); }
+.sim-filters.locked .sim-hint { color: var(--text-4); }
+.sim-foot { font: 400 10.5px 'IBM Plex Sans', sans-serif; color: var(--text-3); line-height: 1.5; margin-top: 12px; }
+.sim-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 42px 14px; }
+.sim-empty[hidden] { display: none; }
+.sim-empty svg { color: var(--text-4); }
+.sim-empty-title { font: 600 14px 'Space Grotesk', sans-serif; color: var(--text-2); }
+.sim-empty-note { font: 400 12px 'IBM Plex Sans', sans-serif; color: var(--text-3); line-height: 1.55; max-width: 250px; }
+.sim-legend { position: absolute; left: 14px; bottom: 14px; z-index: 500; display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; }
+.sim-legend[hidden] { display: none; }
+.sim-legend-t { font: 500 10px 'IBM Plex Mono', monospace; color: var(--text-2); }
+.sim-legend-i { display: flex; align-items: center; gap: 6px; font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2); }
+.sim-legend .sw { width: 8px; height: 8px; border-radius: 50%; }
+.sim-rank { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); border: 2px solid rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; font: 700 12px 'Space Grotesk', sans-serif; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 4px rgba(67,176,204,0.22), 0 2px 7px rgba(0,0,0,0.55); cursor: pointer; }
+.sim-rank:hover { background: var(--accent-2); }
+/* results sidebar (STEP 5) */
+.sim-results-body[hidden] { display: none; }
+.sim-total-num { font: 600 40px 'Space Grotesk', sans-serif; line-height: 1; font-variant-numeric: tabular-nums; color: var(--accent); }
+.sim-total-label { font: 400 9.5px 'IBM Plex Mono', monospace; letter-spacing: 0.1em; color: var(--text-2); text-transform: uppercase; margin-top: 9px; }
+.sim-total-note { font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-3); margin-top: 5px; }
+/* low-confidence banner (STEP 6) — a rare scenario backed by little history */
+.sim-lowconf { display: flex; gap: 9px; align-items: flex-start; margin-top: 14px; padding: 10px 12px; border-radius: 8px;
+  background: rgba(242,147,62,0.09); border: 1px solid rgba(242,147,62,0.32); color: var(--text-2);
+  font: 400 11.5px 'IBM Plex Sans', sans-serif; line-height: 1.5; }
+.sim-lowconf[hidden] { display: none; }
+.sim-lowconf svg { flex: none; margin-top: 1px; color: #F2933E; }
+.sim-chart-label, .sim-list-label { font: 500 9.5px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-2); margin: 20px 0 9px; }
+.sim-chart-wrap { position: relative; height: 176px; }
+.sim-list { display: flex; flex-direction: column; }
+.sim-row { display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: none; border-bottom: 1px solid var(--border-soft); padding: 9px 3px; cursor: pointer; color: var(--text); }
+.sim-row:hover { background: var(--row-hover); }
+.sim-row:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.sim-row-rank { font: 500 11px 'IBM Plex Mono', monospace; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.sim-row-main { min-width: 0; }
+.sim-row-area { display: block; font: 500 12.5px 'IBM Plex Sans', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sim-mb { display: flex; height: 4px; border-radius: 2px; overflow: hidden; margin-top: 5px; background: var(--track); }
+.sim-mb span { display: block; height: 100%; }
+.sim-row-count { font: 600 13px 'IBM Plex Mono', monospace; color: var(--accent); font-variant-numeric: tabular-nums; }
+@media (max-width: 980px) {
+  .sim-root { height: auto; }
+  .sim-body { flex-direction: column; }
+  /* on narrow screens the filter card returns to a static bar above the map */
+  .sim-controls { position: static; width: auto; max-height: none; box-shadow: none; border: none; border-radius: 0; border-bottom: 1px solid var(--border); }
+  .sim-results { width: auto; border-left: none; border-bottom: 1px solid var(--border); }
+  .sim-map-wrap { height: 62vh; min-height: 360px; flex: none; }
+}
+
+/* ===================== Notifications — toasts (STEP 1) ===================== */
+.toast-host { position: fixed; top: 66px; right: 16px; z-index: 5000; display: flex; flex-direction: column; gap: 10px;
+  width: min(320px, calc(100vw - 32px)); pointer-events: none; }        /* empty space never blocks the map */
+.toast { pointer-events: auto; position: relative; display: flex; align-items: flex-start; gap: 11px; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 11px; padding: 12px 12px 12px 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  opacity: 0; transform: translateX(18px); transition: opacity .28s ease, transform .32s cubic-bezier(.18,.7,.2,1); }
+.toast.toast-in { opacity: 1; transform: translateX(0); }
+.toast.toast-out { opacity: 0; transform: translateX(18px); }
+.toast::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 2px; border-radius: 2px;
+  background: var(--accent); opacity: 0.55; }                            /* accent detail on the leading edge */
+.toast-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; margin-top: 4px; box-shadow: 0 0 0 3px rgba(255,255,255,0.05); }
+.toast-body { flex: 1; min-width: 0; }
+.toast-lead { font: 500 9px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
+.toast-text { font: 400 12.5px 'IBM Plex Sans', sans-serif; color: var(--text); line-height: 1.4; margin-top: 3px; word-break: break-word; }
+.toast-x { flex: none; align-self: flex-start; margin: -2px -2px 0 0; width: 20px; height: 20px; display: flex;
+  align-items: center; justify-content: center; font: 400 16px/1 'IBM Plex Sans', sans-serif; color: var(--text-3);
+  background: transparent; border: none; border-radius: 5px; cursor: pointer; }
+.toast-x:hover { color: var(--text); background: var(--row-hover); }
+@media (max-width: 560px) { .toast-host { left: 16px; right: 16px; width: auto; } }
+/* ---- notifications bell + dropdown panel (STEP 2) ---- */
+.notify-wrap { position: relative; display: inline-flex; }
+.notify-bell { position: relative; }
+.notify-badge { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-ink);
+  border-radius: 9px; border: 1.5px solid var(--bg); font: 600 10px 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums;
+  line-height: 1; pointer-events: none; }
+.notify-badge[hidden] { display: none; }
+.notify-panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 4500; width: 340px; max-width: calc(100vw - 24px);
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); overflow: hidden; }
+.notify-panel[hidden] { display: none; }
+.notify-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.notify-title { font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-2); }
+.notify-clear { font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: 0.04em; color: var(--text-3); background: transparent;
+  border: 1px solid var(--border); border-radius: 6px; padding: 4px 9px; cursor: pointer; }
+.notify-clear:hover { color: var(--text); border-color: var(--accent); }
+.notify-list { max-height: min(60vh, 420px); overflow-y: auto; }
+.notify-row { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: transparent; border: none;
+  border-bottom: 1px solid var(--border-soft); padding: 11px 14px; cursor: pointer; color: var(--text); }
+.notify-row:last-child { border-bottom: none; }
+.notify-row:hover { background: var(--row-hover); }
+.notify-row.unread { background: rgba(67,176,204,0.06); }
+.notify-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 3px rgba(255,255,255,0.05); }
+.notify-row-main { flex: 1; min-width: 0; }
+.notify-row-text { display: block; font: 400 12.5px 'IBM Plex Sans', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notify-time { flex: none; font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-3); white-space: nowrap; }
+.notify-empty { padding: 30px 16px; text-align: center; font: 400 12px 'IBM Plex Sans', sans-serif; color: var(--text-3); }
+/* ---- click-to-navigate marker highlight (STEP 3) ---- */
+.report-focus-icon { pointer-events: none; }
+.report-focus-ring { width: 44px; height: 44px; box-sizing: border-box; border-radius: 50%; border: 2.5px solid var(--accent);
+  box-shadow: 0 0 0 3px rgba(67,176,204,0.18), 0 0 16px rgba(67,176,204,0.55); animation: reportFocusPulse 1.2s ease-in-out infinite; }
+.report-focus-ring.no-pulse { animation: none; }
+@keyframes reportFocusPulse { 0%, 100% { transform: scale(0.82); opacity: 0.55; } 50% { transform: scale(1.06); opacity: 1; } }
+/* reduced motion: fade only (no slide) — override the global no-transition rule for toasts */
+@media (prefers-reduced-motion: reduce) {
+  .toast { transform: none !important; transition: opacity .3s ease !important; }
+  .toast.toast-in, .toast.toast-out { transform: none !important; }
+}
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -318,6 +459,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
       <button class="pill" data-section="analytics" role="tab" aria-selected="false">Analytics</button>
       <button class="pill" data-section="report" role="tab" aria-selected="false">Reports</button>
       <button class="pill" data-section="simulate" role="tab" aria-selected="false">Simulate</button>
+    </div>
+    <div class="notify-wrap">
+      <button class="icon-btn notify-bell" id="notifyBell" type="button" aria-label="Notifications" aria-haspopup="dialog" aria-expanded="false">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.7a3.5 3.5 0 0 0-3.5 3.5c0 3.3-1.3 4.3-1.3 4.3h9.6s-1.3-1-1.3-4.3A3.5 3.5 0 0 0 8 1.7Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6.6 12.1a1.5 1.5 0 0 0 2.8 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span class="notify-badge" id="notifyBadge" hidden>0</span>
+      </button>
+      <div class="notify-panel" id="notifyPanel" role="dialog" aria-label="Recent reports" hidden>
+        <div class="notify-head"><span class="notify-title">Recent reports</span><button class="notify-clear" id="notifyClear" type="button">Clear</button></div>
+        <div class="notify-list" id="notifyList"></div>
+      </div>
     </div>
     <button class="icon-btn" id="themeToggle" type="button" aria-label="Toggle theme"></button>
     <button class="icon-btn nav-toggle" id="navToggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="navPills">
@@ -656,7 +807,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.5 6.5 13 14 3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           <div class="af-confirm-body">
-            <div class="af-confirm-title">Report saved</div>
+            <div class="af-confirm-title" id="afConfirmTitle">Report saved</div>
             <div class="af-confirm-text" id="afConfirmText"></div>
             <div class="af-confirm-action" id="afConfirmAction"></div>
           </div>
@@ -668,27 +819,141 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     </div>
   </section>
 
-  <!-- =================== SIMULATE (placeholder) =================== -->
+  <!-- =================== SIMULATE =================== -->
   <section class="app-section" id="section-simulate" role="tabpanel" aria-label="Simulate">
-    <div class="placeholder">
-      <div class="ph-eyebrow">Section 04</div>
-      <div class="ph-title">Simulate</div>
-      <div class="ph-note">Scenario simulation will live here — filled in a later phase.</div>
+    <div class="sim-root">
+      <!-- framing header — always visible -->
+      <div class="sim-header">
+        <div class="sim-head-main">
+          <div class="eyebrow">Monte Carlo projection</div>
+          <h1 class="sim-title">Projected risk under selected conditions</h1>
+        </div>
+        <div class="sim-disclaimer">
+          <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.1v4M8 4.7h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>Simulation based on historical accident patterns — a probabilistic projection, not a prediction of actual events.</span>
+        </div>
+      </div>
+
+      <div class="sim-body">
+        <!-- filter controls -->
+        <aside class="sim-controls">
+          <div class="sim-panel-label">Simulate</div>
+
+          <!-- projection horizon (the time period) — editable BEFORE running -->
+          <div class="sim-group sim-group-pre">
+            <label class="sim-label" for="simHorizon">Projection horizon</label>
+            <select class="sim-select" id="simHorizon">
+              <option value="3">Next 3 months</option>
+              <option value="6" selected>Next 6 months</option>
+              <option value="12">Next 12 months</option>
+            </select>
+            <div class="sim-hint">Set how far ahead to project, then run.</div>
+          </div>
+
+          <div class="sim-actions">
+            <button class="rc-btn" id="simRun" type="button">
+              <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3l9 5-9 5z" fill="currentColor"/></svg>
+              Run simulation
+            </button>
+            <button class="rc-btn ghost" id="simReset" type="button">Reset</button>
+          </div>
+
+          <div class="sim-filter-hint" id="simFilterHint">Run the projection, then filter it here.</div>
+
+          <div class="sim-filters locked" id="simFilters">
+            <div class="sim-group">
+              <div class="sim-label">Time of day</div>
+              <div class="sim-seg" id="simTime" role="group" aria-label="Time of day">
+                <button type="button" data-v="day" aria-pressed="false">Day</button>
+                <button type="button" data-v="night" aria-pressed="false">Night</button>
+                <button type="button" data-v="any" aria-pressed="true">Any</button>
+              </div>
+              <div class="sim-hint">Day 06:00–18:00 · Night 18:00–06:00</div>
+            </div>
+
+            <div class="sim-group">
+              <div class="sim-label">Weather</div>
+              <div class="sim-seg" id="simWeather" role="group" aria-label="Weather">
+                <button type="button" data-v="clear" aria-pressed="false">Clear</button>
+                <button type="button" data-v="rain" aria-pressed="false">Rain</button>
+                <button type="button" data-v="fog" aria-pressed="false">Fog</button>
+                <button type="button" data-v="any" aria-pressed="true">Any</button>
+              </div>
+            </div>
+
+            <div class="sim-group">
+              <div class="sim-label">Day type</div>
+              <div class="sim-seg" id="simDayType" role="group" aria-label="Day type">
+                <button type="button" data-v="weekday" aria-pressed="false">Weekday</button>
+                <button type="button" data-v="weekend" aria-pressed="false">Weekend</button>
+                <button type="button" data-v="any" aria-pressed="true">Any</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="sim-foot">Deterministic — the same filters always reproduce the same projection.</div>
+        </aside>
+
+        <!-- projection map -->
+        <div class="sim-map-wrap">
+          <div id="simMap"></div>
+          <div class="sim-legend" id="simMapLegend" hidden>
+            <span class="sim-legend-t">Projected incidents</span>
+            <span class="sim-legend-i"><span class="sw" style="background:#E4404E"></span>Fatal</span>
+            <span class="sim-legend-i"><span class="sw" style="background:#F2933E"></span>Serious</span>
+            <span class="sim-legend-i"><span class="sw" style="background:#E7C64B"></span>Slight</span>
+          </div>
+        </div>
+
+        <!-- results -->
+        <aside class="sim-results" id="simResults">
+          <div class="sim-panel-label">Projection</div>
+          <div class="sim-empty" id="simEmpty">
+            <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="11" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="15" cy="15" r="5.5" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="15" cy="15" r="1.4" fill="currentColor"/></svg>
+            <div class="sim-empty-title" id="simEmptyTitle">No projection yet</div>
+            <div class="sim-empty-note" id="simEmptyNote">Run the simulation to project where accidents are likely to concentrate — with a projected total, ranked hotspots, and a chart.</div>
+          </div>
+          <div class="sim-results-body" id="simResultsBody" hidden>
+            <div class="sim-total">
+              <div class="sim-total-num" id="simTotal">—</div>
+              <div class="sim-total-label">Projected accidents · <span id="simTotalHorizon">next 6 months</span></div>
+              <div class="sim-total-note" id="simScenarioNote"></div>
+            </div>
+            <div class="sim-lowconf" id="simLowConf" hidden>
+              <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6l6.4 11.1H1.6L8 1.6z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 6.4v3.1M8 11.4h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              <span id="simLowConfText"></span>
+            </div>
+            <div class="sim-chart-label">Projected count by area</div>
+            <div class="sim-chart-wrap"><canvas id="simChart"></canvas></div>
+            <div class="sim-list-label">Projected hotspots</div>
+            <div class="sim-list" id="simList"></div>
+          </div>
+        </aside>
+      </div>
     </div>
   </section>
 </main>
 
 <!-- shell flag so app.js / analytics.js don't double-wire the shared theme toggle -->
-<script>window.CRASH_SHELL = true;</script>
+<script>
+  window.CRASH_SHELL = true;
+  /* Backend base URL for citizen reports. Empty = same origin, because the FastAPI
+     server also serves this site (one URL). Used by the report POST (STEP 2) and the
+     load-on-startup GET (STEP 3). Leave '' for the unified Render deploy in STEP 4. */
+  window.API_BASE = '';
+</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="./vendor/leaflet-heat.js"></script>
 <script src="./vendor/chart.umd.js"></script>
 <script src="./intervention-model.js?v=2"></script>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
-<script src="./report.js?v=phase5d"></script>
-<script src="./app.js?v=phase8h"></script>
-<script src="./analytics.js?v=phase8g"></script>
+<script src="./report.js?v=phase5e"></script>
+<script src="./app.js?v=phase8n"></script>
+<script src="./analytics.js?v=phase8h"></script>
+<script src="./simulate.js?v=phase10"></script>
+<script src="./notifications.js?v=4"></script>
 
 <script>
 (function () {
@@ -737,6 +1002,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     if (name === 'map') requestAnimationFrame(function () { if (window.__crashRefreshMap) window.__crashRefreshMap(); });
     if (name === 'analytics') requestAnimationFrame(function () { if (window.__crashResizeAnalytics) window.__crashResizeAnalytics(); });
     if (name === 'report') { initReport(); initReportForm(); requestAnimationFrame(function () { if (afMap) afMap.invalidateSize(); }); }
+    if (name === 'simulate') { if (window.__crashInitSimulate) window.__crashInitSimulate(); }
   }
   pills.forEach(function (p) { p.addEventListener('click', function () { show(p.dataset.section); }); });
   var brand = document.getElementById('brandHome');
@@ -756,7 +1022,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
   var reportInited = false;
   function ensureReportData(cb) {
     if (window.CRASH_DATA) { cb(window.CRASH_DATA); return; }
-    fetch('./data/accidents.json?v=8').then(function (r) { return r.json(); }).then(function (j) { window.CRASH_DATA = j; cb(j); }).catch(function () {});
+    fetch('./data/accidents.json?v=9').then(function (r) { return r.json(); }).then(function (j) { window.CRASH_DATA = j; cb(j); }).catch(function () {});
   }
   function initReport() {
     if (reportInited) return; reportInited = true;
@@ -954,24 +1220,83 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     };
   }
 
+  /* the 8-field payload the backend's Report model expects (no derived/local fields) */
+  function reportPayload(rec) {
+    return {
+      lat: rec.lat, lng: rec.lng, severity: rec.severity, datetime: rec.datetime,
+      weather: rec.weather, cause: rec.cause, vehicle: rec.vehicle, area: rec.area,
+    };
+  }
+
+  /* POST the report to the shared backend. Resolves {ok:true,id} on success, or
+     {ok:false} on any network/backend failure — with a short timeout so a dead
+     backend falls back to localStorage quickly instead of hanging. */
+  function postReport(rec) {
+    var API = window.API_BASE || '';
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 6000) : 0;
+    return fetch(API + '/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reportPayload(rec)),
+      signal: ctrl ? ctrl.signal : undefined,
+    }).then(function (resp) {
+      if (timer) clearTimeout(timer);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      return resp.json();
+    }).then(function (data) {
+      return { ok: true, id: data && data.id };
+    }).catch(function (e) {
+      if (timer) clearTimeout(timer);
+      return { ok: false, error: (e && e.message) || String(e) };
+    });
+  }
+
+  var afSubmitHTML = null;
+  function setSubmitting(on) {
+    var btn = document.getElementById('afSubmit');
+    if (!btn) return;
+    if (on) {
+      if (afSubmitHTML == null) afSubmitHTML = btn.innerHTML;
+      btn.disabled = true; btn.textContent = 'Saving…';
+    } else {
+      btn.disabled = false; if (afSubmitHTML != null) btn.innerHTML = afSubmitHTML;
+    }
+  }
+
   function handleSubmit() {
     var rec = validateAndBuild();
     if (!rec) return;
-    var saved;
-    try {
-      if (!window.CRASH_APP || !window.CRASH_APP.addReport) throw new Error('the live map is still loading — try again in a moment');
-      saved = window.CRASH_APP.addReport(rec);
-    } catch (e) { setErr('Could not save the report — ' + (e.message || e)); return; }
-    showConfirm(saved || rec);
-    resetForm();
+    if (!window.CRASH_APP || !window.CRASH_APP.addReport) {
+      setErr('the live map is still loading — try again in a moment'); return;
+    }
+    setSubmitting(true);
+    // Try the shared backend first; whatever the outcome, the report still lands on
+    // the live map. localStorage is written ONLY as the offline fallback (POST failed).
+    postReport(rec).then(function (result) {
+      setSubmitting(false);
+      var saved;
+      try {
+        saved = window.CRASH_APP.addReport(rec, !result.ok);   // persistLocal = true only when offline
+      } catch (e) { setErr('Could not save the report — ' + (e.message || e)); return; }
+      showConfirm(saved || rec, result.ok);
+      // notify the activity system (toast now; panel + navigate in later steps)
+      try { document.dispatchEvent(new CustomEvent('crash:report', { detail: saved || rec })); } catch (e) {}
+      resetForm();
+    });
   }
 
   var SEV_LABEL = { fatal: 'Fatal', serious: 'Serious', slight: 'Slight' };
-  function showConfirm(rec) {
+  function showConfirm(rec, online) {
+    var title = document.getElementById('afConfirmTitle');
+    if (title) title.textContent = online ? 'Report saved' : 'Report saved offline';
     var txt = document.getElementById('afConfirmText');
     if (txt) {
+      var where = online
+        ? 'Saved to the shared reports database — it will show up on other devices too.'
+        : 'Backend unreachable, so it was saved offline on this device (it will sync when the backend is back).';
       txt.innerHTML = '<b>' + (SEV_LABEL[rec.severity] || rec.severity) + '</b> crash at <b>' + rec.area + '</b> on ' +
-        rec.datetime + ' is now on the map and counted in the hotspots, heatmap and statistics. Saved on this device only.';
+        rec.datetime + ' is now on the map and counted in the hotspots, heatmap and statistics. ' + where;
     }
     // surface the authority a citizen would file an official complaint with,
     // matched to this accident's cause (opens the grievance portal in a new tab)

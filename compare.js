@@ -407,7 +407,7 @@
     const sw = document.getElementById('swapBtn'); if (sw) sw.addEventListener('click', swap);
 
     let data;
-    try { const res = await fetch('./data/accidents.json?v=8'); if (!res.ok) throw new Error('HTTP ' + res.status); data = await res.json(); }
+    try { const res = await fetch('./data/accidents.json?v=9'); if (!res.ok) throw new Error('HTTP ' + res.status); data = await res.json(); }
     catch (err) { console.error(err); const m = document.querySelector('main'); if (m) m.insertAdjacentHTML('afterbegin', '<div style="padding:16px;border:1px solid var(--border);border-radius:8px;color:var(--text-2);">Could not load ./data/accidents.json — run via the local server.</div>'); return; }
 
     DATA = data; precompute(); computeAll();

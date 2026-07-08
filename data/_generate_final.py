@@ -24,7 +24,7 @@ random.seed(131313)
 # the schema. Base counts sum to 7291; 1.37 lands the total near ~10,000.
 COUNT_SCALE = 1.37
 
-LAT_MIN, LAT_MAX = 12.83, 13.22
+LAT_MIN, LAT_MAX = 12.80, 13.22   # extended south to include Kattankulathur (GST Rd / SRM)
 LNG_MIN, LNG_MAX = 80.03, 80.32
 START, END = date(2024, 7, 1), date(2026, 6, 30)
 SPAN = (END - START).days
@@ -56,6 +56,7 @@ AREAS = [
     ("Koyambedu",     13.0694, 80.1948, 28, 146, 256, 0.58, 0.27, 0.06, "Over-speeding",              True,  0.08),
     # ---- heavy corridors / junctions ----
     ("Vandalur",      12.8916, 80.0817, 30, 112, 178, 0.56, 0.31, 0.06, "Over-speeding",              True,  0.58),  # GST rd sprawl — rising
+    ("Kattankulathur",12.8230, 80.0440, 11, 45,  75,  0.58, 0.31, 0.06, "Over-speeding",              True,  0.55),  # GST Rd / NH45 — SRM/Potheri (south) — rising
     ("Poonamallee",   13.0475, 80.1140, 25, 108, 170, 0.52, 0.29, 0.06, "Improper overtaking",        True,  0.55),  # NH-4 bypass — rising
     ("Teynampet",     13.0402, 80.2470, 19, 104, 190, 0.44, 0.30, 0.03, "Signal jumping",             True, -0.35),  # signal upgrades — improving
     ("Tambaram",      12.9246, 80.1273, 25, 100, 168, 0.58, 0.32, 0.06, "Hit and run",                True,  0.35),  # suburban growth

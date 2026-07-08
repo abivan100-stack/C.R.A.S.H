@@ -21,7 +21,7 @@ const VEHICLES = ['Two-wheeler', 'Car', 'Auto-rickshaw', 'Bus (MTC/Private)',
   'Lorry / Truck', 'LCV / Van', 'Bicycle', 'Unknown (fled)'];
 
 const CHENNAI = { center: [13.05, 80.23], zoom: 11 };
-const BBOX = { latMin: 12.83, latMax: 13.22, lngMin: 80.03, lngMax: 80.32 };
+const BBOX = { latMin: 12.80, latMax: 13.22, lngMin: 80.03, lngMax: 80.32 };   // south extended to frame Kattankulathur (GST Rd)
 
 /* CARTO basemaps — dark for the dark theme, Positron for the light theme */
 const TILES = {
@@ -436,9 +436,46 @@ function popupHtml(a) {
       sev.label + '</div>' +
     (a.citizen ? '<div class="acc-pop-row" style="color:' + ACCENT + '; font-weight:600;">◎ Citizen report</div>' : '') +
     '<div class="acc-pop-row">' + a.datetime + '</div>' +
+    '<div class="acc-pop-row">' + a.vehicle + ' · ' + a.cause + '</div>' +
     '<div class="acc-pop-row">Weather · ' + a.weather + '</div>' +
     '<div class="acc-pop-area">' + a.area + '</div>'
   );
+}
+
+/* Fly the main map to a specific report and highlight it — powers the
+   notifications "click to navigate" (STEP 3). Robust to the report being filtered
+   out of the live marker set: it draws its OWN temporary pulsing accent ring +
+   popup at the exact lat/lng rather than depending on finding the marker. */
+var _reportFocus = null, _reportFocusTimer = 0;
+function reducedMotionPref() {
+  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  catch (e) { return false; }
+}
+function focusReport(r) {
+  if (!app.map || !r || typeof r.lat !== 'number' || typeof r.lng !== 'number' || isNaN(r.lat) || isNaN(r.lng)) return false;
+  if (_reportFocus) { app.map.removeLayer(_reportFocus); _reportFocus = null; }
+  if (_reportFocusTimer) { clearTimeout(_reportFocusTimer); _reportFocusTimer = 0; }
+
+  app.map.invalidateSize();                 // the map may have just been revealed by the section switch
+  var reduce = reducedMotionPref();
+  if (reduce) app.map.setView([r.lat, r.lng], 16);
+  else app.map.flyTo([r.lat, r.lng], 16, { duration: 0.95, easeLinearity: 0.2 });
+
+  // temporary pulsing accent ring on the exact spot
+  var icon = L.divIcon({ className: 'report-focus-icon', iconSize: [44, 44], iconAnchor: [22, 22],
+    html: '<div class="report-focus-ring' + (reduce ? ' no-pulse' : '') + '"></div>' });
+  _reportFocus = L.marker([r.lat, r.lng], { icon: icon, interactive: false, keyboard: false, zIndexOffset: 1000 }).addTo(app.map);
+
+  // its popup — severity, datetime, vehicle · cause, weather, area
+  var popup = L.popup({ closeButton: true, autoPan: false, offset: [0, -4] })
+    .setLatLng([r.lat, r.lng])
+    .setContent(popupHtml({ citizen: true, severity: r.severity, datetime: r.datetime, weather: r.weather, cause: r.cause, vehicle: r.vehicle, area: r.area }));
+  app.map.openPopup(popup);
+
+  _reportFocusTimer = setTimeout(function () {
+    if (_reportFocus) { app.map.removeLayer(_reportFocus); _reportFocus = null; }
+  }, 4500);
+  return true;
 }
 
 /* "N citizen reports" counter under the Source filter (shell only; guarded so the
@@ -1395,7 +1432,7 @@ async function boot() {
 
   let data;
   try {
-    const res = await fetch('./data/accidents.json?v=8');
+    const res = await fetch('./data/accidents.json?v=9');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     data = await res.json();
   } catch (err) {
@@ -1411,7 +1448,12 @@ async function boot() {
   let seed = [];
   try { const sres = await fetch('./data/citizen_seed.json?v=1'); if (sres.ok) seed = await sres.json(); }
   catch (e) { /* seed is optional */ }
-  app.raw = data.concat(loadSeedReports(seed)).concat(loadCitizenReports());
+  // STEP 3 — merge SHARED citizen reports from the backend (so reports filed on
+  // OTHER devices show up here) with this browser's LOCAL ones, de-duplicated by
+  // content. If the backend is unreachable, fall back silently to the local ones.
+  const localReports = loadCitizenReports();
+  const sharedReports = await fetchSharedReports();
+  app.raw = data.concat(loadSeedReports(seed)).concat(mergeCitizenReports(sharedReports, localReports));
   // precompute time fields once (hour, night flag, weekday 0=Mon, month index)
   // for fast filtering + the emerging-trend analysis
   app.raw.forEach(prepRecord);
@@ -1429,6 +1471,9 @@ async function boot() {
   renderDossier();
   renderHeader();
   updateCitizenControls();  // initial "N citizen reports" count (incl. any merged from localStorage)
+  // tell the notifications system about every citizen report loaded on startup
+  // (localStorage + backend), so the bell panel survives a page refresh (STEP 4)
+  try { document.dispatchEvent(new CustomEvent('crash:reports-loaded', { detail: app.raw.filter(function (a) { return a.citizen && !a.seed; }) })); } catch (e) {}
   enableMapClickSelect(); // click anywhere on the map to inspect that cell
 
   // fade the "calibrating basemap" overlay once everything is mounted
@@ -1508,7 +1553,7 @@ function loadCitizenReports() {
     if (!raw) return [];
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return [];
-    return arr.filter(isValidReport).map((r) => { r.citizen = true; delete r.seed; return r; });
+    return arr.filter(isValidReport).map((r) => { r.citizen = true; delete r.seed; delete r.shared; return r; });
   } catch (e) { return []; }
 }
 /* shipped seed reports — validated, flagged citizen + seed (seed never persisted) */
@@ -1516,16 +1561,61 @@ function loadSeedReports(arr) {
   if (!Array.isArray(arr)) return [];
   return arr.filter(isValidReport).map((r) => { r.citizen = true; r.seed = true; return r; });
 }
-/* persist just the USER-submitted citizen reports (not the shipped seed), in the
-   base accidents.json schema (no derived fields) */
+/* persist just the LOCAL user-submitted citizen reports — not the shipped seed and
+   not the backend-shared ones (those live on the server) — in the base
+   accidents.json schema (no derived fields) */
 function persistCitizenReports() {
   try {
-    const out = app.raw.filter((a) => a.citizen && !a.seed).map((a) => ({
+    const out = app.raw.filter((a) => a.citizen && !a.seed && !a.shared).map((a) => ({
       id: a.id, lat: a.lat, lng: a.lng, severity: a.severity, datetime: a.datetime,
       weather: a.weather, cause: a.cause, vehicle: a.vehicle, area: a.area, citizen: true,
     }));
     localStorage.setItem(CITIZEN_KEY, JSON.stringify(out));
   } catch (e) {}
+}
+
+/* content signature over the 8 report fields, so the same report coming from two
+   sources (the backend AND localStorage) is counted only once when merging */
+function reportSignature(r) {
+  return [
+    Number(r.lat).toFixed(5), Number(r.lng).toFixed(5), r.severity,
+    r.datetime, r.weather, r.cause, r.vehicle, r.area,
+  ].join('|');
+}
+
+/* STEP 3 — fetch the SHARED citizen reports from the backend. Each is validated,
+   flagged citizen + shared (so it's never re-persisted locally), and given an id
+   from its Mongo _id. Returns [] on ANY failure (bad status, non-array, network,
+   timeout) so the app silently falls back to local reports when the backend is
+   unreachable — the base map/analytics never break. */
+async function fetchSharedReports() {
+  const API = window.API_BASE || '';
+  const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : 0;
+  try {
+    const res = await fetch(API + '/reports', ctrl ? { signal: ctrl.signal } : undefined);
+    if (timer) clearTimeout(timer);
+    if (!res.ok) return [];
+    const arr = await res.json();
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(isValidReport).map((r) => ({
+      lat: r.lat, lng: r.lng, severity: r.severity, datetime: r.datetime,
+      weather: r.weather, cause: r.cause, vehicle: r.vehicle, area: r.area,
+      citizen: true, shared: true,
+      id: r._id ? ('m' + r._id) : ('c' + Math.random().toString(36).slice(2, 8)),
+    }));
+  } catch (e) { if (timer) clearTimeout(timer); return []; }
+}
+
+/* merge SHARED (backend) + LOCAL (localStorage) citizen reports, de-duplicated by
+   content signature. Shared come first (the authoritative cross-device store); a
+   local report already present on the backend is not added a second time. */
+function mergeCitizenReports(shared, local) {
+  const seen = Object.create(null), out = [];
+  const add = (r) => { const s = reportSignature(r); if (!seen[s]) { seen[s] = true; out.push(r); } };
+  (shared || []).forEach(add);
+  (local || []).forEach(add);
+  return out;
 }
 
 let _areaCentroids = null;                        // { area: [lat, lng] }, cached
@@ -1567,13 +1657,19 @@ window.CRASH_APP = {
   bbox: function () { return { latMin: BBOX.latMin, latMax: BBOX.latMax, lngMin: BBOX.lngMin, lngMax: BBOX.lngMax }; },
   center: function () { return CHENNAI.center.slice(); },
   tileUrl: function () { return TILES[currentTheme()]; },
+  // the live in-memory dataset + the exact grid definition, so the Simulate model
+  // reuses the SAME ~250 m cells and cell key as the hotspot engine
+  records: function () { return app.raw; },
+  grid: function () { return { cell: CELL, latMin: BBOX.latMin, latMax: BBOX.latMax, lngMin: BBOX.lngMin, lngMax: BBOX.lngMax }; },
   citizenCount: function () { return citizenTotal(); },
 
   /* Add a citizen report to the live dataset: derive its fields, recompute the
      full-data snapshots (ranking + emerging), re-render the map + rail + header
-     under the active filter, refresh the analytics (heatmap + KPI stats), and
-     persist to localStorage. Returns the stored record. */
-  addReport: function (rec) {
+     under the active filter, and refresh the analytics (heatmap + KPI stats).
+     persistLocal controls the localStorage write: the backend is the shared store,
+     so we persist locally ONLY as the offline fallback (pass false on a successful
+     POST). Omitted/true keeps the original behaviour. Returns the stored record. */
+  addReport: function (rec, persistLocal) {
     rec.id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     rec.citizen = true;
     prepRecord(rec);
@@ -1596,7 +1692,10 @@ window.CRASH_APP = {
     // keep the analytics section (heatmap + KPI stats) in lock-step, live
     if (typeof window.__crashRebuildAnalytics === 'function') window.__crashRebuildAnalytics(app.raw);
 
-    persistCitizenReports();
+    if (persistLocal !== false) persistCitizenReports();   // offline fallback / back-compat; skip when the backend saved it
     return rec;
   },
+
+  /* fly the map to a citizen report + highlight it (notifications click-to-navigate) */
+  focusReport: function (r) { return focusReport(r); },
 };

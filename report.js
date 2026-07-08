@@ -11,7 +11,7 @@
 (function (root) {
 
   const W = { fatal: 3, serious: 2, slight: 1 };
-  const BBOX = { latMin: 12.83, lngMin: 80.03 }, CELL = 0.0022, SUP = 2, TOP_N = 10, HIGH_RISK_MIN = 40;
+  const BBOX = { latMin: 12.80, lngMin: 80.03 }, CELL = 0.0022, SUP = 2, TOP_N = 10, HIGH_RISK_MIN = 40;   // south extended for Kattankulathur (GST Rd)
   const RECENT_MONTHS = 6, EMERGE_LIFT = 1.5, EMERGE_MIN_RECENT = 8, EMERGE_TOP_N = 6;
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

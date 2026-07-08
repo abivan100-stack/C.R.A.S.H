@@ -18,7 +18,7 @@
     'Improper overtaking', 'Vehicle defect', 'Poor visibility'];
   const VEHICLES = ['Two-wheeler', 'Car', 'Auto-rickshaw', 'Bus (MTC/Private)',
     'Lorry / Truck', 'LCV / Van', 'Bicycle', 'Unknown (fled)'];
-  const BBOX = { latMin: 12.83, lngMin: 80.03 };
+  const BBOX = { latMin: 12.80, lngMin: 80.03 };   // south extended to frame Kattankulathur (GST Rd)
   const CELL = 0.0022, SUPPRESS = 2, TOP_N = 10, HIGH_RISK_MIN = 40;
   const RECENT_MONTHS = 6, EMERGE_LIFT = 1.5, EMERGE_MIN_RECENT = 8, EMERGE_TOP_N = 6;
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -487,7 +487,7 @@
 
     let data;
     try {
-      const res = await fetch('./data/accidents.json?v=8');
+      const res = await fetch('./data/accidents.json?v=9');
       if (!res.ok) throw new Error('HTTP ' + res.status);
       data = await res.json();
     } catch (err) {

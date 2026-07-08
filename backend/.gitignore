@@ -1,0 +1,11 @@
+# Secrets — never commit real env files (only .env.example is tracked)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/

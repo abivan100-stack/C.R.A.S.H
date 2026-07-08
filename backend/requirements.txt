@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+# pymongo's old "[srv]" extra was removed upstream (it now warns and is a no-op).
+# dnspython is what actually enables MongoDB Atlas "mongodb+srv://" URIs.
+pymongo
+dnspython
+python-dotenv
