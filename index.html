@@ -247,6 +247,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
 /* ===================== REPORT section ===================== */
 .report-root { max-width: 880px; margin: 0 auto; padding: 40px 22px 80px; }
+/* the report form now leads the tab — don't add the extra section gap above the first block */
+.report-root > .section:first-child { margin-top: 0; }
 .report-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 22px 22px 20px; display: flex; flex-direction: column; gap: 11px; }
 .rc-badge { width: 40px; height: 40px; border-radius: 9px; background: rgba(67,176,204,0.10); border: 1px solid rgba(67,176,204,0.25); color: var(--accent); display: flex; align-items: center; justify-content: center; }
 .rc-title { font: 600 18px 'Space Grotesk', sans-serif; }
@@ -718,40 +720,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
   <!-- =================== REPORT =================== -->
   <section class="app-section" id="section-report" role="tabpanel" aria-label="Reports">
     <div class="report-root">
-      <div class="eyebrow">Reports</div>
-      <h1 class="h-hero">Download a report.</h1>
-      <p class="sub">Branded PDF reports, generated in your browser from the current data — the same figures behind the map and the analytics. Nothing is uploaded.</p>
-
-      <div class="grid g2" style="margin-top:28px; align-items:stretch;">
-        <div class="report-card">
-          <div class="rc-badge">
-            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V5a1 1 0 0 1 1-1h9l6 6v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 4v6h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 13h8M8 16.5h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-          </div>
-          <div class="rc-title">City-wide report</div>
-          <div class="rc-desc">The full safety report: headline KPIs, the leverage stat, the top-10 ranked junctions, cause &amp; vehicle breakdowns, emerging hotspots, and the intervention priority queue.</div>
-          <button class="rc-btn" id="reportCityBtn" type="button">
-            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Download city report
-          </button>
-        </div>
-
-        <div class="report-card">
-          <div class="rc-badge">
-            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
-          </div>
-          <div class="rc-title">Single-area report</div>
-          <div class="rc-desc">A focused report for one area: severity split, top causes, vehicles, timing, weather, and the recommended intervention with its cost tier and estimated preventable crashes.</div>
-          <label class="rc-label" for="reportZoneSelect">Choose an area</label>
-          <select class="rc-select" id="reportZoneSelect"><option value="">Loading areas…</option></select>
-          <button class="rc-btn" id="reportZoneBtn" type="button">
-            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Download area report
-          </button>
-        </div>
-      </div>
-      <div class="footnote" style="margin-top:20px;">Impact figures in the reports are indicative planning estimates, not measured outcomes.</div>
-
-      <!-- ---- Report an accident (citizen form) ---- -->
+      <!-- ---- Report an accident (citizen form) — moved to the top so filing is the first thing the user sees ---- -->
       <div class="section" id="reportFormSection">
         <div class="slabel">Contribute</div>
         <div class="stitle">Report an accident</div>
@@ -831,6 +800,42 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         </div>
 
         <div class="footnote" style="margin-top:14px;">Citizen reports are community-submitted and unverified. They are marked distinctly on the map and stored only on this device.</div>
+      </div>
+
+      <!-- ---- Download reports — now below the report form ---- -->
+      <div class="section" id="reportDownloadSection">
+        <div class="eyebrow">Reports</div>
+        <h1 class="h-hero">Download a report.</h1>
+        <p class="sub">Branded PDF reports, generated in your browser from the current data — the same figures behind the map and the analytics. Nothing is uploaded.</p>
+
+        <div class="grid g2" style="margin-top:28px; align-items:stretch;">
+          <div class="report-card">
+            <div class="rc-badge">
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V5a1 1 0 0 1 1-1h9l6 6v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 4v6h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 13h8M8 16.5h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            </div>
+            <div class="rc-title">City-wide report</div>
+            <div class="rc-desc">The full safety report: headline KPIs, the leverage stat, the top-10 ranked junctions, cause &amp; vehicle breakdowns, emerging hotspots, and the intervention priority queue.</div>
+            <button class="rc-btn" id="reportCityBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Download city report
+            </button>
+          </div>
+
+          <div class="report-card">
+            <div class="rc-badge">
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+            </div>
+            <div class="rc-title">Single-area report</div>
+            <div class="rc-desc">A focused report for one area: severity split, top causes, vehicles, timing, weather, and the recommended intervention with its cost tier and estimated preventable crashes.</div>
+            <label class="rc-label" for="reportZoneSelect">Choose an area</label>
+            <select class="rc-select" id="reportZoneSelect"><option value="">Loading areas…</option></select>
+            <button class="rc-btn" id="reportZoneBtn" type="button">
+              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Download area report
+            </button>
+          </div>
+        </div>
+        <div class="footnote" style="margin-top:20px;">Impact figures in the reports are indicative planning estimates, not measured outcomes.</div>
       </div>
     </div>
   </section>
