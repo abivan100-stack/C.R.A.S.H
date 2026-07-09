@@ -12,10 +12,12 @@ Security:
   * For local dev, python-dotenv loads a gitignored .env (see .env.example).
   * In production (Render) MONGODB_URI is set in the service's env settings.
 """
+import json
 import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pymongo import MongoClient
@@ -126,6 +128,38 @@ def list_reports():
     for doc in documents:
         doc["_id"] = str(doc["_id"])
     return documents
+
+
+@app.get("/export")
+def export_reports():
+    """Download EVERY citizen report as a citizen_reports.json file.
+
+    Same source as /reports — all documents from the collection, each id
+    stringified — but returned with a Content-Disposition header so the browser
+    saves it as a file instead of rendering it. The file is generated on demand
+    from MongoDB on every request; nothing is written to the server's disk
+    (Render's filesystem is ephemeral), so the export is always current.
+
+    Each record is normalised to the frontend schema: the BSON _id is stringified
+    and surfaced as `id`, followed by the eight report fields. Pretty-printed
+    (indent=2) so the downloaded file is human-readable.
+    """
+    collection = get_collection()
+    try:
+        documents = list(collection.find())
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Query failed: {exc}")
+    # id first, then whatever fields the document carries; default=str keeps the
+    # dump from ever failing on an unexpected non-JSON value.
+    exported = [{"id": str(doc.pop("_id", "")), **doc} for doc in documents]
+    body = json.dumps(exported, indent=2, ensure_ascii=False, default=str)
+    return Response(
+        content=body,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": 'attachment; filename="citizen_reports.json"',
+        },
+    )
 
 
 # --- Static frontend (single-origin) ------------------------------------------

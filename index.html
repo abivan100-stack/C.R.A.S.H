@@ -844,6 +844,21 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             </button>
           </div>
         </div>
+
+        <!-- ---- Export all citizen reports as raw JSON ---- -->
+        <div class="report-card" style="margin-top:18px;">
+          <div class="rc-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="7" ry="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 5v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 11v6c0 1.4 3.1 2.6 7 2.6 1.5 0 2.9-.18 4-.48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M18 15v6m0 0 2.4-2.4M18 21l-2.4-2.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="rc-title">Export citizen reports</div>
+          <div class="rc-desc">Download every citizen-submitted accident report as a single JSON file &mdash; the full record (location, severity, date &amp; time, weather, cause, vehicle and area) for each report, generated on demand from the shared database. If the database is unreachable, the reports saved in this browser are exported instead.</div>
+          <button class="rc-btn" id="exportReportsBtn" type="button">
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Export all reports (JSON)
+          </button>
+          <div class="af-hint" id="exportReportsMsg" role="status" aria-live="polite" style="margin-top:10px;" hidden></div>
+        </div>
+
         <div class="footnote" style="margin-top:20px;">Impact figures in the reports are indicative planning estimates, not measured outcomes.</div>
       </div>
     </div>
@@ -983,7 +998,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <script src="./app.js?v=phase8q"></script>
 <script src="./analytics.js?v=phase8h"></script>
 <script src="./simulate.js?v=phase14"></script>
-<script src="./notifications.js?v=6"></script>
+<script src="./notifications.js?v=7"></script>
 
 <script>
 (function () {
@@ -1367,6 +1382,85 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     });
     updateReadout();
   }
+
+  /* ---- Export all citizen reports as a downloadable JSON file ----
+     Primary source is the backend's GET /export (every report in the shared
+     database). If the backend is unreachable, we fall back to the citizen
+     reports saved offline in THIS browser's localStorage, so a file is always
+     produced — even fully offline. */
+  (function initReportExport() {
+    var btn = document.getElementById('exportReportsBtn');
+    if (!btn) return;
+    var msgEl = document.getElementById('exportReportsMsg');
+
+    function setMsg(text, isErr) {
+      if (!msgEl) return;
+      msgEl.textContent = text || '';
+      msgEl.hidden = !text;
+      msgEl.style.color = isErr ? 'var(--fatal)' : 'var(--text-2)';
+    }
+
+    /* trigger a browser download of a text body as filename (Blob + object URL) */
+    function downloadJSON(text, filename) {
+      var blob = new Blob([text], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+    }
+
+    function plural(n) { return n === 1 ? '' : 's'; }
+
+    /* the citizen reports saved offline in this browser — the fallback source */
+    function localReports() {
+      try {
+        var raw = localStorage.getItem('citizen_reports');
+        var arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) { return []; }
+    }
+
+    function exportLocal(prefix) {
+      var reports = localReports();
+      downloadJSON(JSON.stringify(reports, null, 2), 'citizen_reports.json');
+      setMsg((prefix ? prefix + ' — ' : '') + 'exported ' + reports.length +
+             ' report' + plural(reports.length) + ' saved on this device.', false);
+    }
+
+    btn.addEventListener('click', function () {
+      var API = window.API_BASE || '';
+      btn.disabled = true;
+      setMsg('Preparing export…', false);
+
+      var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 6000) : 0;
+
+      fetch(API + '/export', ctrl ? { signal: ctrl.signal, cache: 'no-store' } : { cache: 'no-store' })
+        .then(function (resp) {
+          if (timer) clearTimeout(timer);
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          return resp.text();
+        })
+        .then(function (text) {
+          // count for the status line (also confirms it is valid JSON)
+          var count = null;
+          try { var arr = JSON.parse(text); if (Array.isArray(arr)) count = arr.length; }
+          catch (e) { throw new Error('bad JSON from server'); }
+          downloadJSON(text, 'citizen_reports.json');
+          setMsg('Exported ' + (count == null ? 'all' : count) + ' report' +
+                 (count == null ? 's' : plural(count)) + ' from the shared database.', false);
+        })
+        .catch(function () {
+          if (timer) clearTimeout(timer);
+          // backend down / blocked / timed out → export whatever is stored locally
+          exportLocal('Database unreachable');
+        })
+        .then(function () { btn.disabled = false; });
+    });
+  })();
 })();
 </script>
 </body>

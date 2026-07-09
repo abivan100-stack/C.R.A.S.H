@@ -17,12 +17,14 @@
   var MAX_ITEMS = 20;       // keep only the most recent N in the panel
   var LS_LIST = 'report_notifications';         // persisted notification list (survives reload)
   var LS_STATE = 'report_notifications_state';  // read/unread state, keyed by content signature
+  var LS_CLEARED = 'report_notifications_cleared';  // signatures the user cleared — stay cleared across reloads
 
   var items = [];           // notifications, newest first
   var unread = 0;
   var panelOpen = false;
   var readSet = {};         // { signature: true } — reports the user has already seen
   var knownSigs = {};       // { signature: true } — every report already surfaced; backend polling checks this so it never re-notifies a known report (uncapped, unlike `items`)
+  var clearedSet = {};      // { signature: true } — reports the user explicitly cleared; never rebuilt into the panel on refresh, so "Clear" sticks across reloads
 
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
@@ -78,6 +80,16 @@
   }
   function saveReadState() {
     try { localStorage.setItem(LS_STATE, JSON.stringify(Object.keys(readSet))); } catch (e) {}
+  }
+  function loadClearedSet() {
+    try {
+      var arr = JSON.parse(localStorage.getItem(LS_CLEARED) || '[]');
+      if (!Array.isArray(arr)) return {};
+      var m = {}; arr.forEach(function (s) { m[s] = true; }); return m;
+    } catch (e) { return {}; }
+  }
+  function saveClearedSet() {
+    try { localStorage.setItem(LS_CLEARED, JSON.stringify(Object.keys(clearedSet))); } catch (e) {}
   }
 
   function makeNotification(r) {
@@ -243,12 +255,13 @@
       var r = reports[i]; if (!r) continue;
       var n = makeNotification(r);
       if (seen[n.sig]) continue; seen[n.sig] = true;
+      knownSigs[n.sig] = true;          // every loaded report is "known" to the poll (even cleared ones), so it only surfaces reports added later
+      if (clearedSet[n.sig]) continue;  // the user cleared this — keep it out of the panel across the refresh
       var prev = persisted[n.sig];
       n.ts = (prev && typeof prev.ts === 'number') ? prev.ts : (typeof r.ts === 'number' ? r.ts : Date.now());
       n.read = !!readSet[n.sig] || !!(prev && prev.read);
       built.push(n);
     }
-    built.forEach(function (n) { knownSigs[n.sig] = true; });   // every loaded report is "known" — the poll only surfaces ones added later
     built.sort(function (a, b) { return b.ts - a.ts; });   // newest first
     items = built.slice(0, MAX_ITEMS);
     unread = countUnread();
@@ -262,16 +275,20 @@
     try {
       var arr = JSON.parse(localStorage.getItem(LS_LIST) || '[]');
       if (!Array.isArray(arr)) return [];
-      return arr.filter(function (n) { return n && n.sig; }).map(function (n) {
+      return arr.filter(function (n) { return n && n.sig && !clearedSet[n.sig]; }).map(function (n) {
         n.read = !!readSet[n.sig] || !!n.read; return n;
       }).sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); }).slice(0, MAX_ITEMS);
     } catch (e) { return []; }
   }
 
   function clearAll() {
+    // remember every currently-shown report as "cleared" so a refresh doesn't rebuild
+    // it back into the panel (these reports still live in the backend / localStorage).
+    for (var i = 0; i < items.length; i++) { clearedSet[items[i].sig] = true; knownSigs[items[i].sig] = true; }
+    saveClearedSet();
     items = []; readSet = {}; unread = 0;
-    // knownSigs is intentionally NOT reset — cleared reports stay cleared this session
-    // (the poll won't re-surface them); a page reload rebuilds from the reports as before.
+    // knownSigs is intentionally NOT reset — cleared reports stay cleared (the poll
+    // won't re-surface them, and clearedSet keeps them out of the refresh rebuild).
     try { localStorage.removeItem(LS_LIST); localStorage.removeItem(LS_STATE); } catch (e) {}
     updateBadge(); renderList();
   }
@@ -319,7 +336,7 @@
           var r = data[i];
           if (!r || !isFinite(Number(r.lat)) || !isFinite(Number(r.lng))) continue;
           var sig = signature(r);
-          if (knownSigs[sig]) continue;
+          if (knownSigs[sig] || clearedSet[sig]) continue;   // already surfaced, or explicitly cleared
           knownSigs[sig] = true;
           fresh.push(r);
         }
@@ -360,6 +377,7 @@
   // restore last session's read state + list first, so the panel isn't empty before
   // app.js announces the loaded reports (the authoritative rebuild follows).
   readSet = loadReadState();
+  clearedSet = loadClearedSet();   // reports cleared in a previous session — keep them out of the rebuild
   items = restoreFromPersisted();
   items.forEach(function (n) { knownSigs[n.sig] = true; });   // last session's notifications are already known
   unread = countUnread();
