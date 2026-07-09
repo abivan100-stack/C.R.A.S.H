@@ -18,6 +18,7 @@
   var map = null, tileLayer = null, wired = false, simulated = false;
   var pointLayer = null, heatLayer = null, rankLayer = null, animRaf = 0, canvasRenderer = null;   // STEP 4 projection layers
   var simChart = null, lastProjection = null;   // STEP 5 results sidebar
+  var runNonce = 0;   // bumped on every "Run" click → each run is a fresh Monte Carlo realization (slight run-to-run variation); held constant while live-filtering so a run stays self-consistent
   var SEV_COLOR = { fatal: '#E4404E', serious: '#F2933E', slight: '#E7C64B' };
   var SEV_LABEL = { fatal: 'Fatal', serious: 'Serious', slight: 'Slight' };
   // STEP 6 — results-panel empty-state copy: default vs. a scenario with no history
@@ -108,6 +109,68 @@
     renderProjection(runSimulation(s), s, false);   // instant update (no re-animation) when filtering
   }
 
+  /* STEP 1 — keep the horizon field WHOLE-NUMBER only: block '.', 'e', '+', '-' and
+     any non-digit at the keyboard, sanitise pastes, and strip stray characters on
+     input. (Range checking + the error/disabled state are handled separately.) */
+  function isHorizonEditKey(e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return true;   // copy / paste / select-all, etc.
+    switch (e.key) {
+      case 'Backspace': case 'Delete': case 'Tab': case 'Enter':
+      case 'ArrowLeft': case 'ArrowRight': case 'ArrowUp': case 'ArrowDown':
+      case 'Home': case 'End': case 'Escape': return true;
+      default: return false;
+    }
+  }
+  function enforceIntegerInput(hz) {
+    hz.addEventListener('keydown', function (e) {
+      if (isHorizonEditKey(e)) return;
+      // block any single printable character that isn't a digit 0–9 ('.', 'e', '+', '-', letters, space…)
+      if (e.key && e.key.length === 1 && (e.key < '0' || e.key > '9')) e.preventDefault();
+    });
+    hz.addEventListener('paste', function (e) {
+      if (e.preventDefault) e.preventDefault();
+      var cd = e.clipboardData || (typeof window !== 'undefined' && window.clipboardData);
+      var text = cd && cd.getData ? cd.getData('text') : '';
+      var digits = String(text).replace(/[^0-9]/g, '');
+      if (digits) hz.value = digits;
+      try { hz.dispatchEvent(new Event('input', { bubbles: true })); } catch (err) {}
+    });
+    hz.addEventListener('input', function () {
+      var cleaned = String(hz.value).replace(/[^0-9]/g, '');   // final safety net (drag-drop, IME, autofill)
+      if (cleaned !== hz.value) hz.value = cleaned;
+    });
+  }
+
+  /* STEP 3 — validate the horizon: a WHOLE number in [1, 24]. Empty, out-of-range,
+     or non-integer → invalid. Drives the inline error, the input's error border,
+     and the disabled state of "Run simulation". */
+  var HORIZON_MIN = 1, HORIZON_MAX = 24;
+
+  function horizonRaw(hz) { return String(hz && hz.value != null ? hz.value : '').trim(); }
+  function isValidHorizon(hz) {
+    var v = horizonRaw(hz);
+    if (!/^\d+$/.test(v)) return false;                 // empty / decimal / sign / non-digit → invalid
+    var n = parseInt(v, 10);
+    return n >= HORIZON_MIN && n <= HORIZON_MAX;
+  }
+  // reflect the current validity into the UI: input border, inline error (shown IN
+  // PLACE OF the cue so they never crowd), aria state, and the Run button's disabled
+  // state. Returns whether the field is currently valid.
+  function updateHorizonValidity() {
+    var hz = document.getElementById('simHorizon');
+    if (!hz) return true;
+    var valid = isValidHorizon(hz);
+    if (hz.classList) hz.classList.toggle('invalid', !valid);
+    if (hz.setAttribute) hz.setAttribute('aria-invalid', valid ? 'false' : 'true');
+    var cue = document.getElementById('simHorizonCue');
+    var err = document.getElementById('simHorizonError');
+    if (cue) cue.hidden = !valid;                        // hide the cue while the error is shown
+    if (err) err.hidden = valid;
+    var run = document.getElementById('simRun');
+    if (run) { run.disabled = !valid; if (run.setAttribute) run.setAttribute('aria-disabled', valid ? 'false' : 'true'); }
+    return valid;
+  }
+
   function wireControls() {
     if (wired) return;
     wired = true;
@@ -116,13 +179,25 @@
     wireSeg('simDayType', 'dayType');
 
     var hz = document.getElementById('simHorizon');
-    if (hz) hz.addEventListener('change', function () { scenario.horizonMonths = parseInt(hz.value, 10) || 6; applyLive(); });
+    if (hz) {
+      enforceIntegerInput(hz);   // STEP 1 — whole-number-only entry
+      // STEP 3 — validate live on every keystroke (border + inline error + disable Run)
+      hz.addEventListener('input', updateHorizonValidity);
+      // only feed a VALID value into the engine; an invalid entry keeps the last one
+      hz.addEventListener('change', function () {
+        if (isValidHorizon(hz)) { scenario.horizonMonths = parseInt(hz.value, 10); applyLive(); }
+        updateHorizonValidity();
+      });
+    }
 
     // "Run simulation" runs the full projection first; filters unlock afterwards
     var run = document.getElementById('simRun');
     if (run) run.addEventListener('click', function () {
+      if (!updateHorizonValidity()) return;            // STEP 3 — validate on Run too (button is disabled when invalid)
+      if (hz) scenario.horizonMonths = parseInt(hz.value, 10);   // run with the exact entered value
       simulated = true;
       setFiltersLocked(false);
+      runNonce = (runNonce + 1) | 0;                 // fresh Monte Carlo realization → slight run-to-run variation
       var s = getScenario();
       renderProjection(runSimulation(s), s, true);   // animated reveal on the run
     });
@@ -131,6 +206,7 @@
     if (reset) reset.addEventListener('click', resetScenario);
 
     setFiltersLocked(true);                 // start locked until the first run
+    updateHorizonValidity();                // STEP 3 — set the initial state (default 6 is valid → Run enabled)
   }
 
   function resetScenario() {
@@ -140,6 +216,7 @@
     setSeg('simDayType', 'any');
     var hz = document.getElementById('simHorizon');
     if (hz) hz.value = '6';
+    updateHorizonValidity();               // STEP 3 — 6 is valid: clears any error/border, re-enables Run
     simulated = false;
     setFiltersLocked(true);                // re-lock the filters
     clearProjection();                     // clear the projected points + heat field
@@ -268,9 +345,11 @@
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  // FNV-1a hash of the scenario -> 32-bit seed
-  function seedFrom(s) {
-    var str = s.timeOfDay + '|' + s.weather + '|' + s.dayType + '|' + s.horizonMonths;
+  // FNV-1a hash of the scenario (+ run nonce) -> 32-bit seed. Folding the nonce in
+  // means each run of the SAME scenario gets an independent RNG stream — different
+  // enough to visibly vary, yet exactly reproducible for a given (scenario, nonce).
+  function seedFrom(s, nonce) {
+    var str = s.timeOfDay + '|' + s.weather + '|' + s.dayType + '|' + s.horizonMonths + '|' + (nonce >>> 0);
     var h = 2166136261 >>> 0;
     for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
     return h >>> 0;
@@ -333,18 +412,36 @@
     return 'slight';
   }
 
-  function runSimulation(scenario) {
+  // run-to-run stochastic variation in projected VOLUME. The per-cell DISTRIBUTION
+  // already varies run-to-run because each run re-seeds the sampler; this adds a
+  // matching wobble to the headline TOTAL so the two move together, like a real
+  // count would. Poisson-like (Gaussian relative noise), and HARD-CLAMPED so every
+  // run stays "more or less the same" instead of swinging wildly.
+  var VOLUME_SIGMA = 0.06;   // ~6% standard-deviation fluctuation on the projected total
+  var VOLUME_CLAMP = 0.15;   // but never more than ±15% off the expected volume
+
+  function runSimulation(scenario, nonceOverride) {
     var m = model();
     if (!m) return [];
     var s = normScenario(scenario);
     var grid = bridge().grid();
+    var nonce = (nonceOverride == null ? runNonce : (parseInt(nonceOverride, 10) || 0));
+
+    // one seeded RNG per run — its stream depends on BOTH the scenario and the run
+    // nonce. Created up front so the volume wobble and the point allocation draw
+    // from the same deterministic stream (reproducible for a given scenario+nonce).
+    var rng = mulberry32(seedFrom(s, nonce));
 
     // 1) projected TOTAL = expected volume over the horizon (city monthly rate ×
-    //    months), then only the slice matching these conditions (joint prevalence).
-    //    Any/Any/Any -> full expected volume; a rare scenario -> proportionally fewer.
+    //    months) sliced to the matching conditions (joint prevalence). The no-match
+    //    decision is made on the NOISE-FREE expectation, so whether a scenario
+    //    projects anything is stable across runs (the empty state never flickers);
+    //    a real projection then gets a slight, clamped run-to-run fluctuation.
     var prevalence = scenarioPrevalence(s, m);
-    var projectedTotal = Math.round(m.cityRate.monthlyRate * s.horizonMonths * prevalence);
-    if (projectedTotal <= 0) return [];
+    var baseTotal = m.cityRate.monthlyRate * s.horizonMonths * prevalence;
+    if (Math.round(baseTotal) <= 0) return [];
+    var vf = 1 + Math.max(-VOLUME_CLAMP, Math.min(VOLUME_CLAMP, gaussian(rng) * VOLUME_SIGMA));
+    var projectedTotal = Math.max(1, Math.round(baseTotal * vf));
 
     // 2) per-cell scenario weight = base risk intensity × conditional match; build
     //    the cumulative array for weighted (roulette-wheel) allocation.
@@ -355,7 +452,6 @@
 
     // 3) allocate each projected point to a cell (proportional to weight), jitter
     //    around the cell centre (Gaussian ~cell radius), sample severity from mix.
-    var rng = mulberry32(seedFrom(s));
     var sigma = grid.cell * 0.5;                     // ~cell radius (~125 m)
     var pts = new Array(projectedTotal);
     for (var k = 0; k < projectedTotal; k++) {
@@ -436,6 +532,10 @@
      ======================================================================== */
   var SEV_RADIUS = { fatal: 4.2, serious: 3.6, slight: 3.0 };
   var SEV_HEAT = { fatal: 1.0, serious: 0.65, slight: 0.4 };
+  // STEP 5 — above this many projected points, skip the staggered reveal animation
+  // and paint them at final style in ONE pass, so large horizons (e.g. 24 months,
+  // which can approach the full dataset) render instantly with no per-frame lag.
+  var ANIM_MAX_POINTS = 3500;
 
   function prefersReducedMotion() {
     try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
@@ -564,7 +664,8 @@
     // ---- projected points on a shared canvas renderer (each clickable) ----
     if (!canvasRenderer) canvasRenderer = L.canvas({ padding: 0.5 });
     pointLayer = L.layerGroup().addTo(map);
-    var reduce = prefersReducedMotion() || animate === false;   // instant when filtering
+    var reduce = prefersReducedMotion() || animate === false ||   // instant when filtering…
+                 pts.length > ANIM_MAX_POINTS;                     // …or when a large horizon would make the reveal lag
     var markers = new Array(pts.length);
     for (var i = 0; i < pts.length; i++) {
       var p = pts[i];
@@ -627,7 +728,7 @@
     var totalEl = document.getElementById('simTotal');
     if (totalEl) totalEl.textContent = fmtInt(pts.length);
     var horizonEl = document.getElementById('simTotalHorizon');
-    if (horizonEl) horizonEl.textContent = 'next ' + scenario.horizonMonths + ' months';
+    if (horizonEl) { var hm = scenario.horizonMonths; horizonEl.textContent = 'next ' + hm + (hm === 1 ? ' month' : ' months'); }
     var noteEl = document.getElementById('simScenarioNote');
     if (noteEl) noteEl.textContent = scenarioLabel(scenario);
 
@@ -729,10 +830,10 @@
     runSimulation: runSimulation,   // (scenario) → [{lat, lng, cellId, projectedSeverity}]
     render: function (scenario) { var s = scenario || getScenario(); renderProjection(runSimulation(s), s); },
     clear: clearProjection,
-    getProjectedHotspots: function (scenario, n) {   // top-N projected places for a scenario
+    getProjectedHotspots: function (scenario, n, nonce) {   // top-N projected places for a scenario (optional explicit run nonce)
       var s = scenario || getScenario(), mdl = model(), cellMap = {};
       if (mdl) mdl.cells.forEach(function (c) { cellMap[c.cellId] = c; });
-      return projectedHotspots(runSimulation(s), cellMap, n || 10);
+      return projectedHotspots(runSimulation(s, nonce), cellMap, n || 10);
     },
     getPrevalence: function (scenario) {   // fraction of base accidents matching the conditions (Any/Any/Any → 1)
       var m = model();

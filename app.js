@@ -50,7 +50,7 @@ const EMERGE_TOP_N = 6;       // how many distinct emerging junctions to surface
 
 /* Segmented filter definitions (wired live in Phase 5) */
 const SEGMENTS = {
-  source:  { id: 'segSource',  options: [['All', 'all'], ['Citizen only', 'citizen']] },
+  source:  { id: 'segSource',  options: [['All', 'all'], ['Official only', 'official'], ['Citizen only', 'citizen']] },
   sev:     { id: 'segSev',     options: [['All', 'all'], ['Fatal + serious', 'fs'], ['Fatal', 'f']] },
   time:    { id: 'segTime',    options: [['All', 'all'], ['Day', 'day'], ['Night', 'night']] },
   weather: { id: 'segWeather', options: [['All', 'all'], ['Clear', 'clear'], ['Rain', 'rain'], ['Fog', 'fog']] },
@@ -140,6 +140,7 @@ function filterRecords() {
   const { sev, time, weather, dow, cause, source } = app.filters;
   return app.raw.filter((a) => {
     if (source === 'citizen' && !a.citizen) return false;        // isolate citizen reports
+    if (source === 'official' && a.citizen) return false;        // isolate official records (base dataset)
     if (sev === 'fs' && a.severity === 'slight') return false;   // Fatal + serious
     if (sev === 'f' && a.severity !== 'fatal') return false;     // Fatal only
     if (time === 'day' && a._night) return false;
@@ -166,7 +167,9 @@ function updateFilterNote() {
   if (!el) return;
   const f = app.filters;
   el.textContent = (f.source !== 'all' || f.sev !== 'all' || f.time !== 'all' || f.weather !== 'all' || f.dow !== 'all' || f.cause !== 'all')
-    ? (f.source === 'citizen' ? 'Citizen reports only' : 'Counts reflect active filters') : '';
+    ? (f.source === 'citizen' ? 'Citizen reports only'
+       : f.source === 'official' ? 'Official records only'
+       : 'Counts reflect active filters') : '';
 }
 
 /* Active-filter count badge on the Filters button */

@@ -120,21 +120,26 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 
 /* ---- emerging-hotspot pulse markers (Phase 2) ---- */
 @keyframes emPulse {
-  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0.85; }
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0.9; }
   70%  { opacity: 0; }
-  100% { transform: translate(-50%, -50%) scale(2.7); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(2.9); opacity: 0; }
 }
 .em-icon { background: transparent; border: none; }
-.em-mark { position: relative; width: 34px; height: 34px; }
+.em-mark { position: relative; width: 34px; height: 34px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.55)); }
+/* persistent identity ring — keeps the emerging marker legible against the dense point cloud even between pulses */
+.em-mark::before {
+  content: ""; position: absolute; top: 50%; left: 50%; width: 19px; height: 19px; margin: -9.5px 0 0 -9.5px;
+  border-radius: 50%; border: 2px solid var(--accent); opacity: 0.6; pointer-events: none; }
 .em-pulse {
   position: absolute; top: 50%; left: 50%; width: 16px; height: 16px; border-radius: 50%;
-  border: 2px solid var(--accent); transform: translate(-50%, -50%);
+  border: 2.5px solid var(--accent); transform: translate(-50%, -50%);
   animation: emPulse 2.4s ease-out infinite; pointer-events: none; }
 .em-core {
-  position: absolute; top: 50%; left: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px;
-  border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  position: absolute; top: 50%; left: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3.4px rgba(6,18,26,0.85), 0 0 12px var(--accent); }
 .em-icon:hover .em-core { filter: brightness(1.35); }
-/* reduced motion: no expanding pulse — leave a static ring so the marker is still visible */
+/* reduced motion: no expanding pulse — the persistent identity ring above keeps the marker visible */
 @media (prefers-reduced-motion: reduce) {
   .em-pulse { animation: none; opacity: 0.6; transform: translate(-50%, -50%) scale(1.3); }
 }
@@ -354,6 +359,6 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="./report.js?v=phase5d"></script>
-<script src="./app.js?v=phase8h"></script>
+<script src="./app.js?v=phase8o"></script>
 </body>
 </html>
