@@ -13,6 +13,7 @@ Security:
   * In production (Render) MONGODB_URI is set in the service's env settings.
 """
 import io
+import json
 import math
 import os
 import zipfile
@@ -280,6 +281,166 @@ def export_reports_xlsx():
             "X-Report-Count": str(count),
         },
     )
+
+
+# --- C.R.A.S.H Bot: free-form Q&A over the dataset ----------------------------
+# The frontend sends the question PLUS a complete statistical digest of the in-memory
+# dataset (all ~10k raw rows can't fit the model's context, so it sends every aggregate:
+# each area's full breakdown, all causes/vehicles/weather/day-night). The AI answers
+# freely from that digest and optionally returns a filter so THIS page's map can
+# highlight the matching accidents. The API key is read from the environment only.
+ANTHROPIC_MODEL = "claude-sonnet-4-6"   # editable — must be a model this API key can access
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")   # env only, NEVER hardcoded
+
+# Valid filter vocabularies — MUST match the frontend dataset so the AI's output lines
+# up exactly with the map's own filtering. Areas are the 30 real dataset areas.
+BOT_AREAS = [
+    "Adyar", "Ambattur", "Anna Nagar", "Avadi", "Chromepet", "Egmore", "Guindy",
+    "Kattankulathur", "Koyambedu", "Maduravoyal", "Medavakkam", "Mylapore", "Nandanam",
+    "Nungambakkam", "Padi", "Pallavaram", "Perambur", "Perungudi", "Poonamallee",
+    "Porur", "Saidapet", "Sholinganallur", "T. Nagar", "Tambaram", "Teynampet",
+    "Thiruvanmiyur", "Thoraipakkam", "Vadapalani", "Vandalur", "Velachery",
+]
+BOT_CAUSES = [
+    "Over-speeding", "Wrong-side driving", "Signal jumping", "Drunken driving",
+    "Mobile phone use", "Hit and run", "Pothole / bad road", "Pedestrian crossing error",
+    "Improper overtaking", "Vehicle defect", "Poor visibility",
+]
+BOT_VEHICLES = [
+    "Two-wheeler", "Car", "Auto-rickshaw", "Bus (MTC/Private)", "Lorry / Truck",
+    "LCV / Van", "Bicycle", "Unknown (fled)",
+]
+BOT_SEVERITY = {"fatal", "serious", "slight"}
+BOT_TIME = {"day", "night"}
+BOT_WEATHER = {"clear", "rain", "fog"}
+BOT_INTENT = {"count", "summary", "help", "out_of_scope"}
+
+ASK_SYSTEM_PROMPT = (
+    "You are C.R.A.S.H Bot, a helpful assistant for a Chennai road-accident dashboard.\n"
+    "Answer the user's question using ONLY the DATA SUMMARY at the end of this message. Its\n"
+    "numbers are exact — read them and do any arithmetic yourself (sums, differences,\n"
+    "comparisons, max/min, percentages). Never invent figures that aren't in or derivable\n"
+    "from the summary; if it genuinely doesn't cover something, say so briefly. Discuss ONLY\n"
+    "Chennai road accidents; for anything else, politely redirect in one sentence.\n\n"
+    "Respond with ONLY a JSON object (no text outside it):\n"
+    '{"answer": "<your natural-language answer as plain text; may use **bold**; concise>",\n'
+    ' "filters": {"area": <valid area or null>, "severity": "fatal"|"serious"|"slight"|null,\n'
+    '   "timeOfDay": "day"|"night"|null, "weather": "clear"|"rain"|"fog"|null,\n'
+    '   "cause": <valid cause or null>, "vehicle": <valid vehicle or null>}}\n'
+    "Set \"filters\" to the single accident subset the answer is about so the map can highlight\n"
+    "it (e.g. area + severity), using the exact vocab below; use null for any field, or set\n"
+    '"filters" to null for a whole-city / comparison / off-topic answer. All prose goes inside\n'
+    "\"answer\". 'night' = 18:00-06:00, 'day' = 06:00-18:00.\n\n"
+    "Valid areas: " + ", ".join(BOT_AREAS) + ".\n"
+    "Valid causes: " + ", ".join(BOT_CAUSES) + ".\n"
+    "Valid vehicles: " + ", ".join(BOT_VEHICLES) + "."
+)
+
+
+class AskRequest(BaseModel):
+    question: str
+    digest: str = ""     # frontend-computed statistical summary of the full dataset
+
+
+def _canon(value, valid_list):
+    """Case-insensitively map a value to its canonical spelling, else None."""
+    if not isinstance(value, str):
+        return None
+    v = value.strip().lower()
+    for item in valid_list:
+        if item.lower() == v:
+            return item
+    return None
+
+
+def _normalize_filters(raw):
+    """Coerce the model's filter object into the safe 6-key shape (unknown values -> None)."""
+    if not isinstance(raw, dict):
+        return {k: None for k in ("area", "severity", "timeOfDay", "weather", "cause", "vehicle")}
+
+    def _low(v):
+        return v.strip().lower() if isinstance(v, str) else None
+    sev, tod, wea = _low(raw.get("severity")), _low(raw.get("timeOfDay")), _low(raw.get("weather"))
+    return {
+        "area": _canon(raw.get("area"), BOT_AREAS),
+        "severity": sev if sev in BOT_SEVERITY else None,
+        "timeOfDay": tod if tod in BOT_TIME else None,
+        "weather": wea if wea in BOT_WEATHER else None,
+        "cause": _canon(raw.get("cause"), BOT_CAUSES),
+        "vehicle": _canon(raw.get("vehicle"), BOT_VEHICLES),
+    }
+
+
+def _parse_ask_json(text):
+    """Parse the model's reply into an object, tolerating code fences / stray prose."""
+    if not text:
+        return None
+    s = text.strip()
+    if s.startswith("```"):
+        s = s.strip("`").strip()
+        if s[:4].lower() == "json":
+            s = s[4:].strip()
+    try:
+        return json.loads(s)
+    except Exception:
+        pass
+    start, end = s.find("{"), s.rfind("}")   # last-ditch: grab the outermost {...}
+    if start != -1 and end > start:
+        try:
+            return json.loads(s[start:end + 1])
+        except Exception:
+            return None
+    return None
+
+
+_anthropic_client = None
+
+
+def _get_anthropic():
+    """Lazily build the Anthropic client — imported HERE (not at module load) so the
+    rest of the app runs even if the SDK/key aren't present yet. Clean 503 if missing."""
+    global _anthropic_client
+    if _anthropic_client is not None:
+        return _anthropic_client
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY is not configured on the server.")
+    try:
+        from anthropic import Anthropic
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"anthropic SDK is not installed: {exc}")
+    _anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY)
+    return _anthropic_client
+
+
+@app.post("/ask")
+def ask(req: AskRequest):
+    """Answer a question about the Chennai accident data using the frontend-supplied digest.
+
+    Returns {"answer": <natural-language text>, "filters": <subset for the map, or null>}.
+    Missing key/SDK -> 503; a failed AI call -> 502 (the frontend shows 'bot unavailable').
+    Non-JSON model output degrades to showing the raw text so an answer is never lost.
+    """
+    question = (req.question or "").strip()
+    if not question:
+        return {"answer": "Ask me anything about the Chennai road-accident data — e.g. “which area has the most fatal accidents?”", "filters": None}
+    digest = (req.digest or "")[:20000]   # cap the payload; it's our own computed summary
+    client = _get_anthropic()             # clean 503 if key/SDK missing
+    system = ASK_SYSTEM_PROMPT + "\n\nDATA SUMMARY:\n" + (digest or "(no data summary was provided)")
+    try:
+        msg = client.messages.create(
+            model=ANTHROPIC_MODEL,
+            max_tokens=700,
+            system=system,
+            messages=[{"role": "user", "content": question[:1000]}],
+        )
+        text = "".join(getattr(b, "text", "") for b in msg.content if getattr(b, "type", None) == "text")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"AI request failed: {exc}")
+    parsed = _parse_ask_json(text)
+    if isinstance(parsed, dict) and isinstance(parsed.get("answer"), str) and parsed["answer"].strip():
+        return {"answer": parsed["answer"].strip(), "filters": _normalize_filters(parsed.get("filters"))}
+    # not JSON (or no 'answer') -> show the model's raw text so we never lose an answer
+    return {"answer": (text or "").strip() or "Sorry, I couldn't find an answer for that.", "filters": None}
 
 
 # --- Static frontend (single-origin) ------------------------------------------

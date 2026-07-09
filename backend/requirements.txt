@@ -5,3 +5,6 @@ uvicorn
 pymongo
 dnspython
 python-dotenv
+# C.R.A.S.H Bot: official Anthropic SDK for the /ask endpoint (question -> filters).
+# The API key is read from ANTHROPIC_API_KEY (env), never hardcoded.
+anthropic

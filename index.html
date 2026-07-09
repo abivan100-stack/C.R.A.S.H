@@ -207,6 +207,79 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .hosp-line-swatch.nearest { border-top-color: var(--accent); }
 .hosp-line-swatch.marked { border-top-style: dashed; border-top-color: #FFFFFF; }
 .hosp-note { font: 400 9.5px 'IBM Plex Mono', monospace; color: var(--text-3); margin: 11px 0 2px; letter-spacing: 0.02em; }
+/* ===================== C.R.A.S.H Bot section ===================== */
+.bot-root { display: flex; height: calc(100vh - 58px); min-height: 0; background: var(--bg); }
+.bot-mapwrap { position: relative; flex: 1 1 60%; min-width: 0; }
+#botMap { position: absolute; inset: 0; width: 100%; height: 100%; background: var(--bg); z-index: 0; }
+.bot-chip { position: absolute; top: 12px; left: 12px; z-index: 20; display: inline-flex; align-items: center; gap: 10px;
+  background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; padding: 8px 10px 8px 12px; max-width: min(70%, 420px);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.45); }
+.bot-chip[hidden] { display: none; }
+.bot-chip span { font: 400 11.5px 'IBM Plex Sans', sans-serif; color: var(--text); line-height: 1.4; min-width: 0; font-variant-numeric: tabular-nums; }
+.bot-chip b { color: var(--accent); font-weight: 600; }
+.bot-chip button { flex: none; font: 500 10.5px 'IBM Plex Mono', monospace; color: var(--text-2); background: transparent;
+  border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; cursor: pointer; }
+.bot-chip button:hover { color: var(--text); border-color: var(--accent); }
+.bot-chat { flex: 0 0 40%; max-width: 470px; display: flex; flex-direction: column; min-height: 0;
+  border-left: 1px solid var(--border); background: var(--panel); }
+.bot-chat-head { flex: none; padding: 15px 18px 13px; border-bottom: 1px solid var(--border); }
+.bot-title { font: 600 17px 'Space Grotesk', sans-serif; letter-spacing: 0.01em; }
+.bot-sub { font: 400 11.5px 'IBM Plex Sans', sans-serif; color: var(--text-2); margin-top: 3px; line-height: 1.5; }
+.bot-messages { flex: 1; overflow-y: auto; min-height: 0; padding: 16px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
+.bot-msg { max-width: 88%; padding: 9px 12px; border-radius: 12px; font: 400 12.5px 'IBM Plex Sans', sans-serif; line-height: 1.55; word-wrap: break-word; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.bot-msg-user { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 4px; }
+.bot-msg-bot { align-self: flex-start; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
+.bot-msg-bot b { color: var(--text); font-weight: 600; }
+.bot-num { font: 600 14px 'IBM Plex Mono', monospace !important; font-variant-numeric: tabular-nums; color: var(--accent) !important; }
+/* rich answer cards */
+.bot-msg.bot-rich { max-width: 100%; width: 100%; }
+.bot-card { display: flex; flex-direction: column; gap: 9px; }
+.bot-card-head { font: 600 13px 'Space Grotesk', sans-serif; color: var(--text); letter-spacing: 0.01em; }
+.bot-card-top { display: flex; align-items: baseline; gap: 9px; }
+.bot-bignum { font: 600 30px 'Space Grotesk', sans-serif; line-height: 0.95; color: var(--accent); font-variant-numeric: tabular-nums; }
+.bot-card-label { font: 400 10px 'IBM Plex Mono', monospace; letter-spacing: 0.05em; color: var(--text-2); text-transform: uppercase; line-height: 1.25; }
+.bot-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+.bot-pill { display: inline-flex; align-items: center; gap: 5px; font: 500 10.5px 'IBM Plex Mono', monospace; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 3px 9px; }
+.bot-pill .dot, .bot-leg .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.bot-sevbar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--track); }
+.bot-sevbar span { display: block; height: 6px; }
+.bot-sevlegend { display: flex; flex-wrap: wrap; gap: 12px; }
+.bot-leg { display: inline-flex; align-items: center; gap: 5px; font: 400 10.5px 'IBM Plex Mono', monospace; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.bot-stat { font: 400 11.5px 'IBM Plex Sans', sans-serif; color: var(--text-2); }
+.bot-stat b { color: var(--text); font-weight: 600; }
+.bot-ranklist { display: flex; flex-direction: column; gap: 6px; }
+.bot-rank { display: flex; align-items: center; gap: 9px; }
+.bot-rank-n { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--panel); border: 1px solid var(--border); color: var(--accent); font: 600 10.5px 'IBM Plex Mono', monospace; display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+.bot-rank-name { flex: 1; min-width: 0; font: 500 13px 'IBM Plex Sans', sans-serif; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bot-rank-val { flex: none; font: 400 11px 'IBM Plex Mono', monospace; color: var(--text-2); font-variant-numeric: tabular-nums; }
+/* free-form AI answer rendering */
+.bot-p { margin: 0; line-height: 1.55; }
+.bot-p + .bot-p { margin-top: 7px; }
+.bot-ul { margin: 5px 0 0; padding-left: 18px; }
+.bot-ul li { margin: 3px 0; line-height: 1.5; }
+.bot-typing { display: inline-flex; gap: 4px; align-items: center; }
+.bot-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); animation: botpulse 1.2s infinite ease-in-out; }
+.bot-dot:nth-child(2) { animation-delay: 0.15s; }
+.bot-dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes botpulse { 0%, 70%, 100% { opacity: 0.28; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-2px); } }
+.bot-examples { flex: none; display: flex; flex-wrap: wrap; gap: 7px; padding: 0 16px 4px; }
+.bot-examples[hidden] { display: none; }
+.bot-ex { font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-2); background: var(--bg); border: 1px solid var(--border);
+  border-radius: 14px; padding: 6px 11px; cursor: pointer; }
+.bot-ex:hover { color: var(--accent); border-color: var(--accent); }
+.bot-inputrow { flex: none; display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--border); }
+#botInput { flex: 1; min-width: 0; font: 400 13px 'IBM Plex Sans', sans-serif; color: var(--text); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+#botInput:focus { outline: none; border-color: var(--accent); }
+#botSend { flex: none; font: 500 12.5px 'IBM Plex Mono', monospace; color: var(--accent-ink); background: var(--accent);
+  border: 1px solid var(--accent); border-radius: 8px; padding: 0 16px; cursor: pointer; }
+#botSend:hover { background: var(--accent-2); border-color: var(--accent-2); }
+#botSend:disabled { opacity: 0.5; cursor: not-allowed; }
+@media (max-width: 860px) {
+  .bot-root { flex-direction: column; height: calc(100dvh - 58px); }
+  .bot-mapwrap { flex: none; height: 42vh; }
+  .bot-chat { flex: 1; max-width: none; width: 100%; border-left: none; border-top: 1px solid var(--border); }
+}
 /* dossier tabs */
 .dtab { flex: 1; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; font: 500 11px 'IBM Plex Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); padding: 11px 8px; }
 .dtab:hover { color: var(--text); }
@@ -562,6 +635,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       <button class="pill" data-section="analytics" role="tab" aria-selected="false">Analytics</button>
       <button class="pill" data-section="report" role="tab" aria-selected="false">Reports</button>
       <button class="pill" data-section="simulate" role="tab" aria-selected="false">Simulate</button>
+      <button class="pill" data-section="bot" role="tab" aria-selected="false">C.R.A.S.H Bot</button>
     </div>
     <div class="notify-wrap">
       <button class="icon-btn notify-bell" id="notifyBell" type="button" aria-label="Notifications" aria-haspopup="dialog" aria-expanded="false">
@@ -1074,6 +1148,31 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       </div>
     </div>
   </section>
+
+  <!-- =================== C.R.A.S.H BOT =================== -->
+  <section class="app-section" id="section-bot" role="tabpanel" aria-label="C.R.A.S.H Bot">
+    <div class="bot-root">
+      <div class="bot-mapwrap">
+        <div id="botFilterChip" class="bot-chip" hidden>
+          <span id="botFilterText"></span>
+          <button id="botFilterClear" type="button">Clear</button>
+        </div>
+        <div id="botMap"></div>
+      </div>
+      <div class="bot-chat">
+        <div class="bot-chat-head">
+          <div class="bot-title">C.R.A.S.H Bot</div>
+          <div class="bot-sub">Ask about Chennai road accidents &mdash; the map answers with the bot.</div>
+        </div>
+        <div id="botMessages" class="bot-messages" role="log" aria-live="polite"></div>
+        <div id="botExamples" class="bot-examples"></div>
+        <div class="bot-inputrow">
+          <input id="botInput" type="text" placeholder="Ask a question…" autocomplete="off" aria-label="Ask C.R.A.S.H Bot a question">
+          <button id="botSend" type="button">Send</button>
+        </div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <!-- Fullscreen accident-location picker overlay (PHASE 1) -->
@@ -1115,6 +1214,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 <script src="./analytics.js?v=phase8h"></script>
 <script src="./simulate.js?v=phase14"></script>
 <script src="./notifications.js?v=8"></script>
+<script src="./bot.js?v=8"></script>
 
 <script>
 (function () {
@@ -1148,6 +1248,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     analytics: document.getElementById('section-analytics'),
     report: document.getElementById('section-report'),
     simulate: document.getElementById('section-simulate'),
+    bot: document.getElementById('section-bot'),
   };
   function show(name) {
     if (!sections[name]) return;
@@ -1172,6 +1273,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       setTimeout(fixReportMap, 200);
     }
     if (name === 'simulate') { if (window.__crashInitSimulate) window.__crashInitSimulate(); }
+    if (name === 'bot') { if (window.__crashInitBot) window.__crashInitBot(); }
   }
   pills.forEach(function (p) { p.addEventListener('click', function () { show(p.dataset.section); }); });
   var brand = document.getElementById('brandHome');
