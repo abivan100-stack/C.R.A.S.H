@@ -1,0 +1,30 @@
+{
+  "name": "crash-chennai-road-accident-safety-hub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CRASH — Chennai Road Accident Safety Hub: an interactive Leaflet + Chart.js road-accident hotspot dashboard with a FastAPI + MongoDB citizen-reports backend. Vanilla JS with no build step; the whole app is served by the Python backend on a single origin.",
+  "keywords": [
+    "chennai",
+    "road-safety",
+    "accident-analysis",
+    "hotspot",
+    "leaflet",
+    "chartjs",
+    "dashboard",
+    "fastapi",
+    "mongodb"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/abivan100-stack/C.R.A.S.H#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abivan100-stack/C.R.A.S.H.git"
+  },
+  "bugs": {
+    "url": "https://github.com/abivan100-stack/C.R.A.S.H/issues"
+  },
+  "scripts": {
+    "start": "python -m uvicorn backend.main:app --reload",
+    "start:prod": "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000"
+  }
+}
