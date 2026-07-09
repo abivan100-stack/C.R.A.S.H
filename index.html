@@ -110,7 +110,7 @@ a:hover { color: var(--accent-2); }
 }
 @media (max-width: 740px) {
   #rail { position: fixed !important; left: 0; right: 0; bottom: 0; top: auto !important; width: auto !important; height: 42vh; z-index: 40; border-right: none !important; border-top: 1px solid var(--border); }
-  #dossier { top: 0 !important; width: 100vw !important; }
+  #dossier { top: 58px !important; width: 100vw !important; }
   #maplegend { display: none !important; }
 }
 /* Leaflet integration */
@@ -429,8 +429,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
   border-radius: 9px; border: 1.5px solid var(--bg); font: 600 10px 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums;
   line-height: 1; pointer-events: none; }
 .notify-badge[hidden] { display: none; }
+/* subtle pop when a new report arrives — auto-disabled under prefers-reduced-motion by the global rule below */
+.notify-badge.bump { animation: notifyBump 0.32s cubic-bezier(0.2,0.7,0.3,1.4); }
+@keyframes notifyBump { 0% { transform: scale(1); } 45% { transform: scale(1.32); } 100% { transform: scale(1); } }
 .notify-panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 4500; width: 340px; max-width: calc(100vw - 24px);
   background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); overflow: hidden; }
+/* narrow headers (hamburger + theme toggle push the bell away from the right edge)
+   would push a right:0-anchored 340px panel off the LEFT of the screen — pin it to
+   the viewport instead, same fix pattern as .toast-host above */
+@media (max-width: 768px) { .notify-panel { position: fixed; top: 66px; left: 12px; right: 12px; width: auto; max-width: none; } }
 .notify-panel[hidden] { display: none; }
 .notify-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--border); }
 .notify-title { font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-2); }
@@ -976,7 +983,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <script src="./app.js?v=phase8q"></script>
 <script src="./analytics.js?v=phase8h"></script>
 <script src="./simulate.js?v=phase14"></script>
-<script src="./notifications.js?v=4"></script>
+<script src="./notifications.js?v=6"></script>
 
 <script>
 (function () {

@@ -22,6 +22,7 @@
   var unread = 0;
   var panelOpen = false;
   var readSet = {};         // { signature: true } — reports the user has already seen
+  var knownSigs = {};       // { signature: true } — every report already surfaced; backend polling checks this so it never re-notifies a known report (uncapped, unlike `items`)
 
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
@@ -141,20 +142,41 @@
     if (unread > 0) { badge.textContent = unread > 99 ? '99+' : String(unread); badge.hidden = false; }
     else { badge.hidden = true; }
   }
+  // a subtle one-shot pop on the badge when a new report arrives; the CSS animation
+  // is auto-disabled under prefers-reduced-motion by the app's global rule
+  function bumpBadge() {
+    var badge = document.getElementById('notifyBadge');
+    if (!badge || badge.hidden || !badge.classList) return;
+    badge.classList.remove('bump');
+    if (typeof badge.offsetWidth === 'number') { void badge.offsetWidth; }   // reflow so the animation restarts on rapid arrivals
+    badge.classList.add('bump');
+  }
 
+  function rowHtml(n) {
+    var color = SEV_COLOR[n.severity] || SEV_COLOR.slight;
+    return '<button class="notify-row' + (n.read ? '' : ' unread') + '" type="button" data-id="' + escapeHtml(n.id) + '">' +
+      '<span class="notify-dot" style="background:' + color + '"></span>' +
+      '<span class="notify-row-main"><span class="notify-row-text">' + summarize(n) + '</span></span>' +
+      '<span class="notify-time">' + escapeHtml(relativeTime(n.ts)) + '</span>' +
+    '</button>';
+  }
   function renderList() {
     var list = document.getElementById('notifyList');
     if (!list) return;
     if (!items.length) { list.innerHTML = '<div class="notify-empty">No reports yet</div>'; return; }
-    list.innerHTML = items.map(function (n) {
-      var color = SEV_COLOR[n.severity] || SEV_COLOR.slight;
-      return '<button class="notify-row' + (n.read ? '' : ' unread') + '" type="button" data-id="' + escapeHtml(n.id) + '">' +
-        '<span class="notify-dot" style="background:' + color + '"></span>' +
-        '<span class="notify-row-main"><span class="notify-row-text">' + summarize(n) + '</span></span>' +
-        '<span class="notify-time">' + escapeHtml(relativeTime(n.ts)) + '</span>' +
-      '</button>';
-    }).join('');
-    // STEP 3 will wire each .notify-row click to navigate to that report
+    list.innerHTML = items.map(rowHtml).join('');
+  }
+  // STEP 3 (smoothness) — add ONE new row at the top without rebuilding the whole
+  // list, so existing rows never flicker and the panel's scroll position is kept.
+  function prependRow(n) {
+    var list = document.getElementById('notifyList');
+    if (!list) return;
+    var html = list.innerHTML || '';
+    if (!html || /notify-empty/.test(html)) { list.innerHTML = rowHtml(n); return; }   // replacing the empty state
+    if (list.insertAdjacentHTML) list.insertAdjacentHTML('afterbegin', rowHtml(n));     // insert in place — old rows untouched
+    else list.innerHTML = rowHtml(n) + html;
+    // safety net: if many arrived while the panel stayed open, resync once to the cap
+    if (list.querySelectorAll && list.querySelectorAll('.notify-row').length > MAX_ITEMS) renderList();
   }
 
   function markAllRead() {
@@ -192,14 +214,20 @@
   function notify(report) {
     if (!report) return;
     var n = makeNotification(report);
+    knownSigs[n.sig] = true;   // a surfaced report is never re-notified by the backend poll
+    var beforeLen = items.length;
     items = items.filter(function (x) { return x.sig !== n.sig; });   // de-dupe by content
+    var wasDup = items.length !== beforeLen;
     items.unshift(n);
     if (items.length > MAX_ITEMS) items.length = MAX_ITEMS;
     if (panelOpen) { n.read = true; readSet[n.sig] = true; saveReadState(); }   // already on screen
     showToast(n);
     unread = countUnread();
     updateBadge();
-    if (panelOpen) renderList();
+    // STEP 3 — smooth: add the one new row in place (no full rebuild → no flicker,
+    // scroll preserved); only a rare content de-dupe needs a full re-render.
+    if (panelOpen) { if (wasDup) renderList(); else prependRow(n); }
+    else bumpBadge();          // subtle badge pop for a new arrival (reduced-motion-safe)
     persistItems();
   }
 
@@ -220,6 +248,7 @@
       n.read = !!readSet[n.sig] || !!(prev && prev.read);
       built.push(n);
     }
+    built.forEach(function (n) { knownSigs[n.sig] = true; });   // every loaded report is "known" — the poll only surfaces ones added later
     built.sort(function (a, b) { return b.ts - a.ts; });   // newest first
     items = built.slice(0, MAX_ITEMS);
     unread = countUnread();
@@ -241,9 +270,71 @@
 
   function clearAll() {
     items = []; readSet = {}; unread = 0;
+    // knownSigs is intentionally NOT reset — cleared reports stay cleared this session
+    // (the poll won't re-surface them); a page reload rebuilds from the reports as before.
     try { localStorage.removeItem(LS_LIST); localStorage.removeItem(LS_STATE); } catch (e) {}
     updateBadge(); renderList();
   }
+
+  /* ========================= STEP 2 — backend polling =====================
+     Quietly poll GET /reports every ~8 s. Any report whose content signature we
+     haven't surfaced yet is pushed through notify() (toast + badge + list), so a
+     report filed on ANOTHER device shows up here live — updating ONLY this
+     component, never the page. Fails silently when the backend is unreachable,
+     never stacks requests or intervals, and never re-notifies a known report. */
+  var POLL_MS = 8000;        // background poll cadence
+  var POLL_TIMEOUT = 6000;   // abort a slow request so a poll never stacks on the next
+  var pollTimer = 0, pollStarted = false, pollInFlight = false;
+  // only poll when the app is served by the backend (the single-origin shell)
+  var POLL_ENABLED = (typeof window !== 'undefined' && window.CRASH_SHELL === true);
+
+  // a backend /reports row (the 8 report fields + a Mongo _id) -> a notify()-able report
+  function fromBackend(r) {
+    return {
+      id: r._id ? ('m' + r._id) : (r.id || undefined),
+      lat: r.lat, lng: r.lng, severity: r.severity, datetime: r.datetime,
+      weather: r.weather, cause: r.cause, vehicle: r.vehicle, area: r.area,
+    };
+  }
+
+  function pollBackend() {
+    if (pollInFlight || typeof fetch !== 'function') return Promise.resolve();
+    pollInFlight = true;
+    var API = (typeof window !== 'undefined' && window.API_BASE) || '';
+    var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, POLL_TIMEOUT) : 0;
+    return fetch(API + '/reports', { signal: ctrl ? ctrl.signal : undefined, cache: 'no-store' })
+      .then(function (resp) {
+        if (timer) clearTimeout(timer);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        return resp.json();
+      })
+      .then(function (data) {
+        pollInFlight = false;
+        if (!Array.isArray(data)) return;
+        // genuinely-new reports (by content signature), kept in backend order (oldest
+        // first) so the newest lands on top of the list after each unshift
+        var fresh = [];
+        for (var i = 0; i < data.length; i++) {
+          var r = data[i];
+          if (!r || !isFinite(Number(r.lat)) || !isFinite(Number(r.lng))) continue;
+          var sig = signature(r);
+          if (knownSigs[sig]) continue;
+          knownSigs[sig] = true;
+          fresh.push(r);
+        }
+        for (var j = 0; j < fresh.length; j++) notify(fromBackend(fresh[j]));
+      })
+      .catch(function () { if (timer) clearTimeout(timer); pollInFlight = false; /* silent — keep using local data */ });
+  }
+
+  function startPolling() {
+    if (pollStarted || !POLL_ENABLED) return;
+    pollStarted = true;
+    if (pollTimer) clearInterval(pollTimer);   // never stack intervals
+    pollTimer = setInterval(pollBackend, POLL_MS);
+  }
+  function stopPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = 0; pollStarted = false; }
 
   function initPanel() {
     var bell = document.getElementById('notifyBell');
@@ -270,11 +361,14 @@
   // app.js announces the loaded reports (the authoritative rebuild follows).
   readSet = loadReadState();
   items = restoreFromPersisted();
+  items.forEach(function (n) { knownSigs[n.sig] = true; });   // last session's notifications are already known
   unread = countUnread();
 
   document.addEventListener('crash:report', function (e) { if (e && e.detail) notify(e.detail); });
-  // app.js fires this on startup with all citizen reports (localStorage + backend)
-  document.addEventListener('crash:reports-loaded', function (e) { rebuildFromReports(e && e.detail); });
+  // app.js fires this on startup with all citizen reports (localStorage + backend).
+  // Rebuild first (populates knownSigs with every loaded report), THEN begin polling
+  // so the first poll only surfaces reports added to the backend after this load.
+  document.addEventListener('crash:reports-loaded', function (e) { rebuildFromReports(e && e.detail); startPolling(); });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPanel);
   else initPanel();
@@ -293,5 +387,8 @@
     readState: function () { return Object.keys(readSet); },
     relativeTime: relativeTime,
     navigate: navigateToReport,
+    poll: pollBackend,            // STEP 2 — run one backend poll now (returns a promise)
+    startPolling: startPolling,   // begin the ~8s background poll (auto-started on boot)
+    stopPolling: stopPolling,
   };
 })();
