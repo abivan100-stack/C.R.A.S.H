@@ -279,7 +279,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .af-input:focus, .af-select:focus { outline: none; border-color: var(--accent); }
 .af-select option { background: var(--panel); color: var(--text); }
 .af-input.invalid, .af-select.invalid, .af-sev.invalid { border-color: var(--fatal); }
-.af-map { width: 100%; height: 264px; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--bg); }
+/* position + z-index create a stacking context so Leaflet's high-z panes/controls stay CONTAINED
+   (below the sticky header) and can't paint over other UI when the Report section scrolls */
+.af-map { position: relative; z-index: 0; width: 100%; height: 264px; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--bg); }
 .af-hint { font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-3); line-height: 1.5; }
 .af-readout { font: 500 11.5px 'IBM Plex Mono', monospace; color: var(--text-2); background: var(--bg); border: 1px dashed var(--border); border-radius: 7px; padding: 9px 10px; line-height: 1.5; }
 .af-readout b { color: var(--accent); font-weight: 600; }
@@ -322,7 +324,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
   padding: 15px 15px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.42); }
 .sim-results { width: 330px; flex: none; overflow-y: auto; padding: 18px 18px 24px; background: var(--panel); border-left: 1px solid var(--border); }
 .sim-panel-label { font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-2); margin-bottom: 14px; }
-.sim-map-wrap { flex: 1; position: relative; min-width: 0; background: var(--bg); overflow: hidden; }
+.sim-map-wrap { flex: 1; position: relative; z-index: 0; min-width: 0; background: var(--bg); overflow: hidden; }
 #simMap { position: absolute; inset: 0; background: var(--bg); }
 .sim-group { margin-bottom: 14px; }
 .sim-label { display: block; font: 500 8.5px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-2); margin-bottom: 8px; }
@@ -971,7 +973,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="./report.js?v=phase5e"></script>
-<script src="./app.js?v=phase8o"></script>
+<script src="./app.js?v=phase8q"></script>
 <script src="./analytics.js?v=phase8h"></script>
 <script src="./simulate.js?v=phase14"></script>
 <script src="./notifications.js?v=4"></script>
@@ -1022,7 +1024,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // the map and the charts were sized while hidden — refresh them once visible
     if (name === 'map') requestAnimationFrame(function () { if (window.__crashRefreshMap) window.__crashRefreshMap(); });
     if (name === 'analytics') requestAnimationFrame(function () { if (window.__crashResizeAnalytics) window.__crashResizeAnalytics(); });
-    if (name === 'report') { initReport(); initReportForm(); requestAnimationFrame(function () { if (afMap) afMap.invalidateSize(); }); }
+    if (name === 'report') {
+      initReport(); initReportForm();
+      // the pin-drop map was sized while the section was hidden — recalc once it's
+      // visible so it never paints gray/blank. Double-rAF (waits for layout to settle)
+      // plus a short fallback covers slow font/reflow on the first open.
+      var fixReportMap = function () { if (afMap) afMap.invalidateSize(); };
+      requestAnimationFrame(function () { requestAnimationFrame(fixReportMap); });
+      setTimeout(fixReportMap, 200);
+    }
     if (name === 'simulate') { if (window.__crashInitSimulate) window.__crashInitSimulate(); }
   }
   pills.forEach(function (p) { p.addEventListener('click', function () { show(p.dataset.section); }); });

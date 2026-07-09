@@ -36,10 +36,7 @@ const SUPPRESS = 2;           // non-max suppression radius, in cells (~500 m):
                               // keeps the top-10 as 10 distinct junctions, not
                               // split halves of one cluster
 const HIGH_RISK_MIN = 40;     // severity-weighted score for a cell to count as a "high-risk zone"
-const SELECT_ZOOM = 15;       // zoom level when a hotspot is selected
-// shared fly animation — long-ish duration + low easeLinearity for a smooth,
-// gently-decelerating "buttery" zoom on both select (in) and deselect (out)
-const FLY = { duration: 0.9, easeLinearity: 0.18 };
+const SELECT_ZOOM = 15;       // zoom level when a hotspot is selected (instant setView — no animated fly, which would flicker the canvas/bloom layers)
 
 /* Emerging-hotspot engine (Phase 2) — flag cells whose recent monthly rate is
    climbing sharply against their own longer baseline. */
@@ -350,7 +347,7 @@ function initMap() {
     zoomDelta: 0.5,
     wheelPxPerZoomLevel: 90,         // smoother, more responsive wheel zoom
     wheelDebounceTime: 25,
-    zoomAnimation: true,
+    zoomAnimation: true,             // mouse-wheel zoom stays smooth (it's a small, quick change)
     maxBoundsViscosity: 1.0,         // hard-lock panning to Chennai
   });
   L.control.zoom({ position: 'bottomright', zoomInTitle: 'Zoom in', zoomOutTitle: 'Zoom out' }).addTo(app.map);
@@ -376,7 +373,9 @@ function frameToChennai() {
 /* Smoothly return to the original city-wide frame (used on deselect) */
 function flyHome() {
   if (app.map && app.homeBounds) {
-    app.map.flyToBounds(app.homeBounds, { padding: [28, 28], duration: FLY.duration, easeLinearity: FLY.easeLinearity });
+    // instant, crisp zoom-out on deselect (an animated fitBounds would flicker the
+    // canvas/bloom layers the same way the select fly did)
+    app.map.fitBounds(app.homeBounds, { padding: [28, 28], animate: false });
   }
 }
 
@@ -871,7 +870,11 @@ function selectHotspot(id, opts) {
   syncFocusRing();            // accent ring on the map
 
   if (h && opts.pan) {
-    app.map.flyTo([h.lat, h.lng], Math.max(app.map.getZoom(), SELECT_ZOOM), FLY);
+    // jump to the hotspot INSTANTLY (no animated fly). An animated zoom from the
+    // city view to z15 CSS-scales the canvas point layer (the low-res flash) and
+    // scale-snaps the bloom markers; setView({animate:false}) repaints every layer
+    // crisp at the target zoom in one pass — no flicker/glitch.
+    app.map.setView([h.lat, h.lng], Math.max(app.map.getZoom(), SELECT_ZOOM), { animate: false });
   }
   renderDossier();
 }
