@@ -293,6 +293,17 @@
     updateBadge(); renderList();
   }
 
+  /* Reset the bell to an empty feed on every page load. Unlike clearAll this is not a
+     user action, so it does NOT record cleared signatures — it just drops the panel and
+     any stale persisted list. The poll's baseline pass then decides what counts as new. */
+  function startFresh() {
+    items = [];
+    unread = 0;
+    try { localStorage.removeItem(LS_LIST); } catch (e) {}   // stale session list — it is never replayed
+    updateBadge();
+    renderList();
+  }
+
   /* ========================= STEP 2 — backend polling =====================
      Quietly poll GET /reports every ~8 s. Any report whose content signature we
      haven't surfaced yet is pushed through notify() (toast + badge + list), so a
@@ -302,6 +313,10 @@
   var POLL_MS = 8000;        // background poll cadence
   var POLL_TIMEOUT = 6000;   // abort a slow request so a poll never stacks on the next
   var pollTimer = 0, pollStarted = false, pollInFlight = false;
+  // false until the FIRST successful poll has recorded everything already in the DB.
+  // That baseline pass seeds knownSigs WITHOUT toasting, so pre-existing reports never
+  // appear as "just now" on load — only reports first seen in LATER polls count as new.
+  var baselineSeeded = false;
   // only poll when the app is served by the backend (the single-origin shell)
   var POLL_ENABLED = (typeof window !== 'undefined' && window.CRASH_SHELL === true);
 
@@ -338,8 +353,9 @@
           var sig = signature(r);
           if (knownSigs[sig] || clearedSet[sig]) continue;   // already surfaced, or explicitly cleared
           knownSigs[sig] = true;
-          fresh.push(r);
+          if (baselineSeeded) fresh.push(r);   // before the baseline exists, just record what's already there (no toast)
         }
+        baselineSeeded = true;                 // first successful poll defines "already existed" — nothing above toasts
         for (var j = 0; j < fresh.length; j++) notify(fromBackend(fresh[j]));
       })
       .catch(function () { if (timer) clearTimeout(timer); pollInFlight = false; /* silent — keep using local data */ });
@@ -349,6 +365,7 @@
     if (pollStarted || !POLL_ENABLED) return;
     pollStarted = true;
     if (pollTimer) clearInterval(pollTimer);   // never stack intervals
+    pollBackend();                             // immediate pass baselines what already exists (no toasts), fast
     pollTimer = setInterval(pollBackend, POLL_MS);
   }
   function stopPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = 0; pollStarted = false; }
@@ -374,19 +391,21 @@
     renderList();
   }
 
-  // restore last session's read state + list first, so the panel isn't empty before
-  // app.js announces the loaded reports (the authoritative rebuild follows).
+  // LIVE-FEED model: the bell always starts EMPTY on a page load/refresh. Old reports
+  // already in the DB are NOT replayed into the panel — doing that dumped the whole
+  // history back in stamped "just now", burying the report that actually just arrived.
+  // The first successful poll silently baselines what already exists (see baselineSeeded);
+  // only reports seen in later polls are surfaced as new.
   readSet = loadReadState();
-  clearedSet = loadClearedSet();   // reports cleared in a previous session — keep them out of the rebuild
-  items = restoreFromPersisted();
-  items.forEach(function (n) { knownSigs[n.sig] = true; });   // last session's notifications are already known
-  unread = countUnread();
+  clearedSet = loadClearedSet();   // still used to keep an explicitly-cleared report out of the live poll
+  items = [];
+  unread = 0;
 
   document.addEventListener('crash:report', function (e) { if (e && e.detail) notify(e.detail); });
-  // app.js fires this on startup with all citizen reports (localStorage + backend).
-  // Rebuild first (populates knownSigs with every loaded report), THEN begin polling
-  // so the first poll only surfaces reports added to the backend after this load.
-  document.addEventListener('crash:reports-loaded', function (e) { rebuildFromReports(e && e.detail); startPolling(); });
+  // app.js fires this once on startup. We deliberately do NOT rebuild the panel from the
+  // loaded reports (that caused old notifications to reappear as "just now"). Instead we
+  // clear to an empty feed and start the live poll, whose first pass baselines the DB.
+  document.addEventListener('crash:reports-loaded', function () { startFresh(); startPolling(); });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPanel);
   else initPanel();
