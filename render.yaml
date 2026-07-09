@@ -1,0 +1,27 @@
+# Render Blueprint — deploy CRASH as ONE web service (single-origin).
+#
+# The FastAPI backend serves BOTH the citizen-reports API (/report, /reports,
+# /health) AND the static frontend (index.html + the JS/CSS/data), so the whole app
+# lives on a single URL. That means report POSTs, the boot GET /reports, and the ~8s
+# notification poll all hit the same origin — cross-device reports and notifications
+# work with no CORS hop and no API_BASE to configure (API_BASE stays '' / relative).
+#
+# Deploy: open THIS service's URL as the app. A separate static-site service is NOT
+# needed (and is in fact what broke cross-device — the frontend was talking to the
+# static origin, which has no API).
+services:
+  - type: web
+    name: crash
+    runtime: python
+    plan: free
+    # Build from the repo root; the backend requirements live under backend/.
+    buildCommand: pip install -r backend/requirements.txt
+    # main.py resolves the frontend dir from its own path, so starting the app from
+    # the repo root serves the site correctly regardless of the working directory.
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health          # 200 only when MongoDB is actually reachable
+    envVars:
+      - key: MONGODB_URI
+        sync: false                   # set in Render → Environment (secret). NEVER commit it.
+      - key: PYTHON_VERSION
+        value: "3.12.7"
