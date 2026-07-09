@@ -182,6 +182,31 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #strategyBtn:hover { border-color: var(--accent); color: var(--accent); }
 #strategyBtn.active { border-color: var(--accent); color: var(--accent); background: rgba(67,176,204,0.12); }
 #strategyBtn:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+/* hospitals toggle — matches the Strategy button; the cross stays teal even when inactive */
+#hospitalsBtn { display: inline-flex; align-items: center; gap: 7px; font: 500 12px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; cursor: pointer; }
+#hospitalsBtn:hover { border-color: var(--accent); color: var(--accent); }
+#hospitalsBtn.active { border-color: var(--accent); color: var(--accent); background: rgba(67,176,204,0.12); }
+#hospitalsBtn:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+#hospitalsBtn svg { color: var(--accent); }
+/* hospital markers — distinct calm teal/white medical cross, never severity colours.
+   Government: light chip + teal cross · Private: teal chip + dark cross. */
+.hosp-divicon { background: none; border: none; }
+.hosp-marker { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; box-sizing: border-box; box-shadow: 0 1px 4px rgba(0,0,0,0.55); }
+.hosp-marker svg { display: block; }
+.hosp-marker.hosp-pri { background: var(--accent); color: #0C1218; border: 1px solid rgba(255,255,255,0.85); }
+.hosp-marker.hosp-gov { background: #EAF6FA; color: var(--accent); border: 1px solid var(--accent); }
+.hosp-pop-dot { flex: none; width: 9px; height: 9px; border-radius: 2px; background: var(--accent); display: inline-block; }
+.hosp-link { pointer-events: none; }
+/* hospital distance UI (dossier): compare dropdown, tabular km, line swatches, honest note */
+.hosp-select { width: 100%; font: 500 11.5px 'IBM Plex Mono', monospace; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 9px; margin-top: 8px; cursor: pointer; }
+.hosp-select:hover { border-color: var(--accent); }
+.hosp-select:focus { outline: none; border-color: var(--accent); }
+.hosp-select option { background: var(--panel); color: var(--text); }
+.hosp-km { font: 500 12px 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; color: var(--text); }
+.hosp-line-swatch { flex: none; display: inline-block; width: 16px; height: 0; border-top: 2px solid transparent; }
+.hosp-line-swatch.nearest { border-top-color: var(--accent); }
+.hosp-line-swatch.marked { border-top-style: dashed; border-top-color: #FFFFFF; }
+.hosp-note { font: 400 9.5px 'IBM Plex Mono', monospace; color: var(--text-3); margin: 11px 0 2px; letter-spacing: 0.02em; }
 /* dossier tabs */
 .dtab { flex: 1; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; font: 500 11px 'IBM Plex Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); padding: 11px 8px; }
 .dtab:hover { color: var(--text); }
@@ -286,6 +311,57 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .af-readout { font: 500 11.5px 'IBM Plex Mono', monospace; color: var(--text-2); background: var(--bg); border: 1px dashed var(--border); border-radius: 7px; padding: 9px 10px; line-height: 1.5; }
 .af-readout b { color: var(--accent); font-weight: 600; }
 .af-pin { filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45)); }
+/* ---- "Pick location on map" button + fullscreen picker overlay (PHASE 1) ---- */
+.af-pick-btn { width: 100%; margin-top: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font: 500 12.5px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; color: var(--accent);
+  background: rgba(67,176,204,0.08); border: 1px solid rgba(67,176,204,0.45); border-radius: 8px;
+  padding: 11px 14px; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+.af-pick-btn:hover { background: rgba(67,176,204,0.16); border-color: var(--accent); }
+.picker-overlay { position: fixed; inset: 0; top: 0; right: 0; bottom: 0; left: 0; z-index: 9000;
+  display: flex; flex-direction: column; width: 100vw; height: 100vh; height: 100dvh; background: var(--bg-deep); overscroll-behavior: contain; }
+.picker-overlay[hidden] { display: none; }
+/* while the picker is open, freeze the page behind it so it's truly fullscreen */
+html.picker-open, html.picker-open body { overflow: hidden !important; height: 100%; }
+/* gentle fade-in on open; the app's global prefers-reduced-motion rule disables it */
+.picker-overlay:not([hidden]) { animation: pickerIn 0.18s ease-out; }
+@keyframes pickerIn { from { opacity: 0; } to { opacity: 1; } }
+.picker-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; padding-top: max(12px, env(safe-area-inset-top)); background: var(--panel); border-bottom: 1px solid var(--border); }
+.picker-title { font: 600 15px 'Space Grotesk', sans-serif; color: var(--text); }
+.picker-head-actions { display: flex; align-items: center; gap: 10px; }
+.picker-confirm { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px;
+  font: 500 12.5px 'IBM Plex Mono', monospace; color: var(--accent-ink); background: var(--accent);
+  border: 1px solid var(--accent); border-radius: 8px; padding: 10px 16px; cursor: pointer; transition: background .15s ease, opacity .15s ease; }
+.picker-confirm:hover:not(:disabled) { background: var(--accent-2); border-color: var(--accent-2); }
+.picker-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+.picker-x { flex: none; width: 42px; height: 42px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text-2); font-size: 17px; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.picker-x:hover { color: var(--text); border-color: var(--text-3); }
+.picker-body { position: relative; flex: 1 1 0%; min-height: 0; width: 100%; }
+.picker-map { position: absolute; inset: 0; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; background: var(--bg); }
+.picker-msg { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 500;
+  max-width: calc(100% - 32px); text-align: center; font: 500 12.5px 'IBM Plex Mono', monospace;
+  color: var(--fatal); background: var(--panel); border: 1px solid var(--fatal); border-radius: 8px; padding: 10px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+.picker-msg[hidden] { display: none; }
+.picker-readout { flex: none; font: 500 12px 'IBM Plex Mono', monospace; color: var(--text-2);
+  background: var(--panel); border-top: 1px solid var(--border); padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom)); line-height: 1.5; }
+.picker-readout b { color: var(--accent); font-weight: 600; }
+@media (max-width: 560px) { .picker-title { font-size: 14px; } .picker-confirm { padding: 10px 12px; } }
+/* ---- Main-map place search ---- */
+.mapsearch-box { display: flex; align-items: center; gap: 7px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; box-shadow: 0 4px 14px rgba(0,0,0,0.32); }
+.mapsearch-box:focus-within { border-color: var(--accent); }
+.mapsearch-box > svg { flex: none; color: var(--text-3); }
+#mapSearchInput { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: var(--text); font: 400 12.5px 'IBM Plex Sans', sans-serif; }
+#mapSearchInput::placeholder { color: var(--text-3); }
+#mapSearchClear { flex: none; background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 12px; line-height: 1; padding: 2px 3px; }
+#mapSearchClear:hover { color: var(--text); }
+.mapsearch-results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40; max-height: 264px; overflow-y: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 14px 34px rgba(0,0,0,0.5); }
+.mapsearch-results[hidden] { display: none; }
+.mapsearch-item { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--border-soft); padding: 9px 12px; cursor: pointer; color: var(--text); font: 400 12px 'IBM Plex Sans', sans-serif; }
+.mapsearch-item:last-child { border-bottom: none; }
+.mapsearch-item:hover, .mapsearch-item.active { background: var(--row-hover); }
+.mapsearch-item > svg { flex: none; color: var(--accent); }
+.mapsearch-empty { padding: 11px 12px; color: var(--text-3); font: 400 11.5px 'IBM Plex Sans', sans-serif; }
 .af-sev { display: flex; gap: 8px; border: none; padding: 0; margin: 0; }
 .af-sev button { flex: 1; font: 500 11.5px 'IBM Plex Mono', monospace; padding: 10px 8px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); color: var(--text-2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; transition: border-color .15s ease, color .15s ease, background .15s ease; }
 .af-sev button:hover { border-color: var(--text-3); }
@@ -528,6 +604,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         <div id="map"></div>
 
         <div style="position: absolute; top: 12px; left: 14px; z-index: 20; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; pointer-events: none;">
+          <div id="mapSearchWrap" style="pointer-events: auto; position: relative; width: min(258px, 62vw);">
+            <div class="mapsearch-box">
+              <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <input id="mapSearchInput" type="text" placeholder="Search a place / area…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="mapSearchResults" aria-label="Search places on the map">
+              <button id="mapSearchClear" type="button" aria-label="Clear search" hidden>&#10005;</button>
+            </div>
+            <div id="mapSearchResults" class="mapsearch-results" role="listbox" hidden></div>
+          </div>
           <div style="pointer-events: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <button id="filtersBtn" type="button" aria-expanded="false" aria-controls="filterPanel">
               <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -538,6 +622,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             <button id="strategyBtn" type="button" title="City strategy — leverage &amp; intervention priority">
               <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2m0 1h8l-1.8 2.4L12 8H4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>
               Strategy
+            </button>
+            <button id="hospitalsBtn" type="button" aria-pressed="false" title="Show real Chennai hospitals on the map">
+              <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 2h3v4.5H14v3H9.5V14h-3V9.5H2v-3h4.5z" fill="currentColor"/></svg>
+              Hospitals
             </button>
           </div>
           <div id="filterPanel" role="group" aria-label="Filters" style="pointer-events: auto; display: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 13px 14px; width: min(300px, 64vw);">
@@ -558,6 +646,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E7C64B;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Slight</span></span>
             <span style="width: 1px; height: 12px; background: var(--border);"></span>
             <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--accent); box-sizing: border-box; background: transparent;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Citizen</span></span>
+            <span id="legendHospital" style="display: none; align-items: center; gap: 12px;">
+              <span style="width: 1px; height: 12px; background: var(--border);"></span>
+              <span style="display: flex; align-items: center; gap: 6px;"><span class="hosp-marker hosp-pri" style="width: 14px; height: 14px; border-radius: 3px; box-shadow: none;"><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><path d="M5 0.5h2V5h4.5v2H7v4.5H5V7H0.5V5H5z" fill="currentColor"/></svg></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Hospital</span></span>
+            </span>
             <span style="width: 1px; height: 12px; background: var(--border);"></span>
             <span id="legendNote" style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-3);">Incident points · coloured by severity</span>
           </div>
@@ -740,12 +832,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             <div class="af-field full">
               <div class="af-label">Location</div>
               <div id="reportMap" class="af-map"></div>
-              <div class="af-hint">Click the map to drop a pin, or pick an area below — either one sets the location. Drag the pin to fine-tune.</div>
+              <button id="openPickerBtn" class="af-pick-btn" type="button">
+                <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+                Pick location on map
+              </button>
+              <div class="af-hint">Click the map to drop a pin, or pick an area below — either one sets the location. Drag the pin to fine-tune. For a bigger, precise map, use “Pick location on map”.</div>
             </div>
 
             <div class="af-field">
               <label class="af-label" for="afArea">Area</label>
-              <select class="af-select" id="afArea"><option value="">Loading areas…</option></select>
+              <input class="af-input" id="afArea" list="afAreaList" placeholder="Type to search an area…" autocomplete="off">
+              <datalist id="afAreaList"></datalist>
             </div>
             <div class="af-field">
               <div class="af-label">Selected location</div>
@@ -845,18 +942,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
           </div>
         </div>
 
-        <!-- ---- Export all citizen reports as raw JSON ---- -->
+        <!-- ---- Export all citizen reports as an Excel (.xlsx) file ---- -->
         <div class="report-card" style="margin-top:18px;">
           <div class="rc-badge">
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="7" ry="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 5v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 11v6c0 1.4 3.1 2.6 7 2.6 1.5 0 2.9-.18 4-.48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M18 15v6m0 0 2.4-2.4M18 21l-2.4-2.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
           <div class="rc-title">Export citizen reports</div>
-          <div class="rc-desc">Download every citizen-submitted accident report as a single JSON file &mdash; the full record (location, severity, date &amp; time, weather, cause, vehicle and area) for each report, generated on demand from the shared database. If the database is unreachable, the reports saved in this browser are exported instead.</div>
-          <button class="rc-btn" id="exportReportsBtn" type="button">
+          <div class="rc-desc">Download every citizen-submitted accident report as a single Excel file (.xlsx) &mdash; the full record (location, severity, date &amp; time, weather, cause, vehicle and area) for each report, generated on demand from the shared database with each column auto-sized to fit. Opens cleanly in Excel or Google Sheets. If the database is unreachable, the reports saved in this browser are exported instead.</div>
+          <button class="rc-btn" id="exportReportsXlsxBtn" type="button">
             <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Export all reports (JSON)
+            Export all reports (Excel)
           </button>
-          <div class="af-hint" id="exportReportsMsg" role="status" aria-live="polite" style="margin-top:10px;" hidden></div>
+          <div class="af-hint" id="exportReportsXlsxMsg" role="status" aria-live="polite" style="margin-top:10px;" hidden></div>
         </div>
 
         <div class="footnote" style="margin-top:20px;">Impact figures in the reports are indicative planning estimates, not measured outcomes.</div>
@@ -979,6 +1076,25 @@ body.col-resizing { cursor: col-resize; user-select: none; }
   </section>
 </main>
 
+<!-- Fullscreen accident-location picker overlay (PHASE 1) -->
+<div id="pickerOverlay" class="picker-overlay" role="dialog" aria-modal="true" aria-label="Select accident location" hidden>
+  <div class="picker-head">
+    <div class="picker-title">Select accident location</div>
+    <div class="picker-head-actions">
+      <button id="pickerConfirm" class="picker-confirm" type="button" disabled>
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.5 6.5 13 14 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Confirm location
+      </button>
+      <button id="pickerCancel" class="picker-x" type="button" aria-label="Cancel">&#10005;</button>
+    </div>
+  </div>
+  <div class="picker-body">
+    <div id="pickerMap" class="picker-map"></div>
+    <div id="pickerMsg" class="picker-msg" role="alert" hidden>Please select a location on land within Chennai.</div>
+  </div>
+  <div id="pickerReadout" class="picker-readout">Tap the map to drop a pin on the accident location.</div>
+</div>
+
 <!-- shell flag so app.js / analytics.js don't double-wire the shared theme toggle -->
 <script>
   window.CRASH_SHELL = true;
@@ -995,7 +1111,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="./report.js?v=phase5e"></script>
-<script src="./app.js?v=phase8q"></script>
+<script src="./app.js?v=phase11"></script>
 <script src="./analytics.js?v=phase8h"></script>
 <script src="./simulate.js?v=phase14"></script>
 <script src="./notifications.js?v=8"></script>
@@ -1159,6 +1275,270 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     if (sel && af.area != null) sel.value = af.area;
   }
 
+  /* ============================================================================
+     PHASE 1 — Fullscreen accident-location picker with sea-click prevention.
+     ==========================================================================*/
+  /* ---- Editable Chennai land bounds + coastline (tune these to taste) ----
+     A picked point is valid only if it is inside the lat/lng box AND WEST of the
+     Bay of Bengal coastline. The coast runs diagonally (further east up north), so a
+     single longitude limit lets ocean through near Marina/Adyar -- instead we
+     interpolate the eastern (coast) limit from a few [lat, coastLng] control points.
+     Nudge any control point east (bigger lng) / west (smaller) to move where "sea"
+     begins at that latitude. */
+  var PICK_LAT_MIN = 12.80, PICK_LAT_MAX = 13.20;   // Chennai north-south extent
+  var PICK_LNG_MIN = 80.10;                          // western (inland) limit
+  // [latitude, coastline longitude], south -> north. A point EAST of the value
+  // interpolated at its latitude is in the sea and is rejected.
+  var PICK_COAST = [
+    [12.80, 80.250],   // south (ECR / Uthandi)
+    [12.95, 80.263],   // Neelankarai / Thiruvanmiyur
+    [13.02, 80.272],   // Adyar / Besant Nagar
+    [13.06, 80.285],   // Marina Beach
+    [13.10, 80.300],   // Royapuram / harbour
+    [13.15, 80.322],   // Tondiarpet / Ennore approach
+    [13.20, 80.340],   // Ennore (north)
+  ];
+
+  // eastern (coastline) longitude limit at a given latitude, linearly interpolated
+  function coastLngAt(lat) {
+    var p = PICK_COAST;
+    if (lat <= p[0][0]) return p[0][1];
+    if (lat >= p[p.length - 1][0]) return p[p.length - 1][1];
+    for (var i = 1; i < p.length; i++) {
+      if (lat <= p[i][0]) {
+        var a = p[i - 1], b = p[i], t = (lat - a[0]) / (b[0] - a[0]);
+        return a[1] + t * (b[1] - a[1]);
+      }
+    }
+    return p[p.length - 1][1];
+  }
+
+  // true only for a point on land within Chennai (inside the box AND west of the coast)
+  function isValidLandPoint(lat, lng) {
+    return typeof lat === 'number' && typeof lng === 'number' && isFinite(lat) && isFinite(lng) &&
+      lat >= PICK_LAT_MIN && lat <= PICK_LAT_MAX &&
+      lng >= PICK_LNG_MIN && lng <= coastLngAt(lat);
+  }
+
+  var pickerMap = null, pickerTiles = null, pickerMarker = null;
+  var pickedPoint = null;      // {lat,lng} once a VALID point is chosen this session, else null
+  var pickerMsgTimer = 0;
+  var pickerSavedScroll = { x: 0, y: 0 };   // page scroll captured on open, restored on close
+
+  function pk(id) { return document.getElementById(id); }
+  function setConfirmEnabled(on) { var b = pk('pickerConfirm'); if (b) b.disabled = !on; }
+
+  function showPickerMsg() {
+    var m = pk('pickerMsg'); if (!m) return;
+    m.hidden = false;
+    if (pickerMsgTimer) clearTimeout(pickerMsgTimer);
+    pickerMsgTimer = setTimeout(function () { m.hidden = true; pickerMsgTimer = 0; }, 2800);
+  }
+  function hidePickerMsg() {
+    var m = pk('pickerMsg'); if (m) m.hidden = true;
+    if (pickerMsgTimer) { clearTimeout(pickerMsgTimer); pickerMsgTimer = 0; }
+  }
+
+  function setPickerReadout(lat, lng) {
+    var r = pk('pickerReadout'); if (!r) return;
+    if (lat == null) { r.innerHTML = 'Tap the map to drop a pin on the accident location.'; return; }
+    var area = (window.CRASH_APP && window.CRASH_APP.nearestArea) ? window.CRASH_APP.nearestArea(lat, lng) : null;
+    r.innerHTML = 'Selected: <b>' + (area || 'location') + '</b> &middot; ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+  }
+
+  function placePickerPin(lat, lng) {
+    if (!pickerMap) return;
+    if (!pickerMarker) {
+      var icon = L.divIcon({ className: '', html: PIN_HTML, iconSize: [28, 36], iconAnchor: [14, 35] });
+      pickerMarker = L.marker([lat, lng], { icon: icon, keyboard: false }).addTo(pickerMap);
+    } else {
+      pickerMarker.setLatLng([lat, lng]);
+    }
+  }
+  function removePickerPin() {
+    if (pickerMarker && pickerMap) { pickerMap.removeLayer(pickerMarker); pickerMarker = null; }
+  }
+
+  // STEP 2 — validate the coordinate BEFORE dropping a pin
+  function handlePickerClick(lat, lng) {
+    if (!isValidLandPoint(lat, lng)) {
+      showPickerMsg();                 // sea / out of bounds → no pin; Confirm stays as-is (disabled if nothing valid yet)
+      return;
+    }
+    hidePickerMsg();
+    pickedPoint = { lat: round6(lat), lng: round6(lng) };
+    placePickerPin(pickedPoint.lat, pickedPoint.lng);
+    setConfirmEnabled(true);
+    setPickerReadout(pickedPoint.lat, pickedPoint.lng);
+  }
+
+  function ensurePickerMap() {
+    if (pickerMap) { pickerMap.invalidateSize(); return; }
+    pickerMap = L.map('pickerMap', {
+      center: [13.05, 80.23], zoom: 12, zoomControl: true, attributionControl: false,
+      zoomSnap: 0.25, minZoom: 10, maxZoom: 19,
+    });
+    var url = (window.CRASH_APP && window.CRASH_APP.tileUrl) ? window.CRASH_APP.tileUrl()
+            : 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+    pickerTiles = L.tileLayer(url, { subdomains: 'abcd', maxZoom: 20 }).addTo(pickerMap);
+    document.addEventListener('crash:themechange', function () { if (pickerTiles && window.CRASH_APP) pickerTiles.setUrl(window.CRASH_APP.tileUrl()); });
+    pickerMap.on('click', function (e) { handlePickerClick(e.latlng.lat, e.latlng.lng); });
+    if (window.CRASH_APP && window.CRASH_APP.bbox) {
+      var bb = window.CRASH_APP.bbox();
+      pickerMap.setMaxBounds(L.latLngBounds([bb.latMin, bb.lngMin], [bb.latMax, bb.lngMax]).pad(0.15));
+    }
+  }
+
+  function pickerEscHandler(e) { if (e.key === 'Escape') { e.stopPropagation(); closePicker(); } }
+
+  // fire invalidateSize now + a few times after, so Leaflet always settles to the real
+  // fullscreen size even on slow layout/paint (mobile especially) — prevents a half map
+  function refreshPickerSize() {
+    if (!pickerMap) return;
+    pickerMap.invalidateSize({ animate: false });
+    [60, 160, 320, 600].forEach(function (d) {
+      setTimeout(function () {
+        var ov = pk('pickerOverlay');
+        if (pickerMap && ov && !ov.hidden) pickerMap.invalidateSize({ animate: false });
+      }, d);
+    });
+  }
+
+  // open the fullscreen overlay and (re)mount the map at full size. CLEAN SLATE every
+  // open: no pin, Confirm disabled until a fresh valid pick, no stale error carried over.
+  function openPicker() {
+    var ov = pk('pickerOverlay'); if (!ov) return;
+    pickerSavedScroll = { x: window.pageXOffset || 0, y: window.pageYOffset || 0 };   // remember scroll → restore on close
+    ov.hidden = false; ov.setAttribute('aria-hidden', 'false');
+    document.documentElement.classList.add('picker-open');   // freeze the page behind it → truly fullscreen
+    pickedPoint = null; setConfirmEnabled(false); hidePickerMsg();
+    document.addEventListener('keydown', pickerEscHandler, true);
+    // build/resize the map AFTER the overlay is visible so Leaflet gets the full dimensions
+    requestAnimationFrame(function () {
+      ensurePickerMap();               // reuses the single map instance — never re-inits the container
+      removePickerPin();               // clear any pin from a previous session
+      setPickerReadout(null);
+      // center on the previous selection for context, but do NOT drop a pin or enable Confirm
+      if (af.lat != null && isValidLandPoint(af.lat, af.lng)) pickerMap.setView([af.lat, af.lng], 15, { animate: false });
+      else pickerMap.setView([13.05, 80.23], 13, { animate: false });   // zoom 13 so streets are visible
+      refreshPickerSize();             // invalidateSize now + repeatedly → fills the overlay, never half-rendered
+    });
+  }
+
+  // Cancel / X / Escape: close WITHOUT changing the report; restore the page exactly
+  function closePicker() {
+    var ov = pk('pickerOverlay'); if (!ov) return;
+    ov.hidden = true; ov.setAttribute('aria-hidden', 'true');
+    document.documentElement.classList.remove('picker-open');
+    hidePickerMsg();
+    document.removeEventListener('keydown', pickerEscHandler, true);
+    if (typeof window.scrollTo === 'function') window.scrollTo(pickerSavedScroll.x, pickerSavedScroll.y);   // exact scroll restore
+  }
+
+  // STEP 3 — Confirm: store the point into the report (exactly like an inline map click), then close
+  function confirmPicker() {
+    if (!pickedPoint || !isValidLandPoint(pickedPoint.lat, pickedPoint.lng)) return;   // guard: never confirm an invalid point
+    setPin(pickedPoint.lat, pickedPoint.lng, true);
+    af.area = (window.CRASH_APP && window.CRASH_APP.nearestArea) ? window.CRASH_APP.nearestArea(pickedPoint.lat, pickedPoint.lng) : af.area;
+    syncAreaSelect(); updateReadout(); clearInvalid(); setErr('');
+    closePicker();
+  }
+
+  // wire the picker controls (all are static HTML present at parse time)
+  (function wirePicker() {
+    var openBtn = pk('openPickerBtn'); if (openBtn) openBtn.addEventListener('click', openPicker);
+    var confirmBtn = pk('pickerConfirm'); if (confirmBtn) confirmBtn.addEventListener('click', confirmPicker);
+    var cancelBtn = pk('pickerCancel'); if (cancelBtn) cancelBtn.addEventListener('click', closePicker);
+  })();
+
+  /* ---- Main-map place search: filter the app's Chennai areas, fly the map there ---- */
+  (function initMapSearch() {
+    var input = document.getElementById('mapSearchInput');
+    var results = document.getElementById('mapSearchResults');
+    var clearBtn = document.getElementById('mapSearchClear');
+    if (!input || !results) return;
+
+    var index = [];      // [{ label, lat, lng }]
+    var shown = [];      // currently rendered subset
+    var activeIdx = -1;
+
+    function buildIndex() {
+      if (!window.CRASH_APP || !window.CRASH_APP.areas) return;
+      index = window.CRASH_APP.areas().map(function (a) {
+        var c = window.CRASH_APP.areaCentroid(a);
+        return c ? { label: a, lat: c[0], lng: c[1] } : null;
+      }).filter(Boolean).sort(function (a, b) { return a.label.localeCompare(b.label); });
+    }
+    if (window.CRASH_APP && window.CRASH_APP.onReady) window.CRASH_APP.onReady(buildIndex);
+
+    function norm(s) { return String(s == null ? '' : s).toLowerCase().trim(); }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+    function match(q) {
+      q = norm(q);
+      if (!q) return index.slice(0, 8);
+      var starts = [], has = [];
+      index.forEach(function (it) {
+        var i = norm(it.label).indexOf(q);
+        if (i === 0) starts.push(it); else if (i > 0) has.push(it);
+      });
+      return starts.concat(has).slice(0, 8);
+    }
+
+    function openList() { results.hidden = false; input.setAttribute('aria-expanded', 'true'); }
+    function closeList() { results.hidden = true; input.setAttribute('aria-expanded', 'false'); activeIdx = -1; }
+
+    function render() {
+      shown = match(input.value); activeIdx = -1;
+      if (!shown.length) {
+        results.innerHTML = '<div class="mapsearch-empty">No matching place</div>';
+      } else {
+        results.innerHTML = shown.map(function (it, i) {
+          return '<button type="button" class="mapsearch-item" role="option" data-i="' + i + '">' +
+            '<svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 15s5-4.5 5-9A5 5 0 1 0 3 6c0 4.5 5 9 5 9z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="6" r="1.7" fill="currentColor"/></svg>' +
+            '<span>' + esc(it.label) + '</span></button>';
+        }).join('');
+      }
+      openList();
+    }
+
+    function choose(it) {
+      if (!it) return;
+      input.value = it.label;
+      if (clearBtn) clearBtn.hidden = false;
+      closeList();
+      if (window.CRASH_APP && window.CRASH_APP.flyTo) window.CRASH_APP.flyTo(it.lat, it.lng, 15);
+      input.blur();
+    }
+
+    function paintActive() {
+      var els = results.querySelectorAll('.mapsearch-item');
+      for (var i = 0; i < els.length; i++) els[i].classList.toggle('active', i === activeIdx);
+      if (activeIdx >= 0 && els[activeIdx] && els[activeIdx].scrollIntoView) els[activeIdx].scrollIntoView({ block: 'nearest' });
+    }
+
+    input.addEventListener('input', function () { if (clearBtn) clearBtn.hidden = !input.value; render(); });
+    input.addEventListener('focus', function () { if (!index.length) buildIndex(); render(); });
+    input.addEventListener('keydown', function (e) {
+      if (results.hidden) { if (e.key === 'ArrowDown') render(); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx + 1, shown.length - 1); paintActive(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx - 1, 0); paintActive(); }
+      else if (e.key === 'Enter') { e.preventDefault(); choose(shown[activeIdx >= 0 ? activeIdx : 0]); }
+      else if (e.key === 'Escape') { closeList(); }
+    });
+    results.addEventListener('mousedown', function (e) {   // mousedown fires before the input blur
+      var btn = e.target && e.target.closest ? e.target.closest('.mapsearch-item') : null;
+      if (!btn) return;
+      e.preventDefault();
+      choose(shown[+btn.getAttribute('data-i')]);
+    });
+    if (clearBtn) clearBtn.addEventListener('click', function () { input.value = ''; clearBtn.hidden = true; closeList(); input.focus(); });
+    document.addEventListener('click', function (e) {
+      var wrap = document.getElementById('mapSearchWrap');
+      if (wrap && !wrap.contains(e.target)) closeList();
+    });
+  })();
+
   function initReportForm() {
     if (formInited) return; formInited = true;
 
@@ -1170,6 +1550,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     afTiles = L.tileLayer('https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(afMap);
     document.addEventListener('crash:themechange', function () { if (afTiles && window.CRASH_APP) afTiles.setUrl(window.CRASH_APP.tileUrl()); });
     afMap.on('click', function (e) {
+      if (!isValidLandPoint(e.latlng.lat, e.latlng.lng)) {   // same sea-guard as the fullscreen picker
+        setErr('Please select a location on land within Chennai.');
+        return;
+      }
       setPin(e.latlng.lat, e.latlng.lng, false);
       af.area = window.CRASH_APP.nearestArea(e.latlng.lat, e.latlng.lng);
       syncAreaSelect(); updateReadout(); clearInvalid(); setErr('');
@@ -1183,10 +1567,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
       afMap.setMaxBounds(bounds.pad(0.08));
       afMap.invalidateSize();
 
-      var areaSel = document.getElementById('afArea');
-      if (areaSel) {
-        areaSel.innerHTML = '<option value="">Select an area…</option>' +
-          window.CRASH_APP.areas().map(function (a) { return '<option value="' + a + '">' + a + '</option>'; }).join('');
+      var areaList = document.getElementById('afAreaList');
+      if (areaList) {
+        areaList.innerHTML = window.CRASH_APP.areas().map(function (a) {
+          return '<option value="' + a.replace(/"/g, '&quot;') + '"></option>';
+        }).join('');
       }
       var causeSel = document.getElementById('afCause');
       if (causeSel) {
@@ -1200,13 +1585,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
       }
     });
 
-    // area select → drop the pin on that area's centroid
+    // area search input → validate the typed/picked area, then drop the pin on its centroid
     var areaSel = document.getElementById('afArea');
     if (areaSel) areaSel.addEventListener('change', function () {
-      var area = areaSel.value;
-      if (!area) { return; }
-      var c = window.CRASH_APP.areaCentroid(area);
-      af.area = area;
+      var typed = (areaSel.value || '').trim();
+      if (!typed) { af.area = null; updateReadout(); return; }
+      // accept only a known area (case-insensitive); normalise to the canonical name
+      var match = window.CRASH_APP.areas().filter(function (a) { return a.toLowerCase() === typed.toLowerCase(); })[0];
+      if (!match) { areaSel.classList.add('invalid'); setErr('“' + typed + '” isn\'t a known area — pick one from the list.'); return; }
+      areaSel.value = match; areaSel.classList.remove('invalid');
+      af.area = match;
+      var c = window.CRASH_APP.areaCentroid(match);
       if (c) setPin(c[0], c[1], true);
       updateReadout(); clearInvalid(); setErr('');
     });
@@ -1383,15 +1772,42 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     updateReadout();
   }
 
-  /* ---- Export all citizen reports as a downloadable JSON file ----
-     Primary source is the backend's GET /export (every report in the shared
-     database). If the backend is unreachable, we fall back to the citizen
-     reports saved offline in THIS browser's localStorage, so a file is always
-     produced — even fully offline. */
-  (function initReportExport() {
-    var btn = document.getElementById('exportReportsBtn');
+  /* ---- Export all citizen reports as a downloadable Excel (.xlsx) file ----
+     Primary source is the backend's GET /export/xlsx (every report in the shared
+     database, generated on demand, each column auto-sized). If the backend is
+     unreachable, we build the SAME real .xlsx client-side from the citizen reports
+     saved offline in THIS browser's localStorage — a .xlsx is just a ZIP of XML, so
+     a tiny dependency-free ZIP writer produces a valid workbook offline too. */
+  (function initReportXlsxExport() {
+    var btn = document.getElementById('exportReportsXlsxBtn');
     if (!btn) return;
-    var msgEl = document.getElementById('exportReportsMsg');
+    var msgEl = document.getElementById('exportReportsXlsxMsg');
+
+    // the export columns, in the EXACT order the backend writes them; lat/lng are
+    // written as real numbers so Excel treats them numerically
+    var COLUMNS = ['id', 'lat', 'lng', 'severity', 'datetime', 'weather', 'cause', 'vehicle', 'area'];
+    var XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+    // the four fixed parts of the .xlsx package — byte-for-byte identical to the backend's
+    var CT = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+      '</Types>';
+    var RELS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+      '</Relationships>';
+    var WB = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<sheets><sheet name="Citizen Reports" sheetId="1" r:id="rId1"/></sheets></workbook>';
+    var WBRELS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+      '</Relationships>';
 
     function setMsg(text, isErr) {
       if (!msgEl) return;
@@ -1400,9 +1816,117 @@ body.col-resizing { cursor: col-resize; user-select: none; }
       msgEl.style.color = isErr ? 'var(--fatal)' : 'var(--text-2)';
     }
 
-    /* trigger a browser download of a text body as filename (Blob + object URL) */
-    function downloadJSON(text, filename) {
-      var blob = new Blob([text], { type: 'application/json' });
+    function plural(n) { return n === 1 ? '' : 's'; }
+
+    function xmlEscape(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function colLetter(i) { return String.fromCharCode(65 + i); }
+
+    /* auto-fit width per column = longest cell (or header) + padding, clamped so one
+       long value can't make a column absurdly wide */
+    function columnWidths(rows) {
+      return COLUMNS.map(function (key) {
+        var longest = key.length;
+        rows.forEach(function (r) {
+          var v = (r[key] === null || r[key] === undefined) ? '' : String(r[key]);
+          if (v.length > longest) longest = v.length;
+        });
+        return Math.min(Math.max(longest + 2, 8), 60);
+      });
+    }
+
+    /* worksheet XML: <cols> auto-fit widths + header row + one row per report.
+       lat/lng become numeric cells; everything else is an XML-escaped inline string
+       so commas/quotes/newlines in a value never corrupt the sheet. */
+    function worksheetXml(rows) {
+      var widths = columnWidths(rows);
+      var cols = widths.map(function (w, i) {
+        return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>';
+      }).join('');
+      function cell(ref, key, value) {
+        if ((key === 'lat' || key === 'lng') && typeof value === 'number' && isFinite(value)) {
+          return '<c r="' + ref + '"><v>' + value + '</v></c>';
+        }
+        var s = (value === null || value === undefined) ? '' : String(value);
+        return '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + xmlEscape(s) + '</t></is></c>';
+      }
+      var body = ['<row r="1">' + COLUMNS.map(function (key, i) {
+        return cell(colLetter(i) + '1', key, key);
+      }).join('') + '</row>'];
+      rows.forEach(function (r, idx) {
+        var rn = idx + 2;
+        body.push('<row r="' + rn + '">' + COLUMNS.map(function (key, i) {
+          return cell(colLetter(i) + rn, key, r[key]);
+        }).join('') + '</row>');
+      });
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+        '<cols>' + cols + '</cols><sheetData>' + body.join('') + '</sheetData></worksheet>';
+    }
+
+    /* --- minimal dependency-free ZIP writer (STORE method) so a real .xlsx can be
+       assembled in the browser when the backend is unreachable --- */
+    var CRC = (function () {
+      var t = new Uint32Array(256);
+      for (var n = 0; n < 256; n++) {
+        var c = n;
+        for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        t[n] = c >>> 0;
+      }
+      return t;
+    })();
+    function crc32(bytes) {
+      var c = 0xFFFFFFFF;
+      for (var i = 0; i < bytes.length; i++) c = CRC[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+      return (c ^ 0xFFFFFFFF) >>> 0;
+    }
+    function zipStore(files) {
+      var enc = new TextEncoder();
+      function u16(n) { return [n & 0xFF, (n >>> 8) & 0xFF]; }
+      function u32(n) { return [n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF]; }
+      var records = [], central = [], offset = 0;
+      files.forEach(function (f) {
+        var name = enc.encode(f.name);
+        var data = f.data;
+        var crc = crc32(data);
+        var head = [].concat(u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0),
+          u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0));
+        records.push({ head: head, name: name, data: data });
+        central.push([].concat(u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0),
+          u32(crc), u32(data.length), u32(data.length), u16(name.length),
+          u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset)));
+        offset += head.length + name.length + data.length;   // start of the NEXT local record
+      });
+      var parts = [];
+      records.forEach(function (r) { parts.push(new Uint8Array(r.head), r.name, r.data); });
+      var centralStart = offset, centralSize = 0;
+      central.forEach(function (c, i) {
+        parts.push(new Uint8Array(c), records[i].name);
+        centralSize += c.length + records[i].name.length;
+      });
+      parts.push(new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0),
+        u16(files.length), u16(files.length), u32(centralSize), u32(centralStart), u16(0))));
+      var total = parts.reduce(function (a, p) { return a + p.length; }, 0);
+      var out = new Uint8Array(total), pos = 0;
+      parts.forEach(function (p) { out.set(p, pos); pos += p.length; });
+      return out;
+    }
+
+    function buildXlsx(rows) {
+      var enc = new TextEncoder();
+      return zipStore([
+        { name: '[Content_Types].xml', data: enc.encode(CT) },
+        { name: '_rels/.rels', data: enc.encode(RELS) },
+        { name: 'xl/workbook.xml', data: enc.encode(WB) },
+        { name: 'xl/_rels/workbook.xml.rels', data: enc.encode(WBRELS) },
+        { name: 'xl/worksheets/sheet1.xml', data: enc.encode(worksheetXml(rows)) }
+      ]);
+    }
+
+    /* trigger a browser download of binary bytes as filename */
+    function downloadBytes(bytes, filename) {
+      var blob = new Blob([bytes], { type: XLSX_MIME });
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
       a.href = url; a.download = filename;
@@ -1411,8 +1935,6 @@ body.col-resizing { cursor: col-resize; user-select: none; }
       document.body.removeChild(a);
       setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
     }
-
-    function plural(n) { return n === 1 ? '' : 's'; }
 
     /* the citizen reports saved offline in this browser — the fallback source */
     function localReports() {
@@ -1425,7 +1947,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     function exportLocal(prefix) {
       var reports = localReports();
-      downloadJSON(JSON.stringify(reports, null, 2), 'citizen_reports.json');
+      downloadBytes(buildXlsx(reports), 'citizen_reports.xlsx');
       setMsg((prefix ? prefix + ' — ' : '') + 'exported ' + reports.length +
              ' report' + plural(reports.length) + ' saved on this device.', false);
     }
@@ -1438,24 +1960,27 @@ body.col-resizing { cursor: col-resize; user-select: none; }
       var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
       var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 6000) : 0;
 
-      fetch(API + '/export', ctrl ? { signal: ctrl.signal, cache: 'no-store' } : { cache: 'no-store' })
+      fetch(API + '/export/xlsx', ctrl ? { signal: ctrl.signal, cache: 'no-store' } : { cache: 'no-store' })
         .then(function (resp) {
           if (timer) clearTimeout(timer);
           if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          return resp.text();
+          var count = (resp.headers && resp.headers.get) ? resp.headers.get('X-Report-Count') : null;
+          return resp.arrayBuffer().then(function (buf) { return { buf: buf, count: count }; });
         })
-        .then(function (text) {
-          // count for the status line (also confirms it is valid JSON)
-          var count = null;
-          try { var arr = JSON.parse(text); if (Array.isArray(arr)) count = arr.length; }
-          catch (e) { throw new Error('bad JSON from server'); }
-          downloadJSON(text, 'citizen_reports.json');
-          setMsg('Exported ' + (count == null ? 'all' : count) + ' report' +
-                 (count == null ? 's' : plural(count)) + ' from the shared database.', false);
+        .then(function (res) {
+          var bytes = new Uint8Array(res.buf);
+          // a .xlsx is a ZIP — sanity-check the local-file-header magic "PK\x03\x04"
+          if (bytes.length < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4B || bytes[2] !== 0x03 || bytes[3] !== 0x04) {
+            throw new Error('not an xlsx from server');
+          }
+          downloadBytes(bytes, 'citizen_reports.xlsx');
+          var n = (res.count != null && res.count !== '') ? parseInt(res.count, 10) : NaN;
+          if (!isNaN(n)) setMsg('Exported ' + n + ' report' + plural(n) + ' from the shared database.', false);
+          else setMsg('Exported all reports from the shared database.', false);
         })
         .catch(function () {
           if (timer) clearTimeout(timer);
-          // backend down / blocked / timed out → export whatever is stored locally
+          // backend down / blocked / timed out → build the workbook from local reports
           exportLocal('Database unreachable');
         })
         .then(function () { btn.disabled = false; });

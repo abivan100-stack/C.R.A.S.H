@@ -12,8 +12,11 @@ Security:
   * For local dev, python-dotenv loads a gitignored .env (see .env.example).
   * In production (Render) MONGODB_URI is set in the service's env settings.
 """
-import json
+import io
+import math
 import os
+import zipfile
+from xml.sax.saxutils import escape as xml_escape
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -130,34 +133,151 @@ def list_reports():
     return documents
 
 
-@app.get("/export")
-def export_reports():
-    """Download EVERY citizen report as a citizen_reports.json file.
+# --- Excel (.xlsx) export --------------------------------------------------------
+# The export columns, in the exact order they appear in the sheet. The BSON _id is
+# surfaced as `id` (stringified); the remaining eight are the report schema. lat/lng
+# are written as real numbers so Excel treats them numerically (no "number stored as
+# text" warning); everything else is written as text.
+EXPORT_COLUMNS = ["id", "lat", "lng", "severity", "datetime", "weather", "cause", "vehicle", "area"]
+NUMERIC_COLUMNS = {"lat", "lng"}
 
-    Same source as /reports — all documents from the collection, each id
-    stringified — but returned with a Content-Disposition header so the browser
-    saves it as a file instead of rendering it. The file is generated on demand
-    from MongoDB on every request; nothing is written to the server's disk
-    (Render's filesystem is ephemeral), so the export is always current.
+# A .xlsx file is just a ZIP of XML parts. These four parts never change; only the
+# worksheet (built per request) does. Keeping them as constants makes the package
+# minimal and valid (Office Open XML / SpreadsheetML).
+_CONTENT_TYPES_XML = (
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    '<Default Extension="xml" ContentType="application/xml"/>'
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+    '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+    '</Types>'
+)
+_RELS_XML = (
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+    '</Relationships>'
+)
+_WORKBOOK_XML = (
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+    '<sheets><sheet name="Citizen Reports" sheetId="1" r:id="rId1"/></sheets>'
+    '</workbook>'
+)
+_WORKBOOK_RELS_XML = (
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+    '</Relationships>'
+)
 
-    Each record is normalised to the frontend schema: the BSON _id is stringified
-    and surfaced as `id`, followed by the eight report fields. Pretty-printed
-    (indent=2) so the downloaded file is human-readable.
+
+def _rows_from_documents(documents):
+    """Normalise each Mongo document to the 9 export fields (id first, None -> "")."""
+    rows = []
+    for doc in documents:
+        row = {"id": str(doc.get("_id", ""))}
+        for key in EXPORT_COLUMNS[1:]:
+            value = doc.get(key, "")
+            row[key] = "" if value is None else value
+        rows.append(row)
+    return rows
+
+
+def _column_widths(rows):
+    """Auto-fit width per column = longest cell (or header) + a little padding,
+    clamped to a sensible range so one long value can't make a column absurdly wide."""
+    widths = []
+    for key in EXPORT_COLUMNS:
+        longest = len(key)
+        for row in rows:
+            longest = max(longest, len(str(row.get(key, ""))))
+        widths.append(min(max(longest + 2, 8), 60))
+    return widths
+
+
+def _is_number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _worksheet_xml(rows):
+    """Build the sheet: a <cols> block (auto-fit widths) + the header row + one row
+    per report. lat/lng become numeric cells; every other value is an inline string
+    (XML-escaped, whitespace preserved) so commas/quotes/newlines never corrupt it."""
+    widths = _column_widths(rows)
+    cols = "".join(
+        f'<col min="{i + 1}" max="{i + 1}" width="{w}" customWidth="1"/>'
+        for i, w in enumerate(widths)
+    )
+
+    def cell(ref, key, value):
+        if key in NUMERIC_COLUMNS and _is_number(value):
+            return f'<c r="{ref}"><v>{value}</v></c>'
+        text = xml_escape("" if value is None else str(value))
+        return f'<c r="{ref}" t="inlineStr"><is><t xml:space="preserve">{text}</t></is></c>'
+
+    body = [
+        '<row r="1">'
+        + "".join(cell(f"{chr(65 + i)}1", key, key) for i, key in enumerate(EXPORT_COLUMNS))
+        + "</row>"
+    ]
+    for r_index, row in enumerate(rows, start=2):
+        body.append(
+            f'<row r="{r_index}">'
+            + "".join(cell(f"{chr(65 + i)}{r_index}", key, row.get(key, "")) for i, key in enumerate(EXPORT_COLUMNS))
+            + "</row>"
+        )
+
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        f"<cols>{cols}</cols>"
+        f'<sheetData>{"".join(body)}</sheetData>'
+        "</worksheet>"
+    )
+
+
+def _build_xlsx(documents):
+    """Assemble the whole .xlsx package (ZIP of XML parts) in memory and return bytes."""
+    rows = _rows_from_documents(documents)
+    sheet = _worksheet_xml(rows)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("[Content_Types].xml", _CONTENT_TYPES_XML)
+        zf.writestr("_rels/.rels", _RELS_XML)
+        zf.writestr("xl/workbook.xml", _WORKBOOK_XML)
+        zf.writestr("xl/_rels/workbook.xml.rels", _WORKBOOK_RELS_XML)
+        zf.writestr("xl/worksheets/sheet1.xml", sheet)
+    return buffer.getvalue(), len(rows)
+
+
+@app.get("/export/xlsx")
+def export_reports_xlsx():
+    """Download EVERY citizen report as a formatted citizen_reports.xlsx workbook.
+
+    Same source as /reports — all documents from the collection — but written as a
+    real Excel file (Office Open XML) with one header row, one row per report, and
+    each column auto-sized to its content so it opens with proper column widths in
+    Excel. lat/lng are stored as numbers. The workbook is generated on demand from
+    MongoDB on every request and streamed from memory; nothing is written to the
+    server's disk (Render's filesystem is ephemeral), so the export is always
+    current. X-Report-Count reports how many rows it holds.
     """
     collection = get_collection()
     try:
         documents = list(collection.find())
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Query failed: {exc}")
-    # id first, then whatever fields the document carries; default=str keeps the
-    # dump from ever failing on an unexpected non-JSON value.
-    exported = [{"id": str(doc.pop("_id", "")), **doc} for doc in documents]
-    body = json.dumps(exported, indent=2, ensure_ascii=False, default=str)
+
+    body, count = _build_xlsx(documents)
     return Response(
         content=body,
-        media_type="application/json",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": 'attachment; filename="citizen_reports.json"',
+            "Content-Disposition": 'attachment; filename="citizen_reports.xlsx"',
+            "X-Report-Count": str(count),
         },
     )
 

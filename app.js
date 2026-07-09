@@ -868,6 +868,7 @@ function selectHotspot(id, opts) {
   renderRail();               // re-highlight the ranked list
   refreshBloomSelection();    // ring the chosen bloom (if it's a top-10)
   syncFocusRing();            // accent ring on the map
+  syncHospitalLinks();        // distance lines to the nearest + any marked hospital
 
   if (h && opts.pan) {
     // jump to the hotspot INSTANTLY (no animated fly). An animated zoom from the
@@ -893,10 +894,239 @@ function clearSelection() {
   app.selected = null;
   app.selInfo = null;
   syncFocusRing();
+  syncHospitalLinks();       // remove the distance lines (nearest + marked)
   renderRail();
   refreshBloomSelection();
   renderDossier();
   flyHome();                 // zoom back out to the original city-wide frame
+}
+
+/* =============================================================================
+   Hospital layer — real Chennai hospitals with sea / accident-overlap placement
+   ========================================================================== */
+/* Real Chennai hospitals at their approximate REAL coordinates (can be fine-tuned).
+   type: 'Government' | 'Private'. Rendered as a distinct, calm teal/white medical
+   marker (never the severity colours) so they read as a separate safety layer. */
+const HOSPITALS = [
+  { name: 'Rajiv Gandhi Government General Hospital',     lat: 13.0827, lng: 80.2707, area: 'Park Town',        type: 'Government' },
+  { name: 'Apollo Hospitals, Greams Road',               lat: 13.0640, lng: 80.2540, area: 'Thousand Lights',  type: 'Private' },
+  { name: 'MIOT International',                           lat: 13.0165, lng: 80.1770, area: 'Manapakkam',       type: 'Private' },
+  { name: 'Fortis Malar Hospital',                       lat: 13.0060, lng: 80.2570, area: 'Adyar',            type: 'Private' },
+  { name: 'Sri Ramachandra Medical Centre',              lat: 13.0380, lng: 80.1430, area: 'Porur',            type: 'Private' },
+  { name: 'Kauvery Hospital',                            lat: 13.0480, lng: 80.2490, area: 'Alwarpet',         type: 'Private' },
+  { name: 'Global Hospitals (Gleneagles)',               lat: 12.9080, lng: 80.2270, area: 'Perumbakkam',      type: 'Private' },
+  { name: 'MGM Healthcare',                              lat: 13.0730, lng: 80.2200, area: 'Aminjikarai',      type: 'Private' },
+  { name: 'SIMS Hospital',                               lat: 13.0520, lng: 80.2100, area: 'Vadapalani',       type: 'Private' },
+  { name: 'Apollo Hospitals, OMR',                       lat: 12.9640, lng: 80.2420, area: 'Perungudi (OMR)',  type: 'Private' },
+  { name: 'Stanley Government Hospital',                 lat: 13.1050, lng: 80.2870, area: 'Old Washermanpet', type: 'Government' },
+  { name: 'Government Kilpauk Medical College Hospital', lat: 13.0780, lng: 80.2410, area: 'Kilpauk',          type: 'Government' },
+  { name: 'Rela Institute & Medical Centre',             lat: 12.9310, lng: 80.1360, area: 'Chromepet',        type: 'Private' },
+  { name: 'Government Royapettah Hospital',              lat: 13.0530, lng: 80.2640, area: 'Royapettah',       type: 'Government' },
+];
+
+/* ---- Placement safety constants (editable) ---- */
+const HOSP_LAT_MIN = 12.80, HOSP_LAT_MAX = 13.20;   // Chennai land latitude band
+const HOSP_LNG_MIN = 80.10;                          // western inland limit
+/* Eastern coastline: lng of the Bay of Bengal shore at a given latitude, linearly
+   interpolated between these control points (the diagonal Chennai coast). */
+const HOSP_COAST = [[12.80, 80.250], [12.95, 80.263], [13.02, 80.272], [13.06, 80.285], [13.10, 80.300], [13.15, 80.322], [13.20, 80.340]];
+const COAST_INSET_DEG = 0.004;      // keep clamped points ~440 m inland of the shore
+const OVERLAP_THRESHOLD_M = 45;     // a hospital nearer than this to an accident dot is nudged
+const NUDGE_STEP_M = 50;            // how far each nudge moves it (kept small — stays ~real)
+const MAX_NUDGES = 5;               // cap the walk so a hospital never drifts far from home
+const M_PER_DEG_LAT = 111320;       // metres per degree of latitude (~constant)
+
+/* eastern coastline longitude at a latitude (piecewise-linear) */
+function hospCoastLngAt(lat) {
+  const p = HOSP_COAST;
+  if (lat <= p[0][0]) return p[0][1];
+  if (lat >= p[p.length - 1][0]) return p[p.length - 1][1];
+  for (let i = 1; i < p.length; i++) {
+    if (lat <= p[i][0]) {
+      const a = p[i - 1], b = p[i], t = (lat - a[0]) / (b[0] - a[0]);
+      return a[1] + t * (b[1] - a[1]);
+    }
+  }
+  return p[p.length - 1][1];
+}
+
+/* clamp a point back onto valid Chennai land (bounds + coastline) — the SEA CHECK */
+function clampToLand(lat, lng) {
+  const la = Math.min(Math.max(lat, HOSP_LAT_MIN), HOSP_LAT_MAX);
+  let ln = Math.max(lng, HOSP_LNG_MIN);
+  const eastLimit = hospCoastLngAt(la) - COAST_INSET_DEG;
+  if (ln > eastLimit) ln = eastLimit;
+  return [la, ln];
+}
+
+/* Haversine great-circle distance in km (pure JS, no API) */
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
+  const s = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+/* fast approximate planar distance in metres — accurate enough at the tens-of-metres
+   scale of the overlap check */
+function metersBetween(lat1, lng1, lat2, lng2) {
+  const mLat = (lat1 - lat2) * M_PER_DEG_LAT;
+  const mLng = (lng1 - lng2) * M_PER_DEG_LAT * Math.cos(((lat1 + lat2) / 2) * Math.PI / 180);
+  return Math.sqrt(mLat * mLat + mLng * mLng);
+}
+
+/* nearest accident point to (lat,lng) in metres, with a cheap bounding-box pre-filter
+   so it stays fast over the full ~10k-point set */
+function nearestAccidentMeters(lat, lng, records) {
+  const box = 0.0025;                 // ~275 m — comfortably larger than threshold + nudge
+  let best = Infinity, bestAcc = null;
+  for (let i = 0; i < records.length; i++) {
+    const a = records[i];
+    if (Math.abs(a.lat - lat) > box || Math.abs(a.lng - lng) > box) continue;
+    const d = metersBetween(lat, lng, a.lat, a.lng);
+    if (d < best) { best = d; bestAcc = a; }
+  }
+  return { dist: best, acc: bestAcc };
+}
+
+/* Resolve each hospital's DISPLAY position: (1) clamp onto land (never the sea), then
+   (2) nudge minimally off any accident dot it sits on, re-clamping so a nudge can't
+   push it into the sea. Real coords stay in .lat/.lng; display in .dlat/.dlng. */
+function placeHospitals(records) {
+  records = records || [];
+  return HOSPITALS.map((h) => {
+    let pos = clampToLand(h.lat, h.lng);
+    for (let k = 0; k < MAX_NUDGES; k++) {
+      const near = nearestAccidentMeters(pos[0], pos[1], records);
+      if (!near.acc || near.dist > OVERLAP_THRESHOLD_M) break;   // clear of accidents — done
+      let dLat = pos[0] - near.acc.lat, dLng = pos[1] - near.acc.lng, mag = Math.hypot(dLat, dLng);
+      if (mag < 1e-9) { dLat = 1; dLng = 0; mag = 1; }           // exactly coincident — pick a bearing
+      const step = NUDGE_STEP_M / M_PER_DEG_LAT;
+      pos = clampToLand(pos[0] + (dLat / mag) * step, pos[1] + (dLng / mag) * step);
+    }
+    return Object.assign({}, h, { dlat: pos[0], dlng: pos[1] });
+  });
+}
+
+/* nearest hospital to a point (Haversine). list defaults to the placed cache. */
+function nearestHospitalTo(lat, lng, list) {
+  list = list || app.hospitals || (app.hospitals = placeHospitals(app.raw));
+  let best = null, bestKm = Infinity;
+  for (let i = 0; i < list.length; i++) {
+    const km = haversineKm(lat, lng, list[i].dlat, list[i].dlng);
+    if (km < bestKm) { bestKm = km; best = list[i]; }
+  }
+  return best ? { hospital: best, km: bestKm } : null;
+}
+
+/* distinct medical-cross marker; Government (light chip, teal cross) vs Private (teal
+   chip, dark cross) — both calm, never the severity red/orange/yellow */
+function hospitalIcon(type) {
+  const cls = type === 'Government' ? 'hosp-gov' : 'hosp-pri';
+  return L.divIcon({
+    className: 'hosp-divicon', iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -13],
+    html: '<span class="hosp-marker ' + cls + '"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M5 0.5h2V5h4.5v2H7v4.5H5V7H0.5V5H5z" fill="currentColor"/></svg></span>',
+  });
+}
+
+/* Popup for a hospital marker — its identity plus, when a zone is selected, the
+   straight-line distance from that zone; otherwise a prompt to pick a zone first.
+   Bound as a function so it reflects the CURRENT selection each time it opens. */
+function hospitalPopupHtml(h) {
+  const sel = selectedCell();
+  let dist;
+  if (sel) {
+    const km = haversineKm(sel.lat, sel.lng, h.dlat, h.dlng);
+    dist = '<div class="acc-pop-row" style="color:var(--accent); font-weight:600;">' +
+      km.toFixed(1) + ' km from ' + (sel.area || 'the selected zone') + ' · straight-line</div>';
+  } else {
+    dist = '<div class="acc-pop-row" style="color:var(--text-3);">Select an accident zone to measure distance</div>';
+  }
+  return (
+    '<div class="acc-pop-sev"><span class="hosp-pop-dot"></span>' + h.name + '</div>' +
+    '<div class="acc-pop-row">' + h.type + ' hospital · ' + h.area + '</div>' +
+    dist
+  );
+}
+
+/* build (once) the hospital marker layer over the placement-corrected list */
+function buildHospitalLayer() {
+  app.hospitals = placeHospitals(app.raw);
+  app.hospitalLayer = L.layerGroup();
+  app.hospitals.forEach((h) => {
+    const m = L.marker([h.dlat, h.dlng], { icon: hospitalIcon(h.type), riseOnHover: true, keyboard: false });
+    m.bindPopup(() => hospitalPopupHtml(h), { closeButton: true, autoPan: true });   // function → live distance
+    m.on('click', () => markHospital(h));                                            // clicking a marker also marks it
+    app.hospitalLayer.addLayer(m);
+  });
+}
+
+/* show/hide the hospital layer (default OFF) + its legend chip */
+function setHospitalsVisible(on) {
+  app.hospitalsOn = !!on;
+  if (!app.hospitalLayer) buildHospitalLayer();
+  if (app.hospitalsOn) app.hospitalLayer.addTo(app.map);
+  else if (app.map && app.map.hasLayer(app.hospitalLayer)) app.hospitalLayer.remove();
+  const btn = document.getElementById('hospitalsBtn');
+  if (btn) { btn.classList.toggle('active', app.hospitalsOn); btn.setAttribute('aria-pressed', app.hospitalsOn ? 'true' : 'false'); }
+  const leg = document.getElementById('legendHospital');
+  if (leg) leg.style.display = app.hospitalsOn ? 'flex' : 'none';
+}
+function setupHospitalsToggle() {
+  const btn = document.getElementById('hospitalsBtn');
+  if (btn) btn.addEventListener('click', () => setHospitalsVisible(!app.hospitalsOn));
+}
+
+/* Mark a SPECIFIC hospital for comparison (from a marker click or the dropdown).
+   Its distance to the selected zone is shown in the dossier + a white dashed line;
+   the choice persists so selecting a new zone recalculates it. */
+function markHospital(h) {
+  app.markedHospital = h || null;
+  const sel = document.getElementById('hospCompareSelect');
+  if (sel && app.hospitals) {
+    const idx = app.hospitals.findIndex((x) => x.name === (h && h.name));
+    sel.value = idx >= 0 ? String(idx) : '';
+  }
+  renderMarkedDistance();
+  syncHospitalLinks();
+}
+
+/* fill the dossier "distance to the marked hospital" readout (1 dp, tabular km) */
+function renderMarkedDistance() {
+  const el = document.getElementById('hospMarkedReadout');
+  if (!el) return;
+  const h = selectedCell(), m = app.markedHospital;
+  if (!h || !m) { el.innerHTML = ''; return; }
+  const km = haversineKm(h.lat, h.lng, m.dlat, m.dlng);
+  el.innerHTML =
+    '<div style="display:flex; align-items:center; gap:8px; margin-top:9px;">' +
+      '<span class="hosp-line-swatch marked"></span>' +
+      '<span style="font:400 12px \'IBM Plex Sans\',sans-serif; color:var(--text); line-height:1.4;">Distance from this zone to <b style="font-weight:600;">' + m.name + '</b>: <span class="hosp-km">' + km.toFixed(1) + ' km</span></span>' +
+    '</div>';
+}
+
+/* Draw the distance lines from the selected zone: a solid accent line to the NEAREST
+   hospital, and (if one is marked) a white dashed line to the MARKED hospital, so the
+   two can be compared. Both are removed whenever there is no selected zone. */
+function syncHospitalLinks() {
+  if (app.hospitalLinkNearest) { app.hospitalLinkNearest.remove(); app.hospitalLinkNearest = null; }
+  if (app.hospitalLinkMarked) { app.hospitalLinkMarked.remove(); app.hospitalLinkMarked = null; }
+  if (!app.map) return;
+  const h = selectedCell();
+  if (!h) return;
+  const near = nearestHospitalTo(h.lat, h.lng);
+  if (near) {
+    app.hospitalLinkNearest = L.polyline([[h.lat, h.lng], [near.hospital.dlat, near.hospital.dlng]], {
+      color: ACCENT, weight: 2, opacity: 0.85, interactive: false, className: 'hosp-link',
+    }).addTo(app.map);
+  }
+  const m = app.markedHospital;
+  if (m) {
+    app.hospitalLinkMarked = L.polyline([[h.lat, h.lng], [m.dlat, m.dlng]], {
+      color: '#FFFFFF', weight: 1.6, opacity: 0.9, dashArray: '5 6', interactive: false, className: 'hosp-link',
+    }).addTo(app.map);
+  }
 }
 
 /* =============================================================================
@@ -1226,6 +1456,22 @@ function wireDossierClose(full) {
   closeBtn.addEventListener('blur', () => { closeBtn.style.outline = 'none'; });
 }
 
+/* wire the zone dossier's "distance to a specific hospital" dropdown, and paint the
+   marked readout for whatever hospital is currently marked */
+function wireHospitalCompare(root) {
+  const sel = root.querySelector('#hospCompareSelect');
+  if (sel) {
+    sel.addEventListener('change', () => {
+      const v = sel.value;
+      const list = app.hospitals || placeHospitals(app.raw);
+      app.markedHospital = (v === '') ? null : list[+v];
+      renderMarkedDistance();
+      syncHospitalLinks();
+    });
+  }
+  renderMarkedDistance();   // paint the marked distance if a hospital is already marked
+}
+
 function renderDossier() {
   const empty = document.getElementById('dossierEmpty');
   const full = document.getElementById('dossierFull');
@@ -1338,6 +1584,29 @@ function renderDossier() {
       '<div style="font:400 10px \'IBM Plex Mono\',monospace; color:var(--text-3); margin-top:6px; letter-spacing:0.02em;">At stake · ' + fmt(fatal) + ' fatal · ' + fmt(serious) + ' serious &nbsp;·&nbsp; planning estimate</div>' +
     '</div>';
 
+  // hospital distances for this hotspot (Haversine, pure JS): the auto-nearest, plus a
+  // dropdown to compare a specific hospital the user marks. Both shown so they compare.
+  const nh = nearestHospitalTo(h.lat, h.lng);
+  const hospList = app.hospitals || placeHospitals(app.raw);
+  const hospOptions = hospList.map((hp, i) =>
+    '<option value="' + i + '"' + (app.markedHospital && app.markedHospital.name === hp.name ? ' selected' : '') + '>' + hp.name + '</option>'
+  ).join('');
+  const hospitalBlock = nh ?
+    '<div style="margin-top:14px; border-top:1px solid var(--track); padding:14px 18px 0;">' +
+      '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase;">Nearest hospital</div>' +
+      '<div style="display:flex; align-items:center; gap:8px; margin-top:8px;">' +
+        '<span class="hosp-line-swatch nearest"></span>' +
+        '<span style="font:500 13px \'IBM Plex Sans\',sans-serif; color:var(--text); line-height:1.35;">' + nh.hospital.name + '</span>' +
+      '</div>' +
+      '<div style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:5px; letter-spacing:0.02em;">' + nh.hospital.area + ' · ' + nh.hospital.type + ' &nbsp;·&nbsp; <span class="hosp-km">' + nh.km.toFixed(1) + ' km</span></div>' +
+      '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase; margin-top:14px;">Distance to a specific hospital</div>' +
+      '<select id="hospCompareSelect" class="hosp-select" aria-label="Choose a hospital to measure its distance from this zone">' +
+        '<option value="">— choose a hospital —</option>' + hospOptions +
+      '</select>' +
+      '<div id="hospMarkedReadout"></div>' +
+      '<div class="hosp-note">Straight-line distance · direct, not by road</div>' +
+    '</div>' : '';
+
   full.innerHTML =
     dossierHeaderHtml(h) +
     '<div style="flex:none; display:flex; align-items:baseline; gap:10px; padding:14px 18px; border-bottom:1px solid var(--border);">' +
@@ -1385,6 +1654,7 @@ function renderDossier() {
         '<div style="padding:14px 18px 8px; font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">Weather at incident</div>' +
         weatherRow('clear', clear) + weatherRow('rain', rain) + weatherRow('fog', fog) +
       '</div>' +
+      hospitalBlock +
       (userReported ? '' :
         '<div style="margin-top:14px; border-top:1px solid var(--track); padding:14px 18px 0;">' +
           '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase;">Recommended intervention</div>' +
@@ -1394,6 +1664,7 @@ function renderDossier() {
 
   wireDossierClose(full);
   wireZoneDayChips(full);
+  wireHospitalCompare(full);
 
   const zpdf = full.querySelector('[data-zonepdf]');
   if (zpdf) zpdf.addEventListener('click', () => {
@@ -1434,6 +1705,7 @@ async function boot() {
   const sBtn = document.getElementById('strategyBtn');
   if (sBtn) sBtn.addEventListener('click', () => { ensureDossierVisible(); setDossierTab('strategy'); });
   setupResizers();
+  setupHospitalsToggle();
   initMap();
 
   let data;
@@ -1700,6 +1972,15 @@ window.CRASH_APP = {
 
     if (persistLocal !== false) persistCitizenReports();   // offline fallback / back-compat; skip when the backend saved it
     return rec;
+  },
+
+  /* fly / jump the main map to a coordinate + zoom (used by the map place-search) */
+  flyTo: function (lat, lng, zoom) {
+    if (!app.map || typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
+    app.map.invalidateSize();
+    var z = zoom || 15;
+    if (reducedMotionPref()) app.map.setView([lat, lng], z, { animate: false });
+    else app.map.flyTo([lat, lng], z, { duration: 0.9, easeLinearity: 0.2 });
   },
 
   /* fly the map to a citizen report + highlight it (notifications click-to-navigate) */
