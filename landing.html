@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500;1,6..72,600&family=Roboto:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
   /* ============================================================
      CRASH — landing / editorial civic-intelligence broadsheet
@@ -138,6 +139,7 @@
   .nav-links a:hover { color: var(--text); }
   .nav-links a:hover::after { transform: scaleX(1); }
   .nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .nav-drawer-cta { display: none; }
   .theme-toggle {
     width: 38px; height: 38px; border-radius: var(--radius); border: 1px solid var(--border);
     background: var(--surface); color: var(--text-muted); cursor: pointer;
@@ -183,7 +185,14 @@
     border-radius: var(--radius); box-shadow: var(--hero-shadow); overflow: hidden;
   }
   .figure .fig-canvas-wrap { position: relative; aspect-ratio: 5 / 4.4; }
-  #cityCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #cityMap { position: absolute; inset: 0; z-index: 0; background: var(--fig-bg); }
+  .figure .leaflet-container { background: var(--fig-bg); outline: none; }
+  .figure .fig-corner, .figure .fig-legend { z-index: 2; }
+  .lm-bloom { position: relative; }
+  .lm-glow { position: absolute; inset: 0; border-radius: 50%; display: block; }
+  .lm-core { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; display: block; }
+  .lm-label span { font: 500 10px 'IBM Plex Mono', monospace; color: var(--accent); white-space: nowrap;
+    letter-spacing: 0.02em; text-shadow: 0 0 3px var(--fig-bg), 0 1px 2px var(--fig-bg), 0 0 6px var(--fig-bg); }
   .figure .fig-corner {
     position: absolute; top: 12px; left: 12px; font-family: var(--f-mono); font-size: 10px;
     letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3);
@@ -369,6 +378,8 @@
   @media (max-width: 620px) {
     .nav-links { display: none; }
     .nav-toggle { display: block; }
+    .nav-right .btn-primary { display: none; }
+    .nav[data-open="true"] .nav-drawer-cta { display: block; color: var(--accent); font-weight: 600; }
     .nav[data-open="true"] .nav-links {
       display: flex; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; gap: 0;
       background: var(--surface); border-bottom: 1px solid var(--border); padding: 6px var(--gutter) 14px;
@@ -399,6 +410,7 @@
       <a href="#audience">Who it's for</a>
       <a href="./analytics.html">Analytics</a>
       <a href="./compare.html">Compare</a>
+      <a class="nav-drawer-cta" href="./index.html">Open the live map →</a>
     </nav>
     <div class="nav-right">
       <button class="theme-toggle" id="themeToggle" aria-label="Toggle light / dark theme">
@@ -448,7 +460,7 @@
 
     <figure class="figure reveal" aria-label="Illustrative map of Chennai incidents plotted by severity">
       <div class="fig-canvas-wrap">
-        <canvas id="cityCanvas"></canvas>
+        <div id="cityMap"></div>
         <span class="fig-corner">Fig. 1</span>
         <div class="fig-legend" aria-hidden="true">
           <span><i style="background:var(--fatal)"></i>Fatal</span>
@@ -766,6 +778,9 @@
   </div>
 </footer>
 
+<!-- Leaflet — real basemap for the hero figure -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
 <script>
 /* =========================================================================
    CRASH landing — editorial motion layer.
@@ -878,142 +893,101 @@
      hairline coastline (sea to the SE) and three ringed, labelled hotspots.
      Points stipple in progressively; reduced-motion draws the final frame. */
   function cityMap() {
-    var canvas = document.getElementById('cityCanvas');
-    if (!canvas) return;
-    var ctx = canvas.getContext('2d');
-    var W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var el = document.getElementById('cityMap');
+    if (!el || typeof L === 'undefined') return;   // Leaflet unavailable -> frame + caption still stand
+    var BBOX = { latMin: 12.80, latMax: 13.22, lngMin: 80.03, lngMax: 80.32 };   // Greater Chennai (matches the app)
+    var TILES = {
+      light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    };
+    var SEV = { fatal: '#BE2F2A', serious: '#CE8A2E', slight: '#E7C64B' };
+    function theme() { return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
 
-    // deterministic PRNG (mulberry32) so the map is stable across resize/theme
-    function rng(seed) { return function () {
-      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    }; }
+    // a locked, decorative map — no zoom/drag/scroll so it reads as a figure, not a widget
+    var map = L.map(el, {
+      zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false,
+      doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false, tap: false,
+      zoomSnap: 0.1, fadeAnimation: false, preferCanvas: true
+    }).setView([13.02, 80.19], 11);
+    var tiles = L.tileLayer(TILES[theme()], { maxZoom: 19, detectRetina: true }).addTo(map);
 
-    var SEV = { f: '#BE2F2A', s: '#CE8A2E', l: '#E7C64B' };
-    // hotspot centres (normalised) + labels, roughly echoing Chennai's clusters
-    var HOT = [
-      { x: 0.40, y: 0.60, label: 'Kathipara' },
-      { x: 0.37, y: 0.40, label: 'T. Nagar' },
-      { x: 0.62, y: 0.72, label: 'OMR corridor' }
-    ];
-    // coastline: sea occupies the lower-right; keep land where x < coast(y)
-    function coastX(y) { return 0.74 + 0.12 * y; }
-    function inLand(x, y) { return x < coastX(y) - 0.015; }
+    // blooms sit BELOW the incident dots
+    map.createPane('bloomPane');
+    map.getPane('bloomPane').style.zIndex = 350;
+    map.getPane('bloomPane').style.pointerEvents = 'none';
 
-    // build the point set once (normalised coords + severity)
-    var pts = [];
-    (function build() {
-      var r = rng(20260710), i, x, y, k, cx, cy, hot, sevr, sv;
-      // clustered points around hotspots (denser, more severe)
-      for (k = 0; k < HOT.length; k++) {
-        hot = HOT[k];
-        var nC = 120 - k * 18;
-        for (i = 0; i < nC; i++) {
-          // gaussian-ish via averaged uniforms
-          var gx = (r() + r() + r()) / 3 - 0.5, gy = (r() + r() + r()) / 3 - 0.5;
-          x = hot.x + gx * 0.20; y = hot.y + gy * 0.20;
-          if (x < 0.04 || x > 0.96 || y < 0.05 || y > 0.95 || !inLand(x, y)) continue;
-          sevr = r(); sv = sevr < 0.16 ? 'f' : sevr < 0.5 ? 's' : 'l';
-          pts.push({ x: x, y: y, c: SEV[sv], r: sv === 'f' ? 2.1 : 1.7, a: 0.9 });
+    var bounds = L.latLngBounds([[BBOX.latMin, BBOX.lngMin], [BBOX.latMax, BBOX.lngMax]]);
+    function fit() { map.invalidateSize(false); map.fitBounds(bounds, { padding: [2, 2], animate: false }); }
+
+    function bloomIcon(px, color) {
+      return L.divIcon({ className: 'lm-bloom', iconSize: [px, px],
+        html: '<span class="lm-glow" style="background:radial-gradient(circle,' + color + 'CC 0%,' + color + '4D 42%,' + color + '00 70%)"></span>'
+            + '<span class="lm-core" style="background:' + color + ';box-shadow:0 0 7px ' + color + '"></span>' });
+    }
+    function labelIcon(text) {
+      return L.divIcon({ className: 'lm-label', iconSize: [0, 0], iconAnchor: [-9, 5], html: '<span>' + text + '</span>' });
+    }
+
+    fetch('./data/accidents.json').then(function (r) { return r.json(); }).then(function (rows) {
+      if (!Array.isArray(rows) || !rows.length) return;
+      // ---- real incidents, sampled so the hero stays light ----
+      var step = Math.max(1, Math.round(rows.length / 1600));
+      for (var i = 0; i < rows.length; i += step) {
+        var a = rows[i];
+        if (typeof a.lat !== 'number' || typeof a.lng !== 'number') continue;
+        var fatal = a.severity === 'fatal';
+        L.circleMarker([a.lat, a.lng], { radius: fatal ? 2.6 : 2, stroke: false,
+          fillColor: SEV[a.severity] || SEV.slight, fillOpacity: fatal ? 0.9 : 0.6, interactive: false }).addTo(map);
+      }
+      // ---- risk blooms over the top severity-weighted cells (fatal x3, serious x2, slight x1) ----
+      var CELL = 0.006, cells = {};
+      rows.forEach(function (a) {
+        if (typeof a.lat !== 'number' || typeof a.lng !== 'number') return;
+        var w = a.severity === 'fatal' ? 3 : a.severity === 'serious' ? 2 : 1;
+        var k = Math.round(a.lat / CELL) + '_' + Math.round(a.lng / CELL);
+        var c = cells[k] || (cells[k] = { s: 0, n: 0, lat: 0, lng: 0, areas: {} });
+        c.s += w; c.n++; c.lat += a.lat; c.lng += a.lng;
+        if (a.area) c.areas[a.area] = (c.areas[a.area] || 0) + 1;
+      });
+      var list = Object.keys(cells).map(function (k) {
+        var c = cells[k], area = '', best = 0, n;
+        for (n in c.areas) if (c.areas[n] > best) { best = c.areas[n]; area = n; }
+        return { s: c.s, lat: c.lat / c.n, lng: c.lng / c.n, area: area };
+      }).sort(function (a, b) { return b.s - a.s; });
+      // simple non-max suppression so the blooms are distinct junctions, not one blob
+      var picked = [];
+      for (var j = 0; j < list.length && picked.length < 7; j++) {
+        var h = list[j], ok = true;
+        for (var p = 0; p < picked.length; p++) {
+          if (Math.abs(h.lat - picked[p].lat) < 0.02 && Math.abs(h.lng - picked[p].lng) < 0.02) { ok = false; break; }
         }
+        if (ok) picked.push(h);
       }
-      // background scatter across the land
-      for (i = 0; i < 540; i++) {
-        x = 0.05 + r() * 0.9; y = 0.06 + r() * 0.88;
-        if (!inLand(x, y)) continue;
-        sevr = r(); sv = sevr < 0.06 ? 'f' : sevr < 0.28 ? 's' : 'l';
-        pts.push({ x: x, y: y, c: SEV[sv], r: sv === 'f' ? 1.7 : 1.35, a: 0.55 + r() * 0.3 });
-      }
-      // draw nearer hotspots last so their rings sit on top
-    })();
-
-    function resize() {
-      var rct = canvas.getBoundingClientRect();
-      W = rct.width; H = rct.height;
-      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-    function PX(x) { return 14 + x * (W - 28); }
-    function PY(y) { return 12 + y * (H - 24); }
-
-    function drawGrid() {
-      ctx.strokeStyle = css('--fig-grid') || 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
-      var step = Math.max(26, W / 13), x, y;
-      for (x = 14; x <= W - 14; x += step) { ctx.beginPath(); ctx.moveTo(x, 12); ctx.lineTo(x, H - 12); ctx.stroke(); }
-      for (y = 12; y <= H - 12; y += step) { ctx.beginPath(); ctx.moveTo(14, y); ctx.lineTo(W - 14, y); ctx.stroke(); }
-    }
-    function drawCoast() {
-      ctx.strokeStyle = css('--fig-coast') || 'rgba(47,92,135,0.3)';
-      ctx.lineWidth = 1.4; ctx.setLineDash([5, 4]);
-      ctx.beginPath();
-      for (var y = 0; y <= 1.001; y += 0.02) {
-        var px = PX(coastX(y)), py = PY(y);
-        if (y === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-      }
-      ctx.stroke(); ctx.setLineDash([]);
-    }
-    function drawPoint(p) {
-      ctx.globalAlpha = p.a; ctx.fillStyle = p.c;
-      ctx.beginPath(); ctx.arc(PX(p.x), PY(p.y), p.r, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-    function drawHotspots() {
-      var accent = css('--accent') || '#2F5C87';
-      var ink = css('--text') || '#221F18';
-      ctx.font = "10px 'IBM Plex Mono', monospace";
-      HOT.forEach(function (h) {
-        var cx = PX(h.x), cy = PY(h.y);
-        ctx.strokeStyle = accent; ctx.lineWidth = 1.4;
-        ctx.beginPath(); ctx.arc(cx, cy, 15, 0, Math.PI * 2); ctx.stroke();
-        ctx.globalAlpha = 0.5;
-        ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.stroke();
-        ctx.globalAlpha = 1;
-        // leader + label
-        ctx.fillStyle = ink;
-        ctx.beginPath(); ctx.arc(cx, cy, 1.6, 0, Math.PI * 2); ctx.fill();
-        var tx = cx + 20, ty = cy - 18;
-        if (tx + ctx.measureText(h.label).width > W - 8) tx = cx - 20 - ctx.measureText(h.label).width;
-        ctx.strokeStyle = accent; ctx.globalAlpha = 0.6; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(cx, cy - 15); ctx.lineTo(tx < cx ? tx + ctx.measureText(h.label).width : tx, ty + 3); ctx.stroke();
-        ctx.globalAlpha = 1; ctx.fillStyle = accent;
-        ctx.fillText(h.label, tx, ty);
+      var maxS = picked.length ? picked[0].s : 1, labeled = [];
+      picked.forEach(function (h, idx) {
+        var d = 34 + 62 * Math.sqrt(h.s / maxS);
+        var color = idx < 2 ? '#C43A2E' : idx < 4 ? '#CE8A2E' : '#B07A3A';
+        L.marker([h.lat, h.lng], { icon: bloomIcon(d, color), pane: 'bloomPane', interactive: false }).addTo(map);
+        // label up to 3 hotspots, skipping any too close to an already-labelled one (avoids overlap)
+        if (h.area && labeled.length < 3) {
+          var far = true, q, dl, dg;
+          for (q = 0; q < labeled.length; q++) { dl = h.lat - labeled[q].lat; dg = h.lng - labeled[q].lng; if (dl * dl + dg * dg < 0.045 * 0.045) { far = false; break; } }
+          if (far) { labeled.push(h); L.marker([h.lat, h.lng], { icon: labelIcon(h.area), interactive: false }).addTo(map); }
+        }
       });
+      fit();
+    }).catch(function () { /* data unavailable — basemap still renders */ });
+
+    fit();
+    setTimeout(fit, 120);
+    var rt;
+    window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(fit, 160); }, { passive: true });
+    document.addEventListener('crash:landing-theme', function () { tiles.setUrl(TILES[theme()]); });
+    if (hasIO) {
+      new IntersectionObserver(function (es, obs) {
+        es.forEach(function (en) { if (en.isIntersecting) { fit(); obs.disconnect(); } });
+      }, { threshold: 0.15 }).observe(el);
     }
-
-    function renderTo(count) {
-      ctx.clearRect(0, 0, W, H);
-      drawGrid();
-      drawCoast();
-      var lim = Math.min(count, pts.length);
-      for (var i = 0; i < lim; i++) drawPoint(pts[i]);
-      if (count >= pts.length) drawHotspots();
-    }
-
-    var shown = 0, raf = null;
-    function animate() {
-      shown += Math.max(6, Math.round(pts.length / 90));
-      renderTo(shown);
-      if (shown < pts.length) raf = requestAnimationFrame(animate);
-      else { renderTo(pts.length); raf = null; }
-    }
-
-    resize();
-    window.addEventListener('resize', function () {
-      resize();
-      renderTo(raf ? shown : pts.length);
-    }, { passive: true });
-    document.addEventListener('crash:landing-theme', function () { renderTo(raf ? shown : pts.length); });
-
-    if (RM || !hasIO) { renderTo(pts.length); return; }
-    // start drawing when the figure scrolls into view
-    var started = false;
-    new IntersectionObserver(function (es, obs) {
-      es.forEach(function (en) {
-        if (en.isIntersecting && !started) { started = true; raf = requestAnimationFrame(animate); obs.disconnect(); }
-      });
-    }, { threshold: 0.25 }).observe(canvas);
   }
 
   function init() {

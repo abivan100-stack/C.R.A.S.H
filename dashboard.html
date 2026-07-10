@@ -187,6 +187,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .fselect:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
 /* force readable dark options (native popup would otherwise use light bg) */
 .fselect option { background: var(--panel); color: var(--text); }
+
+/* Mobile: >=16px form controls stop iOS Safari from auto-zooming on focus */
+@media (max-width: 600px) {
+  input, textarea, select,
+  .af-input, .af-select, .fselect, .rc-select, .sim-num, .combo-input,
+  #mapSearchInput, #botInput { font-size: 16px; }
+}
 </style>
 </head>
 <body>

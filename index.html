@@ -708,6 +708,13 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Mobile: >=16px form controls stop iOS Safari from auto-zooming on focus */
+@media (max-width: 600px) {
+  input, textarea, select,
+  .af-input, .af-select, .fselect, .rc-select, .sim-num, .combo-input,
+  #mapSearchInput, #botInput { font-size: 16px; }
+}
 </style>
 </head>
 <body>
@@ -1313,7 +1320,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 <script src="./analytics.js?v=phase8j"></script>
 <script src="./simulate.js?v=phase15"></script>
 <script src="./notifications.js?v=9"></script>
-<script src="./bot.js?v=9"></script>
+<script src="./bot.js?v=10"></script>
 
 <script>
 (function () {

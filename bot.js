@@ -16,7 +16,7 @@
   var BOT_EXAMPLES = ['Which area has the most fatal accidents?', 'Safest areas in Chennai?', 'Compare Adyar and Velachery', 'What causes most crashes?'];
   var BOT_UNAVAILABLE = 'C.R.A.S.H Bot is unavailable right now — try the example questions or the filters.';
 
-  var botMap = null, botPointLayer = null, botTiles = null, chatInited = false, busy = false;
+  var botMap = null, botPointLayer = null, botTiles = null, botBounds = null, chatInited = false, busy = false;
 
   function app() { return window.CRASH_APP || null; }
   function records() { var a = app(); return (a && a.records && a.records()) || []; }
@@ -108,6 +108,7 @@
     var canvas = L.canvas({ padding: 0.5 });
     botPointLayer = L.layerGroup();
     recs.forEach(function (a) {
+      if (!isFinite(a.lat) || !isFinite(a.lng)) return;
       var color = SEV[a.severity] || SEV.slight;
       L.circleMarker([a.lat, a.lng], a.citizen
         ? { renderer: canvas, radius: 5, stroke: true, color: ACCENT, weight: 2, opacity: 0.95, fillColor: color, fillOpacity: 0.85, bubblingMouseEvents: false }
@@ -116,24 +117,35 @@
     });
     botPointLayer.addTo(botMap);
   }
+  function inChennai(lat, lng) {
+    var bb = (app() && app().bbox && app().bbox()) || { latMin: 12.80, latMax: 13.22, lngMin: 80.03, lngMax: 80.32 };
+    return lat >= bb.latMin - 0.1 && lat <= bb.latMax + 0.1 && lng >= bb.lngMin - 0.12 && lng <= bb.lngMax + 0.12;
+  }
   function fitTo(recs) {
     if (!botMap || !recs.length) return;
-    try { var b = L.latLngBounds(recs.map(function (a) { return [a.lat, a.lng]; })); if (b.isValid()) botMap.fitBounds(b, { padding: [26, 26] }); } catch (e) { /* ignore */ }
+    var pts = [];
+    recs.forEach(function (a) { if (isFinite(a.lat) && isFinite(a.lng) && inChennai(a.lat, a.lng)) pts.push([a.lat, a.lng]); });
+    if (!pts.length) { if (botBounds) botMap.fitBounds(botBounds, { padding: [18, 18] }); return; }
+    try { var b = L.latLngBounds(pts); if (b.isValid()) botMap.fitBounds(b, { padding: [26, 26] }); } catch (e) { /* ignore */ }
   }
   function initBotMap() {
     if (botMap) { botMap.invalidateSize(); return; }
     var el = document.getElementById('botMap');
     if (!el || typeof L === 'undefined' || !app()) return;
-    var center = app().center ? app().center() : [13.05, 80.23];
-    botMap = L.map('botMap', { center: center, zoom: 11, zoomControl: false, attributionControl: false, preferCanvas: true, minZoom: 9, maxZoom: 19, zoomSnap: 0.25, zoomDelta: 0.5 });
+    var bb = (app().bbox && app().bbox()) || { latMin: 12.80, latMax: 13.22, lngMin: 80.03, lngMax: 80.32 };
+    botBounds = L.latLngBounds([[bb.latMin, bb.lngMin], [bb.latMax, bb.lngMax]]);
+    // hard limit to Chennai: the map can never pan or zoom out to the world
+    var maxB = L.latLngBounds([[bb.latMin - 0.10, bb.lngMin - 0.12], [bb.latMax + 0.10, bb.lngMax + 0.12]]);
+    botMap = L.map('botMap', { zoomControl: false, attributionControl: false, preferCanvas: true,
+      minZoom: 9, maxZoom: 19, zoomSnap: 0.25, zoomDelta: 0.5, maxBounds: maxB, maxBoundsViscosity: 1.0 });
+    botMap.fitBounds(botBounds, { padding: [18, 18] });   // frame the fixed Chennai bbox, not raw data bounds
     L.control.zoom({ position: 'bottomright' }).addTo(botMap);
     botTiles = L.tileLayer(app().tileUrl(), { subdomains: 'abcd', maxZoom: 20 });
     botTiles.addTo(botMap);
-    var all = records();
-    renderBotPoints(all);
-    fitTo(all);
-    requestAnimationFrame(function () { if (botMap) botMap.invalidateSize(); });
-    setTimeout(function () { if (botMap) botMap.invalidateSize(); }, 160);
+    renderBotPoints(records());
+    var reframe = function () { if (botMap) { botMap.invalidateSize(); botMap.fitBounds(botBounds, { padding: [18, 18] }); } };
+    requestAnimationFrame(reframe);
+    setTimeout(reframe, 160);
   }
 
   function showChip(html) {
