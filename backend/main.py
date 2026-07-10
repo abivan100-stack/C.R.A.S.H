@@ -55,6 +55,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# --- Always revalidate the HTML shell -----------------------------------------
+# StaticFiles sends ETag/Last-Modified but NO Cache-Control, so browsers heuristically
+# cache index.html and can keep serving a STALE shell after a deploy — the inline
+# report/app logic then looks "not updated" even though the server has the new file.
+# Force revalidation on HTML only: the browser may keep its copy but must check the
+# ETag first (a cheap 304 when unchanged, fresh HTML when it changed). Versioned JS/CSS
+# (the ?v= assets) are untouched and still cache long.
+@app.middleware("http")
+async def revalidate_html(request, call_next):
+    response = await call_next(request)
+    if response.headers.get("content-type", "").startswith("text/html"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 # --- MongoDB ------------------------------------------------------------------
 # MongoClient is lazy (it doesn't dial out until the first operation), so building
 # it at import time is safe even with a bad/missing URI — the error then surfaces
