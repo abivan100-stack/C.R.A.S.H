@@ -1309,11 +1309,11 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="./report.js?v=phase5e"></script>
-<script src="./app.js?v=phase17"></script>
-<script src="./analytics.js?v=phase8h"></script>
-<script src="./simulate.js?v=phase14"></script>
+<script src="./app.js?v=phase18"></script>
+<script src="./analytics.js?v=phase8i"></script>
+<script src="./simulate.js?v=phase15"></script>
 <script src="./notifications.js?v=8"></script>
-<script src="./bot.js?v=8"></script>
+<script src="./bot.js?v=9"></script>
 
 <script>
 (function () {
@@ -1422,8 +1422,8 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
   /* ---- Report an accident (citizen form) ---- */
   var PIN_HTML =
     '<svg class="af-pin" width="28" height="36" viewBox="0 0 28 36" aria-hidden="true">' +
-    '<path d="M14 35S25 22.5 25 13A11 11 0 1 0 3 13C3 22.5 14 35 14 35Z" fill="#43B0CC" stroke="#06121A" stroke-width="1.6" stroke-linejoin="round"/>' +
-    '<circle cx="14" cy="13" r="4.2" fill="#06121A"/></svg>';
+    '<path d="M14 35S25 22.5 25 13A11 11 0 1 0 3 13C3 22.5 14 35 14 35Z" fill="#2F5C87" stroke="#14202B" stroke-width="1.6" stroke-linejoin="round"/>' +
+    '<circle cx="14" cy="13" r="4.2" fill="#14202B"/></svg>';
 
   var formInited = false;
   var afMap = null, afTiles = null, afMarker = null, afAccCircle = null;
@@ -1704,7 +1704,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     if (prev && map) map.removeLayer(prev);
     if (isPicker) pickerAccCircle = null; else afAccCircle = null;
     if (!map || typeof acc !== 'number' || !isFinite(acc) || acc <= 0) return;
-    var accent = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#43B0CC').trim() || '#43B0CC';
+    var accent = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#2F5C87').trim() || '#2F5C87';
     var ring = L.circle([lat, lng], { radius: acc, color: accent, weight: 1, opacity: 0.5,
       fillColor: accent, fillOpacity: 0.10, interactive: false }).addTo(map);
     if (isPicker) pickerAccCircle = ring; else afAccCircle = ring;
@@ -1870,7 +1870,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       center: [13.05, 80.23], zoom: 11, zoomControl: true, attributionControl: false,
       zoomSnap: 0.25, minZoom: 10, maxZoom: 18,
     });
-    afTiles = L.tileLayer('https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(afMap);
+    afTiles = L.tileLayer((window.CRASH_APP && window.CRASH_APP.tileUrl) ? window.CRASH_APP.tileUrl() : 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(afMap);
     document.addEventListener('crash:themechange', function () { if (afTiles && window.CRASH_APP) afTiles.setUrl(window.CRASH_APP.tileUrl()); });
     afMap.on('click', function (e) {
       if (!isValidLandPoint(e.latlng.lat, e.latlng.lng)) {   // same sea-guard as the fullscreen picker
@@ -1928,7 +1928,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     if (sevWrap) sevWrap.addEventListener('click', function (e) {
       var btn = e.target.closest('button[data-sev]'); if (!btn) return;
       af.sev = btn.dataset.sev;
-      var colors = { fatal: '#E4404E', serious: '#F2933E', slight: '#E7C64B' };
+      var colors = { fatal: '#BE2F2A', serious: '#CE8A2E', slight: '#E7C64B' };
       Array.prototype.forEach.call(sevWrap.querySelectorAll('button'), function (b) {
         var on = b === btn;
         b.setAttribute('aria-pressed', on ? 'true' : 'false');

@@ -10,8 +10,9 @@
 (function () {
   'use strict';
 
-  var SEV = { fatal: '#E4404E', serious: '#F2933E', slight: '#E7C64B' };
-  var ACCENT = '#43B0CC';
+  var SEV = { fatal: '#BE2F2A', serious: '#CE8A2E', slight: '#E7C64B' };
+  var ACCENT = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#43B0CC');
+  var botLastRecs = null;
   var BOT_EXAMPLES = ['Which area has the most fatal accidents?', 'Safest areas in Chennai?', 'Compare Adyar and Velachery', 'What causes most crashes?'];
   var BOT_UNAVAILABLE = 'C.R.A.S.H Bot is unavailable right now — try the example questions or the filters.';
 
@@ -101,6 +102,7 @@
 
   // ---- map ----------------------------------------------------------------
   function renderBotPoints(recs) {
+    botLastRecs = recs;
     if (!botMap) return;
     if (botPointLayer) { botPointLayer.remove(); botPointLayer = null; }
     var canvas = L.canvas({ padding: 0.5 });
@@ -247,7 +249,7 @@
   }
 
   // keep the bot map's tiles in sync with the app-wide theme toggle
-  document.addEventListener('crash:themechange', function () { if (botTiles && app()) botTiles.setUrl(app().tileUrl()); });
+  document.addEventListener('crash:themechange', function () { if (botTiles && app()) botTiles.setUrl(app().tileUrl()); ACCENT = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || ACCENT); if (botLastRecs) renderBotPoints(botLastRecs); });
   // re-fit on resize while the section is visible
   var _brt;
   window.addEventListener('resize', function () {
