@@ -8,7 +8,7 @@
 #
 # Deploy: open THIS service's URL as the app. A separate static-site service is NOT
 # needed (and is in fact what broke cross-device — the frontend was talking to the
-# static origin, which has no API).
+# static origin, which has no API)
 services:
   - type: web
     name: crash
