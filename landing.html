@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRASH — Chennai Road Accident Safety Hub</title>
+<meta name="description" content="CRASH reads two years of Greater Chennai road-accident data, ranks the deadliest junctions by a severity-weighted risk score, and turns every hotspot into an evidence-based intervention — a live map, analytics, area-compare, an AI data assistant, intervention simulation, and citizen reporting.">
+<script>
+  /* set theme before first paint to avoid a flash — shares the app's key */
+  (function () {
+    try { var t = localStorage.getItem('cra-theme'); if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); }
+    catch (e) {}
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500;1,6..72,600&family=Roboto:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     CRASH — landing / editorial civic-intelligence broadsheet
+     Warm printed-paper ground · Newsreader serif display ·
+     steel-blue accent · hairline rules, near-sharp corners ·
+     mono tabular numbers. Severity hues are DATA only.
+     ============================================================ */
+  :root {
+    /* light (default) — warm paper */
+    --canvas: #F4F0E7; --surface: #FCFAF4; --surface-2: #EBE5D8;
+    --border: #D9D1C1; --border-soft: #E7E0D0;
+    --text: #221F18; --text-muted: #6E675A; --text-3: #857D6D;
+    --accent: #2F5C87; --accent-2: #24486B; --accent-ink: #FCFBF8;
+    --accent-faint: rgba(47,92,135,0.05);
+    --accent-soft: rgba(47,92,135,0.10);
+    --accent-line: rgba(47,92,135,0.26);
+    --row-hover: #EFEADE; --row-alt: #F1ECE0; --track: #E7E0D0;
+    --fatal: #BE2F2A; --serious: #CE8A2E; --slight: #E7C64B;
+    /* figure / hero-art surface reads */
+    --fig-grid: rgba(34,31,24,0.06);
+    --fig-coast: rgba(47,92,135,0.30);
+    --fig-bg: #FBF7EE;
+    --hero-shadow: 0 20px 50px -28px rgba(47,92,135,0.35);
+
+    --maxw: 1180px;
+    --gutter: clamp(20px, 5vw, 62px);
+    --radius: 3px; --radius-sm: 2px; --radius-lg: 4px;
+    --f-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+    --f-body: 'Roboto', system-ui, sans-serif;
+    --f-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  :root[data-theme="dark"] {
+    --canvas: #16191D; --surface: #1E232A; --surface-2: #262C34;
+    --border: #333B44; --border-soft: #2A313A;
+    --text: #ECEAE4; --text-muted: #99A2AC; --text-3: #8A96A3;
+    --accent: #6FA3D0; --accent-2: #8FB8DC; --accent-ink: #14202B;
+    --accent-faint: rgba(111,163,208,0.10);
+    --accent-soft: rgba(111,163,208,0.16);
+    --accent-line: rgba(111,163,208,0.32);
+    --row-hover: #242A31; --row-alt: #22272E; --track: #2A313A;
+    --fatal: #BE2F2A; --serious: #CE8A2E; --slight: #E7C64B;
+    --fig-grid: rgba(236,234,228,0.06);
+    --fig-coast: rgba(111,163,208,0.34);
+    --fig-bg: #1A1F25;
+    --hero-shadow: 0 24px 60px -30px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--canvas); color: var(--text);
+    font-family: var(--f-body); font-size: 16px; line-height: 1.62;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+    transition: background .3s ease, color .3s ease;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  h1, h2, h3, h4 { margin: 0; font-family: var(--f-display); font-weight: 600;
+    letter-spacing: -0.015em; text-wrap: balance; }
+  h1 em, h2 em, h3 em { font-style: italic; font-weight: 600; color: var(--accent); }
+  p { margin: 0; }
+  ::selection { background: var(--accent-soft); }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius); }
+  ::-webkit-scrollbar-track { background: transparent; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius-sm); }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding-inline: var(--gutter); }
+  .eyebrow {
+    font-family: var(--f-mono); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-3);
+  }
+  .num, .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-family: var(--f-mono); font-weight: 500; font-size: 13px; letter-spacing: 0.02em;
+    padding: 12px 18px; border: 1px solid transparent; border-radius: var(--radius);
+    cursor: pointer; background: none;
+    transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .22s ease;
+  }
+  .btn svg { width: 15px; height: 15px; transition: transform .22s cubic-bezier(.2,.7,.2,1); }
+  .btn:hover svg.arrow { transform: translateX(3px); }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-2); border-color: var(--accent-2); box-shadow: var(--hero-shadow); }
+  .btn-ghost { border-color: var(--accent-line); color: var(--accent); }
+  .btn-ghost:hover { border-color: var(--accent); background: var(--accent-faint); }
+
+  /* thin-line arrow used across CTAs & links */
+  .ar { width: 15px; height: 15px; }
+
+  /* ---------- masthead / nav ---------- */
+  .nav {
+    position: sticky; top: 0; z-index: 60;
+    background: color-mix(in srgb, var(--canvas) 88%, transparent);
+    backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner { display: flex; align-items: center; gap: 22px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 11px; color: var(--text); }
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: var(--radius); border: 1px solid var(--accent-line);
+    background: var(--accent-faint); color: var(--accent);
+    display: grid; place-items: center; font-family: var(--f-display); font-weight: 600; font-size: 20px;
+    line-height: 1;
+  }
+  .brand-word { font-family: var(--f-display); font-weight: 600; font-size: 19px; letter-spacing: 0.02em; line-height: 1; }
+  .brand-sub { font-family: var(--f-mono); font-size: 9px; letter-spacing: 0.13em; color: var(--text-3); text-transform: uppercase; margin-top: 3px; display: block; }
+  .nav-links { display: flex; gap: 22px; margin-left: 12px; }
+  .nav-links a {
+    position: relative; font-family: var(--f-mono); font-size: 12.5px; color: var(--text-muted);
+    letter-spacing: 0.01em; padding: 4px 0; transition: color .16s;
+  }
+  .nav-links a::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 1px;
+    background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .22s ease;
+  }
+  .nav-links a:hover { color: var(--text); }
+  .nav-links a:hover::after { transform: scaleX(1); }
+  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .theme-toggle {
+    width: 38px; height: 38px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-muted); cursor: pointer;
+    display: grid; place-items: center; transition: color .16s, border-color .16s, background .16s;
+  }
+  .theme-toggle:hover { color: var(--accent); border-color: var(--accent-line); }
+  .theme-toggle svg { width: 17px; height: 17px; }
+  .theme-toggle .i-moon { display: none; }
+  :root[data-theme="dark"] .theme-toggle .i-sun { display: none; }
+  :root[data-theme="dark"] .theme-toggle .i-moon { display: block; }
+  .nav-toggle { display: none; width: 40px; height: 38px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font-size: 18px; }
+
+  /* ---------- hero / front-page lead ---------- */
+  .hero { border-bottom: 1px solid var(--border); }
+  .hero-inner {
+    display: grid; grid-template-columns: 1.05fr 0.95fr; gap: clamp(28px, 5vw, 68px);
+    align-items: center; padding: clamp(48px, 8vh, 104px) 0 clamp(44px, 7vh, 92px);
+  }
+  .dateline {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.13em; text-transform: uppercase;
+    color: var(--text-3); padding-bottom: 16px; margin-bottom: 22px; border-bottom: 1px solid var(--border);
+  }
+  .dateline .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+  .hero h1 {
+    font-size: clamp(2.5rem, 5.6vw, 4.35rem); line-height: 1.02; letter-spacing: -0.02em;
+    max-width: 15ch;
+  }
+  .hero-sub { margin-top: 22px; max-width: 52ch; color: var(--text-muted);
+    font-size: clamp(1rem, 1.35vw, 1.12rem); line-height: 1.62; }
+  .hero-sub b { color: var(--text); font-weight: 500; }
+  .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 30px; }
+  .trust { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 30px;
+    font-family: var(--f-mono); font-size: 12px; color: var(--text-3); letter-spacing: 0.01em; }
+  .sev-dots { display: inline-flex; gap: 5px; }
+  .sev-dots i { width: 8px; height: 8px; border-radius: 50%; display: block; }
+  .trust .rule { width: 1px; height: 12px; background: var(--border); }
+
+  /* hero figure — the plotted-city data map */
+  .figure {
+    position: relative; background: var(--fig-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--hero-shadow); overflow: hidden;
+  }
+  .figure .fig-canvas-wrap { position: relative; aspect-ratio: 5 / 4.4; }
+  #cityCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .figure .fig-corner {
+    position: absolute; top: 12px; left: 12px; font-family: var(--f-mono); font-size: 10px;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3);
+  }
+  .figure .fig-legend {
+    position: absolute; right: 12px; bottom: 12px; display: flex; gap: 12px;
+    font-family: var(--f-mono); font-size: 10px; color: var(--text-muted);
+    background: color-mix(in srgb, var(--fig-bg) 82%, transparent); padding: 5px 9px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-soft);
+  }
+  .figure .fig-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .figure .fig-legend i { width: 7px; height: 7px; border-radius: 50%; }
+  .fig-caption {
+    font-family: var(--f-mono); font-size: 11px; color: var(--text-3); letter-spacing: 0.03em;
+    padding: 11px 14px; border-top: 1px solid var(--border);
+  }
+
+  /* ---------- section scaffolding ---------- */
+  .band { padding: clamp(58px, 8vw, 104px) 0; border-bottom: 1px solid var(--border); }
+  .band.alt { background: var(--surface); }
+  .band-head { max-width: 60ch; }
+  .band-head h2 { font-size: clamp(1.85rem, 3.8vw, 3rem); line-height: 1.05; margin-top: 14px; }
+  .band-sub { margin-top: 16px; max-width: 56ch; color: var(--text-muted); font-size: 1.02rem; }
+  .kicker-row { display: flex; align-items: center; gap: 14px; }
+  .kicker-row::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .sec-no { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.14em; color: var(--accent); }
+
+  /* ---------- by the numbers ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 8px; }
+  .stat { padding: 8px 26px; border-left: 1px solid var(--border); }
+  .stat:first-child { padding-left: 0; border-left: none; }
+  .stat .figure-n {
+    display: block; font-family: var(--f-display); font-weight: 600;
+    font-size: clamp(2.6rem, 5vw, 3.7rem); line-height: 1; letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums; color: var(--text);
+  }
+  .stat.sev-f .figure-n { color: var(--fatal); }
+  .stat .figure-n .unit { font-family: var(--f-mono); font-size: .34em; letter-spacing: 0; color: var(--text-3); margin-left: 4px; }
+  .stat .cap { display: block; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+    font-size: 13.5px; color: var(--text-muted); line-height: 1.45; }
+
+  /* ---------- the case (leader) ---------- */
+  .leader { display: grid; grid-template-columns: 1.2fr 1fr; gap: clamp(28px, 5vw, 64px); align-items: start; }
+  .leader-body p.lead { font-size: 1.12rem; line-height: 1.66; color: var(--text); }
+  .leader-body p.lead::first-letter {
+    float: left; font-family: var(--f-display); font-weight: 600; font-size: 3.9rem; line-height: 0.82;
+    padding: 6px 12px 0 0; color: var(--accent);
+  }
+  .leader-body p.lead b { color: var(--text); font-weight: 600; box-shadow: inset 0 -0.42em 0 var(--accent-soft); }
+  .pullquote {
+    font-family: var(--f-display); font-style: italic; font-weight: 500;
+    font-size: clamp(1.3rem, 2.4vw, 1.75rem); line-height: 1.34; color: var(--text);
+    border-left: 2px solid var(--accent); padding: 4px 0 4px 22px; margin: 0;
+  }
+  .pullquote cite { display: block; margin-top: 14px; font-style: normal; font-family: var(--f-mono);
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); }
+
+  .argus { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 56px; }
+  .argu { border-top: 2px solid var(--border); padding-top: 16px; }
+  .argu.c-f { border-top-color: var(--fatal); }
+  .argu.c-s { border-top-color: var(--serious); }
+  .argu.c-l { border-top-color: var(--slight); }
+  .argu.c-a { border-top-color: var(--accent); }
+  .argu .tag { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--text-3); }
+  .argu h3 { font-size: 1.18rem; margin-top: 9px; line-height: 1.18; }
+  .argu p { margin-top: 10px; color: var(--text-muted); font-size: 14px; }
+
+  /* ---------- the hub / capabilities ---------- */
+  .strap { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+  .strap span { font-family: var(--f-display); font-style: italic; font-size: 1.08rem; color: var(--text-muted); }
+  .strap b { color: var(--accent); font-style: normal; font-weight: 600; font-family: var(--f-mono); font-size: .82em; letter-spacing: 0.04em; }
+  .caps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 48px; }
+  .cap {
+    background: var(--canvas); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 24px 22px 22px; display: flex; flex-direction: column; min-height: 208px;
+    transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+  }
+  .band.alt .cap { background: var(--surface); }
+  .cap:hover { border-color: var(--accent-line); transform: translateY(-2px); box-shadow: 0 14px 30px -22px rgba(47,92,135,0.4); }
+  .cap-ic {
+    width: 42px; height: 42px; border-radius: var(--radius); border: 1px solid var(--accent-line);
+    background: var(--accent-faint); color: var(--accent); display: grid; place-items: center; margin-bottom: 18px;
+  }
+  .cap-ic svg { width: 22px; height: 22px; }
+  .cap h3 { font-size: 1.22rem; line-height: 1.12; }
+  .cap .role { font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--text-3); margin-bottom: 7px; }
+  .cap p { margin-top: 9px; color: var(--text-muted); font-size: 13.6px; line-height: 1.55; }
+  .cap .go { margin-top: auto; padding-top: 18px; display: inline-flex; align-items: center; gap: 7px;
+    color: var(--accent); font-family: var(--f-mono); font-size: 12px; font-weight: 500; }
+  .cap .go svg { transition: transform .2s cubic-bezier(.2,.7,.2,1); }
+  .cap:hover .go svg { transform: translateX(3px); }
+
+  /* ---------- method ---------- */
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 52px; }
+  .step { border-top: 1px solid var(--border); padding-top: 18px; position: relative; }
+  .step .n { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.14em; color: var(--accent); }
+  .step h3 { font-size: 1.22rem; margin-top: 12px; }
+  .step p { margin-top: 9px; color: var(--text-muted); font-size: 14px; }
+  .step .formula { margin-top: 13px; font-family: var(--f-mono); font-size: 11.5px; color: var(--text);
+    background: var(--surface-2); border: 1px solid var(--border-soft); padding: 6px 9px; display: inline-block; border-radius: var(--radius-sm); }
+  .band.alt .step .formula { background: var(--canvas); }
+
+  /* ---------- audience ---------- */
+  .aud { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 48px; }
+  .aud-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--canvas); padding: 22px 20px 24px; }
+  .band.alt .aud-card { background: var(--surface); }
+  .aud-card .ic { width: 30px; height: 30px; color: var(--accent); }
+  .aud-card h3 { font-family: var(--f-mono); font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 15px; }
+  .aud-card p { margin-top: 9px; color: var(--text-muted); font-size: 13.5px; }
+
+  /* ---------- closing CTA ---------- */
+  .cta-band { border-bottom: 1px solid var(--border); }
+  .cta-inner {
+    position: relative; text-align: center; padding: clamp(56px, 9vw, 96px) clamp(24px, 5vw, 72px);
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    box-shadow: var(--hero-shadow); overflow: hidden;
+  }
+  .cta-inner::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(70% 130% at 50% 130%, var(--accent-faint), transparent 70%);
+  }
+  .cta-inner h2 { position: relative; font-size: clamp(1.9rem, 4.4vw, 3rem); line-height: 1.05; }
+  .cta-inner p { position: relative; margin: 16px auto 0; max-width: 50ch; color: var(--text-muted); }
+  .cta-inner .hero-cta { position: relative; justify-content: center; margin-top: 32px; }
+
+  /* ---------- footer / colophon ---------- */
+  .foot { padding: 56px 0 40px; background: var(--canvas); }
+  .foot-top { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px; }
+  .foot p.desc { color: var(--text-muted); font-size: 14px; margin-top: 16px; max-width: 42ch; }
+  .foot h4 { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-3); margin: 0 0 14px; font-weight: 500; }
+  .foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .foot ul a { font-size: 14px; color: var(--text-muted); }
+  .foot ul a:hover { color: var(--accent); }
+  .foot-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 18px; }
+  .foot-legend span { display: inline-flex; align-items: center; gap: 7px; font-family: var(--f-mono); font-size: 12px; color: var(--text-3); }
+  .foot-legend i { width: 8px; height: 8px; border-radius: 50%; }
+  .foot-bottom { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    margin-top: 42px; padding-top: 22px; border-top: 1px solid var(--border);
+    font-family: var(--f-mono); font-size: 11px; color: var(--text-3); letter-spacing: 0.02em; }
+
+  /* ---------- motion: reveal + headline ---------- */
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s ease, transform .7s cubic-bezier(.16,1,.3,1); }
+  .reveal.in { opacity: 1; transform: none; }
+  .h-word { display: inline-block; overflow: hidden; vertical-align: top; }
+  .h-word > span { display: inline-block; transform: translateY(105%); opacity: 0;
+    transition: transform .8s cubic-bezier(.16,1,.3,1), opacity .6s ease; }
+  .head-in .h-word > span { transform: none; opacity: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .h-word > span { opacity: 1 !important; transform: none !important; transition: none !important; }
+    .btn svg, .cap .go svg { transition: none !important; }
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 960px) {
+    .hero-inner { grid-template-columns: 1fr; gap: 40px; }
+    .hero h1 { max-width: 18ch; }
+    .figure { max-width: 560px; }
+    .stats { grid-template-columns: repeat(2, 1fr); gap: 30px 0; }
+    .stat { padding: 8px 22px; }
+    .stat:nth-child(3) { padding-left: 0; border-left: none; }
+    .leader { grid-template-columns: 1fr; gap: 32px; }
+    .argus { grid-template-columns: repeat(2, 1fr); }
+    .caps { grid-template-columns: repeat(2, 1fr); }
+    .steps { grid-template-columns: repeat(2, 1fr); }
+    .aud { grid-template-columns: repeat(2, 1fr); }
+    .foot-top { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 620px) {
+    .nav-links { display: none; }
+    .nav-toggle { display: block; }
+    .nav[data-open="true"] .nav-links {
+      display: flex; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; gap: 0;
+      background: var(--surface); border-bottom: 1px solid var(--border); padding: 6px var(--gutter) 14px;
+    }
+    .nav[data-open="true"] .nav-links a { padding: 12px 0; border-bottom: 1px solid var(--border-soft); }
+    .stats { grid-template-columns: 1fr; }
+    .stat { border-left: none !important; padding: 8px 0 !important; }
+    .argus, .caps, .steps, .aud, .foot-top { grid-template-columns: 1fr; }
+    .btn { flex: 1; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== MASTHEAD ===================== -->
+<header class="nav" id="nav" data-open="false">
+  <div class="wrap nav-inner">
+    <a class="brand" href="./landing.html" aria-label="CRASH home">
+      <span class="brand-mark">C</span>
+      <span>
+        <span class="brand-word">CRASH</span>
+        <span class="brand-sub">Chennai Road Accident Safety Hub</span>
+      </span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#case">The case</a>
+      <a href="#hub">The hub</a>
+      <a href="#method">Method</a>
+      <a href="#audience">Who it's for</a>
+      <a href="./analytics.html">Analytics</a>
+      <a href="./compare.html">Compare</a>
+    </nav>
+    <div class="nav-right">
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle light / dark theme">
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.9 1.9M17.5 17.5l1.9 1.9M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.9-1.9M17.5 6.5l1.9-1.9"/></svg>
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5Z"/></svg>
+      </button>
+      <a class="btn btn-primary" href="./index.html">
+        Open the live map
+        <svg class="ar arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">≡</button>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== HERO ===================== -->
+<section class="hero">
+  <div class="wrap hero-inner">
+    <div class="hero-lead">
+      <div class="dateline">
+        <span>Chennai road-safety intelligence</span>
+        <span class="dot" aria-hidden="true"></span>
+        <span>Field edition</span>
+        <span class="dot" aria-hidden="true"></span>
+        <span>Jul 2024 – Jun 2026</span>
+      </div>
+      <h1 data-split>See where Chennai crashes — <em>and why.</em></h1>
+      <p class="hero-sub">
+        CRASH reads <b>7,291 incidents</b> across Greater Chennai, ranks the deadliest
+        junctions by a severity-weighted risk score, flags where risk is climbing, and
+        turns every hotspot into an evidence-based fix — from street lighting to speed control.
+      </p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="./index.html">
+          Open the live map
+          <svg class="ar arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a class="btn btn-ghost" href="./analytics.html">Explore the analytics</a>
+      </div>
+      <div class="trust">
+        <span class="sev-dots" aria-hidden="true"><i style="background:var(--fatal)"></i><i style="background:var(--serious)"></i><i style="background:var(--slight)"></i></span>
+        <span>7,291 incidents</span><span class="rule"></span>
+        <span>10 ranked hotspots</span><span class="rule"></span>
+        <span>No login · runs in-browser</span>
+      </div>
+    </div>
+
+    <figure class="figure reveal" aria-label="Illustrative map of Chennai incidents plotted by severity">
+      <div class="fig-canvas-wrap">
+        <canvas id="cityCanvas"></canvas>
+        <span class="fig-corner">Fig. 1</span>
+        <div class="fig-legend" aria-hidden="true">
+          <span><i style="background:var(--fatal)"></i>Fatal</span>
+          <span><i style="background:var(--serious)"></i>Serious</span>
+          <span><i style="background:var(--slight)"></i>Slight</span>
+        </div>
+      </div>
+      <figcaption class="fig-caption">Incident density by severity · risk concentrates at a handful of junctions</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ===================== BY THE NUMBERS ===================== -->
+<section class="band alt">
+  <div class="wrap">
+    <div class="kicker-row reveal"><span class="eyebrow">By the numbers</span></div>
+    <div class="stats" style="margin-top:34px">
+      <div class="stat reveal">
+        <span class="figure-n num" data-count="7291">0</span>
+        <span class="cap">Incidents geo-analysed across Greater Chennai</span>
+      </div>
+      <div class="stat sev-f reveal">
+        <span class="figure-n num" data-count="10">0</span>
+        <span class="cap">High-risk junctions ranked by severity</span>
+      </div>
+      <div class="stat reveal">
+        <span class="figure-n num" data-count="250" data-suffix="m">0</span>
+        <span class="cap">Grid resolution for hotspot detection</span>
+      </div>
+      <div class="stat reveal">
+        <span class="figure-n num" data-count="24" data-suffix="mo">0</span>
+        <span class="cap">Rolling window of incident history</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== THE CASE ===================== -->
+<section class="band" id="case">
+  <div class="wrap">
+    <div class="kicker-row reveal"><span class="sec-no">§ 01</span><span class="eyebrow">Why CRASH exists</span></div>
+    <div class="band-head reveal" style="margin-top:16px">
+      <h2>You can't fix the crashes you can't <em>see.</em></h2>
+    </div>
+
+    <div class="leader" style="margin-top:32px">
+      <div class="leader-body reveal">
+        <p class="lead">Road crashes are among the leading causes of unnatural death in India — and nearly every one happens at a place someone could have flagged in advance. The records already exist, filed away in spreadsheets and PDFs. <b>What's missing is a way to read them.</b> CRASH turns two years of Chennai's accident record into a single, ranked, defensible picture of where the danger actually is.</p>
+      </div>
+      <blockquote class="pullquote reveal">
+        “Fix the worst ten junctions first, and you cut the most harm for the least spend.”
+        <cite>The concentration principle</cite>
+      </blockquote>
+    </div>
+
+    <div class="argus">
+      <article class="argu c-f reveal">
+        <div class="tag">The concentration</div>
+        <h3>Risk isn't spread evenly</h3>
+        <p>A small set of junctions carries a large share of the serious crashes. Fix the worst ten first and you cut the most harm for the least spend — instead of thinning budgets across the whole city.</p>
+      </article>
+      <article class="argu c-s reveal">
+        <div class="tag">The blind spot</div>
+        <h3>Counts hide severity</h3>
+        <p>Ten minor scrapes are not one fatal collision. Ranking by raw volume points enforcement at the busy corners, not the deadly ones. Severity-weighting surfaces where people are actually being killed.</p>
+      </article>
+      <article class="argu c-l reveal">
+        <div class="tag">The signal</div>
+        <h3>Patterns name the fix</h3>
+        <p>A night-time, rain-linked, or high-speed signature tells you which intervention will work — lighting, drainage, or traffic calming. Without the pattern, spending is a guess.</p>
+      </article>
+      <article class="argu c-a reveal">
+        <div class="tag">The case</div>
+        <h3>Evidence wins budgets</h3>
+        <p>“This corner feels dangerous” doesn't get funded. A ranked, transparent, severity-weighted map turns a hunch into a decision a council or police chief can sign off — and defend.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== THE HUB / CAPABILITIES ===================== -->
+<section class="band alt" id="hub">
+  <div class="wrap">
+    <div class="kicker-row reveal"><span class="sec-no">§ 02</span><span class="eyebrow">Explore the hub</span></div>
+    <div class="band-head reveal" style="margin-top:16px">
+      <h2>Nine instruments, <em>one</em> road-safety picture</h2>
+      <p class="band-sub">Everything runs live in the browser — no setup, no login. See the risk, understand the pattern, then act on the evidence.</p>
+      <div class="strap">
+        <span><b>01</b> See it</span>
+        <span><b>02</b> Understand it</span>
+        <span><b>03</b> Act on it</span>
+      </div>
+    </div>
+
+    <div class="caps">
+      <a class="cap reveal" href="./index.html">
+        <span class="cap-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5C8 2.5 5.5 5 5.5 9c0 4.5 6.5 12 6.5 12s6.5-7.5 6.5-12c0-4-2.5-6.5-6.5-6.5Z"/><circle cx="12" cy="9" r="2.4"/></svg></span>
+        <div class="role">See · Map</div>
+        <h3>Live hotspot map</h3>
+        <p>Every incident plotted by severity, with soft risk blooms glowing over the densest, deadliest clusters.</p>
+        <span class="go">Open map <svg class="ar" viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+
+      <a class="cap reveal" href="./index.html">
+        <span class="cap-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 20V12M9.3 20V5M14.6 20v-6M20 20V9"/><path d="M3 20h18"/></svg></span>
+        <div class="role">See · Rank</div>
+        <h3>Ranked danger index</h3>
+        <p>The top-10 junctions scored by severity-weighted incidents — fatal ×3, serious ×2, slight ×1 — so harm and volume count together.</p>
+        <span class="go">See the ranking <svg class="ar" viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+
+      <a class="cap reveal" href="./index.html">
+        <span class="cap-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4.5" stroke-linecap="round"/></svg></span>
+        <div class="role">Understand · Dossier</div>
+        <h3>Zone dossiers</h3>
+        <p>Click any cell for its severity split, hour-of-day and weekday rhythm, weather mix, and a recommended intervention.</p>
+        <span class="go">Inspect a zone <svg class="ar" viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+
+      <a class="cap reveal" href="./index.html">
+        <span class="cap-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.1" fill="var(--accent-faint)"/><circle cx="15" cy="12" r="2.1" fill="var(--accent-faint)"/><circle cx="8" cy="17" r="2.1" fill="var(--accent-faint)"/></svg></span>
+        <div class="role">See · Filter</div>
+        <h3>Live filters</h3>
+        <p>Slice by severity, time of day, and weather. Map, ranking, blooms, and headline numbers all re-rank in the same instant.</p>
+        <span class="go">Try the filters <svg class="ar" viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+
+      <a class="cap reveal" href="./index.html">
+        <span class="cap-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19c3-7 5-9 8-9s3 2 3 4-1.5 3-3 2 0-4 3-5c2.5-.8 4-1 5-1"/><path d="M4 19h1.5"/></svg></span>
+        <div class="role">Act · Simulate</div>
+        <h3>Simulate a fix</h3>
+        <p>Model an intervention before you fund it — add lighting or traffic calming to a zone and watch the projected risk fall.</p>
+        <span class="go">Run a scenario <svg class="ar" viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+
+      <a class="cap reveal" href="./index.html">
+        <span class="cap-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10H12l-4 3v-3H4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01" stroke-linecap="round"/></svg></span>
+        <div class="role">Understand · Ask</div>
+        <h3>CRASH Bot</h3>
+        <p>Ask the data in plain English. The assistant answers from two years of Chennai incidents — which area, which hour, which cause.</p>
+        <span class="go">Ask the data <svg class="ar" viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+
+      <a class="cap reveal" href="./index.html">
+        <span class="cap-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 3.9 4.3.6-3.1 3 .7 4.3L12 12.8 8.3 14.8l.7-4.3-3.1-3 4.3-.6z"/><path d="M12 15v6" stroke-linecap="round"/></svg></span>
+        <div class="role">Act · Report</div>
+        <h3>Citizen reports</h3>
+        <p>Residents flag a hazard straight from the map. New reports surface live in the notification feed for everyone watching.</p>
+        <span class="go">File a report <svg class="ar" viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+
+      <a class="cap reveal" href="./analytics.html">
+        <span class="cap-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M7 16l4-5 3 3 5-7"/></svg></span>
+        <div class="role">Understand · Charts</div>
+        <h3>Analytics studio</h3>
+        <p>Severity, temporal and weather charts across the whole city — the patterns behind the map, read at a glance.</p>
+        <span class="go">Open analytics <svg class="ar" viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+
+      <a class="cap reveal" href="./compare.html">
+        <span class="cap-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M7 8l-3 3 3 3"/><path d="M17 8l3 3-3 3"/></svg></span>
+        <div class="role">Understand · Compare</div>
+        <h3>Area compare</h3>
+        <p>Put two areas side by side and see which corner carries the heavier, deadlier load — before the budget conversation.</p>
+        <span class="go">Compare areas <svg class="ar" viewBox="0 0 20 20" fill="none"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== METHOD ===================== -->
+<section class="band" id="method">
+  <div class="wrap">
+    <div class="kicker-row reveal"><span class="sec-no">§ 03</span><span class="eyebrow">How the risk score works</span></div>
+    <div class="band-head reveal" style="margin-top:16px">
+      <h2>From raw incidents to a ranked danger <em>list.</em></h2>
+      <p class="band-sub">A transparent, four-step pipeline you can explain in a council meeting — no black-box scoring.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step reveal">
+        <div class="n">STEP 01</div>
+        <h3>Grid the city</h3>
+        <p>The bounding box is divided into ~250 m cells, so a “hotspot” is a real, walkable junction — not a vague neighbourhood.</p>
+        <span class="formula">cell ≈ 0.0022°</span>
+      </div>
+      <div class="step reveal">
+        <div class="n">STEP 02</div>
+        <h3>Weight by severity</h3>
+        <p>Each cell scores the harm it causes, not just the count — a fatal crash weighs three times a slight one.</p>
+        <span class="formula">fatal ×3 · serious ×2 · slight ×1</span>
+      </div>
+      <div class="step reveal">
+        <div class="n">STEP 03</div>
+        <h3>Suppress &amp; rank</h3>
+        <p>Neighbouring cells are merged so the top 10 are ten distinct junctions, then ranked by score.</p>
+        <span class="formula">non-max suppression · top 10</span>
+      </div>
+      <div class="step reveal">
+        <div class="n">STEP 04</div>
+        <h3>Brief the fix</h3>
+        <p>Time, weather, and severity patterns trigger plain-language intervention recommendations for each zone.</p>
+        <span class="formula">night &gt; 60% → lighting</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== AUDIENCE ===================== -->
+<section class="band alt" id="audience">
+  <div class="wrap">
+    <div class="kicker-row reveal"><span class="sec-no">§ 04</span><span class="eyebrow">Built for</span></div>
+    <div class="band-head reveal" style="margin-top:16px">
+      <h2>The people who keep Chennai's roads <em>safe</em></h2>
+      <p class="band-sub">One shared picture of risk — so budgets and enforcement land where the harm actually is.</p>
+    </div>
+
+    <div class="aud">
+      <div class="aud-card reveal">
+        <svg class="ic" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M15 3l10 4v7c0 7-4 11-10 13C9 25 5 21 5 14V7l10-4Z"/><path d="M11 15l3 3 5-6" stroke-linecap="round"/></svg>
+        <h3>Traffic police</h3>
+        <p>Target enforcement and patrols at the junctions and hours that carry the most severe risk.</p>
+      </div>
+      <div class="aud-card reveal">
+        <svg class="ic" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 26V6l8-2v22M12 26V10l14 4v12"/><path d="M2 26h26" stroke-linecap="round"/></svg>
+        <h3>City &amp; transport planners</h3>
+        <p>Prioritise lighting, signals, and road works with a defensible, severity-weighted ranking.</p>
+      </div>
+      <div class="aud-card reveal">
+        <svg class="ic" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="13" cy="13" r="8"/><path d="M19 19l7 7" stroke-linecap="round"/></svg>
+        <h3>Road-safety researchers</h3>
+        <p>Explore time, weather, and severity patterns across the whole city in seconds, not spreadsheets.</p>
+      </div>
+      <div class="aud-card reveal">
+        <svg class="ic" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10" cy="10" r="4"/><circle cx="21" cy="12" r="3"/><path d="M4 25c0-4 3-6 6-6s6 2 6 6M17 25c0-3 2-5 4.5-5s4.5 2 4.5 5" stroke-linecap="round"/></svg>
+        <h3>Councillors &amp; NGOs</h3>
+        <p>Make the case for a specific fix on a specific corner, backed by two years of evidence.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CLOSING CTA ===================== -->
+<section class="cta-band">
+  <div class="wrap" style="padding-top:clamp(58px,8vw,96px);padding-bottom:clamp(58px,8vw,96px)">
+    <div class="cta-inner reveal">
+      <h2>Ready to see Chennai's risk map?</h2>
+      <p>Open the live hub — pan the city, rank the junctions, ask the data a question, and pull up the dossier on the corner you care about.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="./index.html">
+          Open the live map
+          <svg class="ar arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a class="btn btn-ghost" href="#method">Review the method</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== COLOPHON / FOOTER ===================== -->
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-top">
+      <div>
+        <a class="brand" href="./landing.html" aria-label="CRASH home">
+          <span class="brand-mark">C</span>
+          <span><span class="brand-word">CRASH</span><span class="brand-sub">Chennai Road Accident Safety Hub</span></span>
+        </a>
+        <p class="desc">A road-safety intelligence hub that turns Greater Chennai's accident record into a ranked, actionable map of risk.</p>
+        <div class="foot-legend" aria-label="Severity legend">
+          <span><i style="background:var(--fatal)"></i>Fatal</span>
+          <span><i style="background:var(--serious)"></i>Serious</span>
+          <span><i style="background:var(--slight)"></i>Slight</span>
+        </div>
+      </div>
+      <div>
+        <h4>The hub</h4>
+        <ul>
+          <li><a href="./index.html">Live map</a></li>
+          <li><a href="./analytics.html">Analytics &amp; charts</a></li>
+          <li><a href="./compare.html">Compare areas</a></li>
+          <li><a href="#hub">Capabilities</a></li>
+          <li><a href="#method">Method</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Data &amp; scope</h4>
+        <ul>
+          <li><a href="#case">Why it matters</a></li>
+          <li><a href="#method">Risk scoring</a></li>
+          <li><a href="#audience">Who it's for</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>Greater Chennai · WGS 84 · Basemap © OpenStreetMap · © CARTO</span>
+      <span>Demo dataset — 7,291 records modelled on Chennai patterns. Swap in official data anytime.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* =========================================================================
+   CRASH landing — editorial motion layer.
+   Restrained, print-like: a plotted-city data map that develops in, a
+   line-by-line headline reveal, count-up figures, and ruled scroll reveals.
+   Everything is transform/opacity based and disabled under reduced-motion.
+   ========================================================================= */
+(function () {
+  'use strict';
+  var RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var hasIO = 'IntersectionObserver' in window;
+  var css = function (n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); };
+
+  /* ---- theme toggle (shares the app's localStorage key) ---- */
+  function theme() {
+    var btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var root = document.documentElement;
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('cra-theme', next); } catch (e) {}
+      document.dispatchEvent(new CustomEvent('crash:landing-theme'));
+    });
+  }
+
+  /* ---- mobile nav ---- */
+  function nav() {
+    var el = document.getElementById('nav'), tg = document.getElementById('navToggle');
+    if (!el || !tg) return;
+    tg.addEventListener('click', function () {
+      var open = el.getAttribute('data-open') === 'true';
+      el.setAttribute('data-open', String(!open));
+      tg.setAttribute('aria-expanded', String(!open));
+    });
+    el.querySelectorAll('.nav-links a').forEach(function (a) {
+      a.addEventListener('click', function () { el.setAttribute('data-open', 'false'); tg.setAttribute('aria-expanded', 'false'); });
+    });
+  }
+
+  /* ---- headline: line-safe word reveal (gentle rise, no blur) ---- */
+  function headline() {
+    var h1 = document.querySelector('h1[data-split]');
+    if (!h1) return;
+    if (RM) { h1.classList.add('head-in'); return; }
+    var frag = document.createDocumentFragment(), i = 0;
+    function wrap(text, em) {
+      text.split(/(\s+)/).forEach(function (tok) {
+        if (/^\s+$/.test(tok)) { frag.appendChild(document.createTextNode(tok)); return; }
+        if (!tok) return;
+        var w = document.createElement('span'); w.className = 'h-word';
+        var inner = document.createElement(em ? 'em' : 'span');
+        inner.textContent = tok; inner.style.transitionDelay = (i * 0.055).toFixed(3) + 's'; i++;
+        w.appendChild(inner); frag.appendChild(w);
+      });
+    }
+    Array.prototype.forEach.call(h1.childNodes, function (node) {
+      if (node.nodeType === 3) wrap(node.textContent, false);
+      else wrap(node.textContent, node.tagName === 'EM');
+    });
+    h1.textContent = ''; h1.appendChild(frag);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { h1.classList.add('head-in'); }); });
+  }
+
+  /* ---- count-up figures ---- */
+  function counters() {
+    var nums = document.querySelectorAll('.figure-n[data-count]');
+    if (!nums.length) return;
+    function render(el, val) {
+      var s = el.getAttribute('data-suffix') || '';
+      el.innerHTML = Math.round(val).toLocaleString('en-US') + (s ? '<span class="unit">' + s + '</span>' : '');
+    }
+    if (RM || !hasIO) { nums.forEach(function (el) { render(el, +el.getAttribute('data-count')); }); return; }
+    function run(el) {
+      var target = +el.getAttribute('data-count'), dur = 1500, t0 = null;
+      function step(ts) {
+        if (t0 === null) t0 = ts;
+        var p = Math.min(1, (ts - t0) / dur);
+        var e = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
+        render(el, target * e);
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+    nums.forEach(function (el) { render(el, 0); });
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (en) { if (en.isIntersecting) { run(en.target); io.unobserve(en.target); } });
+    }, { threshold: 0.5 });
+    nums.forEach(function (el) { io.observe(el); });
+  }
+
+  /* ---- scroll reveals with per-parent stagger ---- */
+  function reveals() {
+    var els = document.querySelectorAll('.reveal');
+    if (!els.length) return;
+    if (RM || !hasIO) { els.forEach(function (e) { e.classList.add('in'); }); return; }
+    var counts = new Map();
+    els.forEach(function (e) {
+      var p = e.parentNode, n = counts.get(p) || 0; counts.set(p, n + 1);
+      e.style.transitionDelay = (n * 0.07).toFixed(3) + 's';
+    });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+    }, { threshold: 0.14, rootMargin: '0px 0px -7% 0px' });
+    els.forEach(function (e) { io.observe(e); });
+  }
+
+  /* ---- hero figure: the plotted-city data map ----
+     A deterministic scatter of incidents over the 250 m analysis grid, with a
+     hairline coastline (sea to the SE) and three ringed, labelled hotspots.
+     Points stipple in progressively; reduced-motion draws the final frame. */
+  function cityMap() {
+    var canvas = document.getElementById('cityCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    // deterministic PRNG (mulberry32) so the map is stable across resize/theme
+    function rng(seed) { return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }; }
+
+    var SEV = { f: '#BE2F2A', s: '#CE8A2E', l: '#E7C64B' };
+    // hotspot centres (normalised) + labels, roughly echoing Chennai's clusters
+    var HOT = [
+      { x: 0.40, y: 0.60, label: 'Kathipara' },
+      { x: 0.37, y: 0.40, label: 'T. Nagar' },
+      { x: 0.62, y: 0.72, label: 'OMR corridor' }
+    ];
+    // coastline: sea occupies the lower-right; keep land where x < coast(y)
+    function coastX(y) { return 0.74 + 0.12 * y; }
+    function inLand(x, y) { return x < coastX(y) - 0.015; }
+
+    // build the point set once (normalised coords + severity)
+    var pts = [];
+    (function build() {
+      var r = rng(20260710), i, x, y, k, cx, cy, hot, sevr, sv;
+      // clustered points around hotspots (denser, more severe)
+      for (k = 0; k < HOT.length; k++) {
+        hot = HOT[k];
+        var nC = 120 - k * 18;
+        for (i = 0; i < nC; i++) {
+          // gaussian-ish via averaged uniforms
+          var gx = (r() + r() + r()) / 3 - 0.5, gy = (r() + r() + r()) / 3 - 0.5;
+          x = hot.x + gx * 0.20; y = hot.y + gy * 0.20;
+          if (x < 0.04 || x > 0.96 || y < 0.05 || y > 0.95 || !inLand(x, y)) continue;
+          sevr = r(); sv = sevr < 0.16 ? 'f' : sevr < 0.5 ? 's' : 'l';
+          pts.push({ x: x, y: y, c: SEV[sv], r: sv === 'f' ? 2.1 : 1.7, a: 0.9 });
+        }
+      }
+      // background scatter across the land
+      for (i = 0; i < 540; i++) {
+        x = 0.05 + r() * 0.9; y = 0.06 + r() * 0.88;
+        if (!inLand(x, y)) continue;
+        sevr = r(); sv = sevr < 0.06 ? 'f' : sevr < 0.28 ? 's' : 'l';
+        pts.push({ x: x, y: y, c: SEV[sv], r: sv === 'f' ? 1.7 : 1.35, a: 0.55 + r() * 0.3 });
+      }
+      // draw nearer hotspots last so their rings sit on top
+    })();
+
+    function resize() {
+      var rct = canvas.getBoundingClientRect();
+      W = rct.width; H = rct.height;
+      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function PX(x) { return 14 + x * (W - 28); }
+    function PY(y) { return 12 + y * (H - 24); }
+
+    function drawGrid() {
+      ctx.strokeStyle = css('--fig-grid') || 'rgba(0,0,0,0.06)'; ctx.lineWidth = 1;
+      var step = Math.max(26, W / 13), x, y;
+      for (x = 14; x <= W - 14; x += step) { ctx.beginPath(); ctx.moveTo(x, 12); ctx.lineTo(x, H - 12); ctx.stroke(); }
+      for (y = 12; y <= H - 12; y += step) { ctx.beginPath(); ctx.moveTo(14, y); ctx.lineTo(W - 14, y); ctx.stroke(); }
+    }
+    function drawCoast() {
+      ctx.strokeStyle = css('--fig-coast') || 'rgba(47,92,135,0.3)';
+      ctx.lineWidth = 1.4; ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      for (var y = 0; y <= 1.001; y += 0.02) {
+        var px = PX(coastX(y)), py = PY(y);
+        if (y === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+    function drawPoint(p) {
+      ctx.globalAlpha = p.a; ctx.fillStyle = p.c;
+      ctx.beginPath(); ctx.arc(PX(p.x), PY(p.y), p.r, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    function drawHotspots() {
+      var accent = css('--accent') || '#2F5C87';
+      var ink = css('--text') || '#221F18';
+      ctx.font = "10px 'IBM Plex Mono', monospace";
+      HOT.forEach(function (h) {
+        var cx = PX(h.x), cy = PY(h.y);
+        ctx.strokeStyle = accent; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.arc(cx, cy, 15, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 1;
+        // leader + label
+        ctx.fillStyle = ink;
+        ctx.beginPath(); ctx.arc(cx, cy, 1.6, 0, Math.PI * 2); ctx.fill();
+        var tx = cx + 20, ty = cy - 18;
+        if (tx + ctx.measureText(h.label).width > W - 8) tx = cx - 20 - ctx.measureText(h.label).width;
+        ctx.strokeStyle = accent; ctx.globalAlpha = 0.6; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(cx, cy - 15); ctx.lineTo(tx < cx ? tx + ctx.measureText(h.label).width : tx, ty + 3); ctx.stroke();
+        ctx.globalAlpha = 1; ctx.fillStyle = accent;
+        ctx.fillText(h.label, tx, ty);
+      });
+    }
+
+    function renderTo(count) {
+      ctx.clearRect(0, 0, W, H);
+      drawGrid();
+      drawCoast();
+      var lim = Math.min(count, pts.length);
+      for (var i = 0; i < lim; i++) drawPoint(pts[i]);
+      if (count >= pts.length) drawHotspots();
+    }
+
+    var shown = 0, raf = null;
+    function animate() {
+      shown += Math.max(6, Math.round(pts.length / 90));
+      renderTo(shown);
+      if (shown < pts.length) raf = requestAnimationFrame(animate);
+      else { renderTo(pts.length); raf = null; }
+    }
+
+    resize();
+    window.addEventListener('resize', function () {
+      resize();
+      renderTo(raf ? shown : pts.length);
+    }, { passive: true });
+    document.addEventListener('crash:landing-theme', function () { renderTo(raf ? shown : pts.length); });
+
+    if (RM || !hasIO) { renderTo(pts.length); return; }
+    // start drawing when the figure scrolls into view
+    var started = false;
+    new IntersectionObserver(function (es, obs) {
+      es.forEach(function (en) {
+        if (en.isIntersecting && !started) { started = true; raf = requestAnimationFrame(animate); obs.disconnect(); }
+      });
+    }, { threshold: 0.25 }).observe(canvas);
+  }
+
+  function init() {
+    theme(); nav(); headline(); counters(); reveals(); cityMap();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>

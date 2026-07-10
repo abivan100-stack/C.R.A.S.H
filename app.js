@@ -8,11 +8,11 @@
 
 /* ---- Constants shared across phases ---- */
 const SEV = {
-  fatal:   { color: '#E4404E', label: 'Fatal',   weight: 3 },
-  serious: { color: '#F2933E', label: 'Serious', weight: 2 },
+  fatal:   { color: '#BE2F2A', label: 'Fatal',   weight: 3 },
+  serious: { color: '#CE8A2E', label: 'Serious', weight: 2 },
   slight:  { color: '#E7C64B', label: 'Slight',  weight: 1 },
 };
-const ACCENT = '#43B0CC';
+let ACCENT = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#43B0CC');
 
 const CAUSES = ['Over-speeding', 'Wrong-side driving', 'Signal jumping', 'Drunken driving',
   'Mobile phone use', 'Hit and run', 'Pothole / bad road', 'Pedestrian crossing error',
@@ -105,18 +105,18 @@ function renderSegments() {
         // would otherwise clip off the right edge of the popover)
         btn.style.cssText =
           "font: 500 11px 'IBM Plex Mono', monospace; padding: 5px 9px; cursor: pointer; white-space: nowrap; border-radius: 5px;" +
-          'border: 1px solid ' + (active ? ACCENT : 'var(--border)') + ';' +
-          'background: ' + (active ? 'rgba(67,176,204,0.12)' : 'var(--bg)') + ';' +
-          'color: ' + (active ? ACCENT : 'var(--text-2)') + ';';
+          'border: 1px solid ' + (active ? 'var(--accent)' : 'var(--border)') + ';' +
+          'background: ' + (active ? 'rgba(47,92,135,0.12)' : 'var(--bg)') + ';' +
+          'color: ' + (active ? 'var(--accent)' : 'var(--text-2)') + ';';
       } else {
         btn.style.cssText =
           "font: 500 11px 'IBM Plex Mono', monospace; padding: 6px 11px; cursor: pointer; white-space: nowrap;" +
           "border: none; border-right: " + (i < def.options.length - 1 ? '1px solid var(--border)' : 'none') + ';' +
-          'background: ' + (active ? 'rgba(67,176,204,0.10)' : 'transparent') + ';' +
-          'color: ' + (active ? ACCENT : 'var(--text-2)') + ';';
+          'background: ' + (active ? 'rgba(47,92,135,0.10)' : 'transparent') + ';' +
+          'color: ' + (active ? 'var(--accent)' : 'var(--text-2)') + ';';
       }
       btn.addEventListener('click', () => onSegmentClick(key, value));
-      btn.addEventListener('focus', () => { btn.style.outline = '1px solid ' + ACCENT; btn.style.outlineOffset = '-2px'; });
+      btn.addEventListener('focus', () => { btn.style.outline = '1px solid var(--accent)'; btn.style.outlineOffset = '-2px'; });
       btn.addEventListener('blur', () => { btn.style.outline = 'none'; });
       el.appendChild(btn);
     });
@@ -447,7 +447,7 @@ function popupHtml(a) {
   return (
     '<div class="acc-pop-sev"><span class="acc-pop-dot" style="background:' + sev.color + '"></span>' +
       sev.label + '</div>' +
-    (a.citizen ? '<div class="acc-pop-row" style="color:' + ACCENT + '; font-weight:600;">◎ Citizen report</div>' : '') +
+    (a.citizen ? '<div class="acc-pop-row" style="color:var(--accent); font-weight:600;">◎ Citizen report</div>' : '') +
     '<div class="acc-pop-row">' + a.datetime + '</div>' +
     '<div class="acc-pop-row">' + a.vehicle + ' · ' + a.cause + '</div>' +
     '<div class="acc-pop-row">Weather · ' + a.weather + '</div>' +
@@ -686,7 +686,7 @@ function renderRail() {
   list.innerHTML = '';
 
   if (!app.hotspots.length) {
-    list.innerHTML = '<div style="padding:18px 16px; font:400 11px \'IBM Plex Sans\',sans-serif; color:var(--text-3);">No incidents match the current filters.</div>';
+    list.innerHTML = '<div style="padding:18px 16px; font:400 11px \'Roboto\',sans-serif; color:var(--text-3);">No incidents match the current filters.</div>';
     return;
   }
 
@@ -704,15 +704,15 @@ function renderRail() {
     btn.style.cssText =
       "display:grid; grid-template-columns:24px 1fr auto; column-gap:10px; row-gap:7px; align-items:start;" +
       "width:100%; text-align:left; border:none; border-bottom:1px solid var(--border-soft); padding:11px 14px 12px;" +
-      "cursor:pointer; color:var(--text); font-family:'IBM Plex Sans',sans-serif;" +
-      'background:' + (isSel ? 'rgba(67,176,204,0.07)' : 'transparent') + ';' +
-      'box-shadow:' + (isSel ? 'inset 2px 0 0 ' + ACCENT : 'none') + ';';
+      "cursor:pointer; color:var(--text); font-family:'Roboto',sans-serif;" +
+      'background:' + (isSel ? 'rgba(47,92,135,0.07)' : 'transparent') + ';' +
+      'box-shadow:' + (isSel ? 'inset 2px 0 0 var(--accent)' : 'none') + ';';
 
     const rankColor = h.rank <= 3 ? 'var(--text)' : 'var(--text-2)';
     btn.innerHTML =
       '<span style="font:500 13px \'IBM Plex Mono\',monospace; color:' + rankColor + '; padding-top:1px; font-variant-numeric:tabular-nums;">' + String(h.rank).padStart(2, '0') + '</span>' +
       '<span style="min-width:0;">' +
-        '<span style="display:block; font:500 13px \'IBM Plex Sans\',sans-serif; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + (rising ? '<span style="color:' + ACCENT + '; font-size:10px;" title="Emerging — recent incident rate rising">▲ </span>' : '') + h.area + '</span>' +
+        '<span style="display:block; font:500 13px \'Roboto\',sans-serif; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + (rising ? '<span style="color:var(--accent); font-size:10px;" title="Emerging — recent incident rate rising">▲ </span>' : '') + h.area + '</span>' +
         '<span style="display:block; font:400 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0.02em;">' + h.lat.toFixed(4) + '°N · ' + h.lng.toFixed(4) + '°E</span>' +
       '</span>' +
       '<span style="text-align:right;">' +
@@ -720,14 +720,14 @@ function renderRail() {
         '<span style="display:block; font:400 10px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:2px; font-variant-numeric:tabular-nums;">risk ' + h.score + '</span>' +
       '</span>' +
       '<span style="grid-column:2 / 4; display:flex; height:3px; border-radius:1.5px; overflow:hidden; background:var(--track);">' +
-        '<span style="width:' + fw.toFixed(1) + '%; background:#E4404E;"></span>' +
-        '<span style="width:' + sw.toFixed(1) + '%; background:#F2933E;"></span>' +
+        '<span style="width:' + fw.toFixed(1) + '%; background:#BE2F2A;"></span>' +
+        '<span style="width:' + sw.toFixed(1) + '%; background:#CE8A2E;"></span>' +
         '<span style="width:' + lw.toFixed(1) + '%; background:#E7C64B;"></span>' +
       '</span>';
 
     btn.addEventListener('mouseenter', () => { if (app.selected !== h.id) btn.style.background = 'var(--row-hover)'; });
     btn.addEventListener('mouseleave', () => { if (app.selected !== h.id) btn.style.background = 'transparent'; });
-    btn.addEventListener('focus', () => { btn.style.outline = '1px solid ' + ACCENT; btn.style.outlineOffset = '-2px'; });
+    btn.addEventListener('focus', () => { btn.style.outline = '1px solid var(--accent)'; btn.style.outlineOffset = '-2px'; });
     btn.addEventListener('blur', () => { btn.style.outline = 'none'; });
     btn.addEventListener('click', () => selectHotspot(h.id, { pan: true }));
     list.appendChild(btn);
@@ -1130,7 +1130,7 @@ function renderMarkedDistance() {
   el.innerHTML =
     '<div style="display:flex; align-items:center; gap:8px; margin-top:9px;">' +
       '<span class="hosp-line-swatch marked"></span>' +
-      '<span style="font:400 12px \'IBM Plex Sans\',sans-serif; color:var(--text); line-height:1.4;">Distance from this zone to <b style="font-weight:600;">' + m.name + '</b>: <span class="hosp-km">' + km.toFixed(1) + ' km</span></span>' +
+      '<span style="font:400 12px \'Roboto\',sans-serif; color:var(--text); line-height:1.4;">Distance from this zone to <b style="font-weight:600;">' + m.name + '</b>: <span class="hosp-km">' + km.toFixed(1) + ' km</span></span>' +
     '</div>';
 }
 
@@ -1153,7 +1153,7 @@ function syncHospitalLinks() {
   const m = app.markedHospital;
   if (m) {
     app.hospitalLinkMarked = L.polyline([[h.lat, h.lng], [m.dlat, m.dlng]], {
-      color: '#FFFFFF', weight: 1.6, opacity: 0.9, dashArray: '5 6', interactive: false, className: 'hosp-link',
+      color: '#857D6D', weight: 1.6, opacity: 0.9, dashArray: '5 6', interactive: false, className: 'hosp-link',
     }).addTo(app.map);
   }
 }
@@ -1184,12 +1184,12 @@ function rankedBars(recs, field, topN, color) {
   recs.forEach((r) => { const k = r[field]; if (k) counts[k] = (counts[k] || 0) + 1; });
   const total = recs.length || 1;
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, topN);
-  if (!sorted.length) return '<div style="padding:4px 18px 8px; font:400 11px \'IBM Plex Sans\',sans-serif; color:var(--text-3);">No data</div>';
+  if (!sorted.length) return '<div style="padding:4px 18px 8px; font:400 11px \'Roboto\',sans-serif; color:var(--text-3);">No data</div>';
   const max = sorted[0][1];
   return sorted.map(([label, n]) =>
     '<div style="padding:5px 18px;">' +
       '<div style="display:flex; justify-content:space-between; gap:10px; align-items:baseline;">' +
-        '<span style="font:400 11.5px \'IBM Plex Sans\',sans-serif; color:var(--text); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + label + '</span>' +
+        '<span style="font:400 11.5px \'Roboto\',sans-serif; color:var(--text); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + label + '</span>' +
         '<span style="flex:none; font:500 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); font-variant-numeric:tabular-nums;">' + fmt(n) + ' · ' + Math.round((n / total) * 100) + '%</span>' +
       '</div>' +
       '<div style="margin-top:4px; height:4px; background:var(--track); border-radius:2px; overflow:hidden;">' +
@@ -1249,7 +1249,7 @@ function renderCity() {
     '<div style="flex:none; padding:15px 18px 13px; border-bottom:1px solid var(--border);">' +
       '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">Contributing factors</div>' +
       '<div style="display:flex; align-items:baseline; gap:9px; margin-top:5px;">' +
-        '<span style="font:600 30px \'Space Grotesk\',sans-serif; line-height:1; font-variant-numeric:tabular-nums;">' + fmt(recs.length) + '</span>' +
+        '<span style="font:600 30px \'Newsreader\',sans-serif; line-height:1; font-variant-numeric:tabular-nums;">' + fmt(recs.length) + '</span>' +
         '<span style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2);">incidents' + (anyFilter ? ' · filtered' : ' · all data') + '</span>' +
       '</div>' +
     '</div>' +
@@ -1270,10 +1270,10 @@ function renderStrategy() {
   const queue = priorityQueue();
 
   const queueRows = queue.map((r, i) =>
-    '<button data-pq="' + r.id + '" type="button" style="display:block; width:100%; text-align:left; border:none; border-bottom:1px solid var(--border-soft); background:transparent; cursor:pointer; padding:11px 18px 13px; color:var(--text); font-family:\'IBM Plex Sans\',sans-serif;">' +
+    '<button data-pq="' + r.id + '" type="button" style="display:block; width:100%; text-align:left; border:none; border-bottom:1px solid var(--border-soft); background:transparent; cursor:pointer; padding:11px 18px 13px; color:var(--text); font-family:\'Roboto\',sans-serif;">' +
       '<div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px;">' +
-        '<span style="font:500 13px \'Space Grotesk\',sans-serif; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><span style="color:var(--text-2); font:500 11px \'IBM Plex Mono\',monospace;">' + pad2(i + 1) + '</span> ' + r.area + '</span>' +
-        '<span style="flex:none; font:600 13px \'Space Grotesk\',sans-serif; color:var(--accent); font-variant-numeric:tabular-nums;">≈ ' + fmt(r.prevent) + '</span>' +
+        '<span style="font:500 13px \'Newsreader\',sans-serif; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><span style="color:var(--text-2); font:500 11px \'IBM Plex Mono\',monospace;">' + pad2(i + 1) + '</span> ' + r.area + '</span>' +
+        '<span style="flex:none; font:600 13px \'Newsreader\',sans-serif; color:var(--accent); font-variant-numeric:tabular-nums;">≈ ' + fmt(r.prevent) + '</span>' +
       '</div>' +
       '<div style="font:400 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + r.domCause + ' → ' + r.iv.fix + '</div>' +
       '<div style="display:flex; align-items:center; gap:7px; margin-top:7px;">' +
@@ -1287,30 +1287,30 @@ function renderStrategy() {
   c.innerHTML =
     '<div style="flex:none; padding:15px 18px 13px; border-bottom:1px solid var(--border);">' +
       '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">City strategy</div>' +
-      '<div style="font:400 11px \'IBM Plex Sans\',sans-serif; color:var(--text-2); margin-top:6px; line-height:1.5;">Where the harm concentrates — and the order to fix it.</div>' +
+      '<div style="font:400 11px \'Roboto\',sans-serif; color:var(--text-2); margin-top:6px; line-height:1.5;">Where the harm concentrates — and the order to fix it.</div>' +
     '</div>' +
     '<div style="flex:1; overflow-y:auto; min-height:0; padding-bottom:18px;">' +
       // ---- leverage headline ----
       '<div style="padding:16px 18px 2px;">' +
         '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase;">The leverage</div>' +
-        '<div style="margin-top:11px; padding:16px; background:rgba(67,176,204,0.07); border:1px solid rgba(67,176,204,0.22); border-radius:9px; text-align:left;">' +
+        '<div style="margin-top:11px; padding:16px; background:rgba(47,92,135,0.07); border:1px solid rgba(47,92,135,0.22); border-radius:9px; text-align:left;">' +
           '<div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">' +
-            '<span style="font:600 42px \'Space Grotesk\',sans-serif; color:var(--accent); line-height:1; font-variant-numeric:tabular-nums;">' + lev.pct + '%</span>' +
-            '<span style="font:500 13px \'IBM Plex Sans\',sans-serif; color:var(--text); line-height:1.4;">of severe crashes</span>' +
+            '<span style="font:600 42px \'Newsreader\',sans-serif; color:var(--accent); line-height:1; font-variant-numeric:tabular-nums;">' + lev.pct + '%</span>' +
+            '<span style="font:500 13px \'Roboto\',sans-serif; color:var(--text); line-height:1.4;">of severe crashes</span>' +
           '</div>' +
-          '<div style="font:400 13px \'IBM Plex Sans\',sans-serif; color:var(--text); line-height:1.55; margin-top:10px;">are concentrated in just <b>' + lev.n + '</b> junction cells across the whole city.</div>' +
+          '<div style="font:400 13px \'Roboto\',sans-serif; color:var(--text); line-height:1.55; margin-top:10px;">are concentrated in just <b>' + lev.n + '</b> junction cells across the whole city.</div>' +
           '<div style="font:400 10px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:10px; letter-spacing:0.02em;">' + fmt(lev.sevTop) + ' of ' + fmt(lev.sevCity) + ' fatal + serious · 250 m cells</div>' +
         '</div>' +
       '</div>' +
       // ---- intervention priority queue ----
       '<div style="padding:18px 18px 6px;">' +
         '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">Intervention priority</div>' +
-        '<div style="font:400 10.5px \'IBM Plex Sans\',sans-serif; color:var(--text-3); margin-top:4px; line-height:1.5;">Ranked by estimated severe crashes preventable if the fix targets each zone’s dominant cause. <span style="color:var(--text-3);">Planning estimate.</span></div>' +
+        '<div style="font:400 10.5px \'Roboto\',sans-serif; color:var(--text-3); margin-top:4px; line-height:1.5;">Ranked by estimated severe crashes preventable if the fix targets each zone’s dominant cause. <span style="color:var(--text-3);">Planning estimate.</span></div>' +
       '</div>' +
       queueRows +
       // ---- download city report ----
       '<div style="padding:18px 18px 2px;">' +
-        '<button data-citypdf type="button" title="Download the full city report as a PDF" style="width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px; font:500 11px \'IBM Plex Mono\',monospace; letter-spacing:0.04em; color:var(--accent); background:rgba(67,176,204,0.08); border:1px solid rgba(67,176,204,0.35); border-radius:7px; padding:10px; cursor:pointer;">' +
+        '<button data-citypdf type="button" title="Download the full city report as a PDF" style="width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px; font:500 11px \'IBM Plex Mono\',monospace; letter-spacing:0.04em; color:var(--accent); background:rgba(47,92,135,0.08); border:1px solid rgba(47,92,135,0.35); border-radius:7px; padding:10px; cursor:pointer;">' +
           '<svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
           'Download city report (PDF)</button>' +
       '</div>' +
@@ -1320,7 +1320,7 @@ function renderStrategy() {
     el.addEventListener('click', () => selectHotspot(el.dataset.pq, { pan: true }));
     el.addEventListener('mouseenter', () => { el.style.background = 'var(--row-hover)'; });
     el.addEventListener('mouseleave', () => { el.style.background = 'transparent'; });
-    el.addEventListener('focus', () => { el.style.outline = '1px solid ' + ACCENT; el.style.outlineOffset = '-2px'; });
+    el.addEventListener('focus', () => { el.style.outline = '1px solid var(--accent)'; el.style.outlineOffset = '-2px'; });
     el.addEventListener('blur', () => { el.style.outline = 'none'; });
   });
 
@@ -1352,22 +1352,22 @@ function renderEmerging() {
     '<div style="flex:none; padding:15px 18px 13px; border-bottom:1px solid var(--border);">' +
       '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">Emerging hotspots</div>' +
       '<div style="display:flex; align-items:baseline; gap:9px; margin-top:5px;">' +
-        '<span style="font:600 30px \'Space Grotesk\',sans-serif; line-height:1; font-variant-numeric:tabular-nums;">' + list.length + '</span>' +
+        '<span style="font:600 30px \'Newsreader\',sans-serif; line-height:1; font-variant-numeric:tabular-nums;">' + list.length + '</span>' +
         '<span style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2);">zones trending up</span>' +
       '</div>' +
-      '<div style="font:400 11px \'IBM Plex Sans\',sans-serif; color:var(--text-2); margin-top:7px; line-height:1.5;">Rising fastest by monthly incident rate — last 6 months vs the prior 18. Watch these before they reach the top index.</div>' +
+      '<div style="font:400 11px \'Roboto\',sans-serif; color:var(--text-2); margin-top:7px; line-height:1.5;">Rising fastest by monthly incident rate — last 6 months vs the prior 18. Watch these before they reach the top index.</div>' +
     '</div>';
 
   let body;
   if (!list.length) {
-    body = '<div style="padding:26px 18px; font:400 12px \'IBM Plex Sans\',sans-serif; color:var(--text-3); line-height:1.65;">No zone shows a significant recent surge. Every junction is stable or improving against its 18-month baseline.</div>';
+    body = '<div style="padding:26px 18px; font:400 12px \'Roboto\',sans-serif; color:var(--text-3); line-height:1.65;">No zone shows a significant recent surge. Every junction is stable or improving against its 18-month baseline.</div>';
   } else {
     body = list.map((e, i) => {
       const rn = (e.rF + e.rS + e.rL) || 1;
       return (
-        '<button data-emerge="' + e.id + '" type="button" style="display:block; width:100%; text-align:left; border:none; border-bottom:1px solid var(--border-soft); background:transparent; cursor:pointer; padding:14px 18px 16px; color:var(--text); font-family:\'IBM Plex Sans\',sans-serif;">' +
+        '<button data-emerge="' + e.id + '" type="button" style="display:block; width:100%; text-align:left; border:none; border-bottom:1px solid var(--border-soft); background:transparent; cursor:pointer; padding:14px 18px 16px; color:var(--text); font-family:\'Roboto\',sans-serif;">' +
           '<div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px;">' +
-            '<span style="font:500 14.5px \'Space Grotesk\',sans-serif; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' +
+            '<span style="font:500 14.5px \'Newsreader\',sans-serif; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' +
               '<span style="color:var(--text-2); font:500 12px \'IBM Plex Mono\',monospace;">' + pad2(i + 1) + '</span> ' + e.area +
             '</span>' +
             '<span style="flex:none; font:600 12.5px \'IBM Plex Mono\',monospace; color:var(--accent); font-variant-numeric:tabular-nums;">▲ ' + e.pctIncrease + '%</span>' +
@@ -1376,8 +1376,8 @@ function renderEmerging() {
             e.recent + ' recent · ' + e.baseline + ' prior · ' + e.lift.toFixed(1) + '× monthly rate</div>' +
           emergeSparkline(e.months) +
           '<div style="display:flex; height:3px; border-radius:1.5px; overflow:hidden; background:var(--track); margin-top:10px;">' +
-            '<span style="width:' + ((e.rF / rn) * 100).toFixed(1) + '%; background:#E4404E;"></span>' +
-            '<span style="width:' + ((e.rS / rn) * 100).toFixed(1) + '%; background:#F2933E;"></span>' +
+            '<span style="width:' + ((e.rF / rn) * 100).toFixed(1) + '%; background:#BE2F2A;"></span>' +
+            '<span style="width:' + ((e.rS / rn) * 100).toFixed(1) + '%; background:#CE8A2E;"></span>' +
             '<span style="width:' + ((e.rL / rn) * 100).toFixed(1) + '%; background:#E7C64B;"></span>' +
           '</div>' +
         '</button>'
@@ -1391,7 +1391,7 @@ function renderEmerging() {
     el.addEventListener('click', () => selectHotspot(el.dataset.emerge, { pan: true }));
     el.addEventListener('mouseenter', () => { el.style.background = 'var(--row-hover)'; });
     el.addEventListener('mouseleave', () => { el.style.background = 'transparent'; });
-    el.addEventListener('focus', () => { el.style.outline = '1px solid ' + ACCENT; el.style.outlineOffset = '-2px'; });
+    el.addEventListener('focus', () => { el.style.outline = '1px solid var(--accent)'; el.style.outlineOffset = '-2px'; });
     el.addEventListener('blur', () => { el.style.outline = 'none'; });
   });
 }
@@ -1417,8 +1417,8 @@ function dossierHeaderHtml(h) {
         '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><line x1="1" y1="1" x2="9" y2="9" style="stroke:currentColor; stroke-width:1.3;"></line><line x1="9" y1="1" x2="1" y2="9" style="stroke:currentColor; stroke-width:1.3;"></line></svg>' +
       '</button>' +
     '</div>' +
-    '<div style="font:500 19px \'Space Grotesk\',sans-serif; line-height:1.2; margin-top:4px;">' + h.area + '</div>' +
-    '<div style="font:400 11.5px \'IBM Plex Sans\',sans-serif; color:var(--text-2); margin-top:3px;">' + SEV[h.dominant].label + '-dominant risk cell · 250 m</div>' +
+    '<div style="font:500 19px \'Newsreader\',sans-serif; line-height:1.2; margin-top:4px;">' + h.area + '</div>' +
+    '<div style="font:400 11.5px \'Roboto\',sans-serif; color:var(--text-2); margin-top:3px;">' + SEV[h.dominant].label + '-dominant risk cell · 250 m</div>' +
     '<div style="font:400 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:7px; letter-spacing:0.04em;">' + h.lat.toFixed(4) + '° N · ' + h.lng.toFixed(4) + '° E</div>' +
     '<div style="display:flex; align-items:center; gap:16px; margin-top:11px; flex-wrap:wrap;">' +
       '<a href="./compare.html?a=' + encodeURIComponent(h.area) + '" title="Compare ' + h.area + ' with another area" style="display:inline-flex; align-items:center; gap:6px; font:500 10.5px \'IBM Plex Mono\',monospace; letter-spacing:0.04em; color:var(--accent); text-decoration:none;">' +
@@ -1461,8 +1461,8 @@ function zoneDayChipsHtml() {
       const active = app.filters.dow === value;
       return '<button type="button" class="zdaychip" data-dow="' + value + '" style="' +
         "font:500 11px 'IBM Plex Mono',monospace; padding:5px 9px; cursor:pointer; border-radius:5px; white-space:nowrap;" +
-        'border:1px solid ' + (active ? ACCENT : 'var(--border)') + '; background:' + (active ? 'rgba(67,176,204,0.12)' : 'var(--bg)') +
-        '; color:' + (active ? ACCENT : 'var(--text-2)') + ';">' + label + '</button>';
+        'border:1px solid ' + (active ? 'var(--accent)' : 'var(--border)') + '; background:' + (active ? 'rgba(47,92,135,0.12)' : 'var(--bg)') +
+        '; color:' + (active ? 'var(--accent)' : 'var(--text-2)') + ';">' + label + '</button>';
     }).join('') +
     '</div></div>';
 }
@@ -1481,7 +1481,7 @@ function wireDossierClose(full) {
   closeBtn.addEventListener('click', clearSelection);
   closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = 'var(--row-alt)'; closeBtn.style.color = 'var(--text)'; });
   closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = 'transparent'; closeBtn.style.color = 'var(--text-2)'; });
-  closeBtn.addEventListener('focus', () => { closeBtn.style.outline = '1px solid ' + ACCENT; closeBtn.style.outlineOffset = '1px'; });
+  closeBtn.addEventListener('focus', () => { closeBtn.style.outline = '1px solid var(--accent)'; closeBtn.style.outlineOffset = '1px'; });
   closeBtn.addEventListener('blur', () => { closeBtn.style.outline = 'none'; });
 }
 
@@ -1577,7 +1577,7 @@ function renderDossier() {
 
   const sevRow = (label, color, val) =>
     '<div style="display:grid; grid-template-columns:62px 1fr 40px 36px; align-items:center; gap:8px; padding:5px 18px;">' +
-      '<span style="display:flex; align-items:center; gap:6px;"><span style="width:7px; height:7px; border-radius:50%; background:' + color + '; flex:none;"></span><span style="font:400 11px \'IBM Plex Sans\',sans-serif; color:var(--text-2);">' + label + '</span></span>' +
+      '<span style="display:flex; align-items:center; gap:6px;"><span style="width:7px; height:7px; border-radius:50%; background:' + color + '; flex:none;"></span><span style="font:400 11px \'Roboto\',sans-serif; color:var(--text-2);">' + label + '</span></span>' +
       '<span style="display:block; height:4px; background:var(--track); border-radius:2px; overflow:hidden;"><span style="display:block; height:4px; width:' + ((val / n) * 100).toFixed(1) + '%; background:' + color + '; opacity:0.9;"></span></span>' +
       '<span style="font:500 11.5px \'IBM Plex Mono\',monospace; text-align:right; font-variant-numeric:tabular-nums;">' + fmt(val) + '</span>' +
       '<span style="font:400 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); text-align:right; font-variant-numeric:tabular-nums;">' + pc(val) + '%</span>' +
@@ -1585,7 +1585,7 @@ function renderDossier() {
 
   const weatherRow = (key, val) =>
     '<div style="display:grid; grid-template-columns:62px 1fr 40px 36px; align-items:center; gap:8px; padding:5px 18px;">' +
-      '<span style="font:400 11px \'IBM Plex Sans\',sans-serif; color:var(--text-2);">' + WEATHER_LABEL[key] + '</span>' +
+      '<span style="font:400 11px \'Roboto\',sans-serif; color:var(--text-2);">' + WEATHER_LABEL[key] + '</span>' +
       '<span style="display:block; height:4px; background:var(--track); border-radius:2px; overflow:hidden;"><span style="display:block; height:4px; width:' + ((val / n) * 100).toFixed(1) + '%; background:var(--chart-day);"></span></span>' +
       '<span style="font:500 11.5px \'IBM Plex Mono\',monospace; text-align:right; font-variant-numeric:tabular-nums;">' + fmt(val) + '</span>' +
       '<span style="font:400 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); text-align:right; font-variant-numeric:tabular-nums;">' + pc(val) + '%</span>' +
@@ -1596,19 +1596,19 @@ function renderDossier() {
   ).join('');
 
   const dowCells = dow.map((v, i) =>
-    '<span title="' + v + ' incidents" style="height:30px; border-radius:3px; background:rgba(110,139,163,' + (0.1 + 0.55 * (v / maxD)).toFixed(2) + '); display:flex; align-items:center; justify-content:center; font:500 9px \'IBM Plex Mono\',monospace; color:var(--dow-text);">' + 'MTWTFSS'[i] + '</span>'
+    '<span title="' + v + ' incidents" style="height:30px; border-radius:3px; background:rgba(95,116,136,' + (0.1 + 0.55 * (v / maxD)).toFixed(2) + '); display:flex; align-items:center; justify-content:center; font:500 9px \'IBM Plex Mono\',monospace; color:var(--dow-text);">' + 'MTWTFSS'[i] + '</span>'
   ).join('');
 
   const recBlock =
     '<div style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:2px; letter-spacing:0.02em;">Dominant cause · ' + domCause + ' · ' + domPct + '%</div>' +
-    '<div style="font:400 12.5px \'IBM Plex Sans\',sans-serif; line-height:1.6; color:var(--text); margin-top:7px;">' + intervention.fix + '.</div>' +
+    '<div style="font:400 12.5px \'Roboto\',sans-serif; line-height:1.6; color:var(--text); margin-top:7px;">' + intervention.fix + '.</div>' +
     '<div style="display:flex; align-items:center; gap:8px; margin-top:11px; font:500 10px \'IBM Plex Mono\',monospace; letter-spacing:0.08em; color:var(--text-2); text-transform:uppercase;">' +
       '<span>Capital cost</span>' + costMeter(intervention.cost) + '<span style="color:var(--text); letter-spacing:0.02em;">' + intervention.cost + '</span>' +
     '</div>' +
-    '<div style="margin-top:11px; padding:11px 12px; background:rgba(67,176,204,0.08); border:1px solid rgba(67,176,204,0.22); border-radius:7px;">' +
+    '<div style="margin-top:11px; padding:11px 12px; background:rgba(47,92,135,0.08); border:1px solid rgba(47,92,135,0.22); border-radius:7px;">' +
       '<div style="display:flex; align-items:baseline; gap:8px;">' +
-        '<span style="font:600 22px \'Space Grotesk\',sans-serif; color:var(--accent); line-height:1; font-variant-numeric:tabular-nums;">≈ ' + fmt(preventable) + '</span>' +
-        '<span style="font:400 11px \'IBM Plex Sans\',sans-serif; color:var(--text-2);">severe crashes preventable · 24 mo</span>' +
+        '<span style="font:600 22px \'Newsreader\',sans-serif; color:var(--accent); line-height:1; font-variant-numeric:tabular-nums;">≈ ' + fmt(preventable) + '</span>' +
+        '<span style="font:400 11px \'Roboto\',sans-serif; color:var(--text-2);">severe crashes preventable · 24 mo</span>' +
       '</div>' +
       '<div style="font:400 10px \'IBM Plex Mono\',monospace; color:var(--text-3); margin-top:6px; letter-spacing:0.02em;">At stake · ' + fmt(fatal) + ' fatal · ' + fmt(serious) + ' serious &nbsp;·&nbsp; planning estimate</div>' +
     '</div>';
@@ -1625,7 +1625,7 @@ function renderDossier() {
       '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--accent); text-transform:uppercase;">Nearest hospital</div>' +
       '<div style="display:flex; align-items:center; gap:8px; margin-top:8px;">' +
         '<span class="hosp-line-swatch nearest"></span>' +
-        '<span style="font:500 13px \'IBM Plex Sans\',sans-serif; color:var(--text); line-height:1.35;">' + nh.hospital.name + '</span>' +
+        '<span style="font:500 13px \'Roboto\',sans-serif; color:var(--text); line-height:1.35;">' + nh.hospital.name + '</span>' +
       '</div>' +
       '<div style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:5px; letter-spacing:0.02em;">' + nh.hospital.area + ' · ' + nh.hospital.type + ' &nbsp;·&nbsp; <span class="hosp-km">' + nh.km.toFixed(1) + ' km</span></div>' +
       '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase; margin-top:14px;">Distance to a specific hospital</div>' +
@@ -1639,7 +1639,7 @@ function renderDossier() {
   full.innerHTML =
     dossierHeaderHtml(h) +
     '<div style="flex:none; display:flex; align-items:baseline; gap:10px; padding:14px 18px; border-bottom:1px solid var(--border);">' +
-      '<span style="font:600 42px \'Space Grotesk\',sans-serif; line-height:1; letter-spacing:-0.01em; font-variant-numeric:tabular-nums;">' + h.score + '</span>' +
+      '<span style="font:600 42px \'Newsreader\',sans-serif; line-height:1; letter-spacing:-0.01em; font-variant-numeric:tabular-nums;">' + h.score + '</span>' +
       '<span style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2);">/ 100 risk score</span>' +
       '<span style="margin-left:auto; text-align:right;">' +
         '<span style="display:block; font:500 14px \'IBM Plex Mono\',monospace; font-variant-numeric:tabular-nums;">' + fmt(acc.length) + '</span>' +
@@ -1650,7 +1650,7 @@ function renderDossier() {
       zoneDayChipsHtml() +
       '<div style="margin-top:12px; border-top:1px solid var(--track);"></div>' +
       '<div style="padding:14px 18px 8px; font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">Severity breakdown</div>' +
-      sevRow('Fatal', '#E4404E', fatal) + sevRow('Serious', '#F2933E', serious) + sevRow('Slight', '#E7C64B', slight) +
+      sevRow('Fatal', '#BE2F2A', fatal) + sevRow('Serious', '#CE8A2E', serious) + sevRow('Slight', '#E7C64B', slight) +
       '<div style="margin-top:12px; border-top:1px solid var(--track);">' +
         '<div style="padding:14px 18px 8px; font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">Time of day</div>' +
         '<div style="padding:0 18px;">' +
@@ -1815,6 +1815,12 @@ document.addEventListener('DOMContentLoaded', boot);
    ========================================================================== */
 document.addEventListener('crash:themechange', function () {
   if (app.tileLayer) app.tileLayer.setUrl(TILES[currentTheme()]);
+  ACCENT = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || ACCENT);
+  if (app.map) {
+    if (app.focusRing) app.focusRing.setStyle({ color: ACCENT });
+    syncHospitalLinks();
+    renderPoints();
+  }
 });
 window.__crashRefreshMap = function () { if (app.map) app.map.invalidateSize(); };
 

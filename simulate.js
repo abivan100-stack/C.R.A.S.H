@@ -19,7 +19,7 @@
   var pointLayer = null, heatLayer = null, rankLayer = null, animRaf = 0, canvasRenderer = null;   // STEP 4 projection layers
   var simChart = null, lastProjection = null;   // STEP 5 results sidebar
   var runNonce = 0;   // bumped on every "Run" click → each run is a fresh Monte Carlo realization (slight run-to-run variation); held constant while live-filtering so a run stays self-consistent
-  var SEV_COLOR = { fatal: '#E4404E', serious: '#F2933E', slight: '#E7C64B' };
+  var SEV_COLOR = { fatal: '#BE2F2A', serious: '#CE8A2E', slight: '#E7C64B' };
   var SEV_LABEL = { fatal: 'Fatal', serious: 'Serious', slight: 'Slight' };
   // STEP 6 — results-panel empty-state copy: default vs. a scenario with no history
   var EMPTY_TITLE = 'No projection yet';
@@ -606,12 +606,12 @@
 
   function pointPopup(p, cell, s) {
     return '<div class="acc-pop-sev"><span class="acc-pop-dot" style="background:' + (SEV_COLOR[p.projectedSeverity] || SEV_COLOR.slight) + '"></span>' + (SEV_LABEL[p.projectedSeverity] || p.projectedSeverity) + '</div>' +
-      '<div class="acc-pop-row" style="color:#43B0CC; font-weight:600;">◇ Projected incident</div>' +
+      '<div class="acc-pop-row" style="color:var(--accent); font-weight:600;">◇ Projected incident</div>' +
       '<div class="acc-pop-row">' + scenarioLabel(s) + '</div>' +
       '<div class="acc-pop-area">' + (cell ? cell._area : '—') + '</div>';
   }
   function rankPopup(rank, h) {
-    return '<div class="acc-pop-sev" style="color:#43B0CC; font-weight:600;">◆ Projected hotspot #' + rank + '</div>' +
+    return '<div class="acc-pop-sev" style="color:var(--accent); font-weight:600;">◆ Projected hotspot #' + rank + '</div>' +
       '<div class="acc-pop-area">' + h.area + '</div>' +
       '<div class="acc-pop-row">' + h.count + ' projected incidents</div>' +
       '<div class="acc-pop-row">' + h.fatal + ' fatal · ' + h.serious + ' serious · ' + h.slight + ' slight</div>';
@@ -657,7 +657,7 @@
       var heatPts = pts.map(function (p) { return [p.lat, p.lng, SEV_HEAT[p.projectedSeverity] || 0.4]; });
       heatLayer = L.heatLayer(heatPts, {
         radius: 24, blur: 18, minOpacity: 0.12, max: heatMax,
-        gradient: { 0.0: 'rgba(67,176,204,0)', 0.25: 'rgba(67,176,204,0.55)', 0.5: '#E7C64B', 0.78: '#F2933E', 1.0: '#E4404E' },
+        gradient: { 0.0: 'rgba(47,92,135,0)', 0.25: 'rgba(47,92,135,0.55)', 0.5: '#E7C64B', 0.78: '#CE8A2E', 1.0: '#BE2F2A' },
       }).addTo(map);
     }
 
@@ -759,8 +759,8 @@
         '<span class="sim-row-main">' +
           '<span class="sim-row-area">' + h.area + '</span>' +
           '<span class="sim-mb">' +
-            '<span style="width:' + f.toFixed(1) + '%;background:#E4404E"></span>' +
-            '<span style="width:' + s.toFixed(1) + '%;background:#F2933E"></span>' +
+            '<span style="width:' + f.toFixed(1) + '%;background:#BE2F2A"></span>' +
+            '<span style="width:' + s.toFixed(1) + '%;background:#CE8A2E"></span>' +
             '<span style="width:' + l.toFixed(1) + '%;background:#E7C64B"></span>' +
           '</span>' +
         '</span>' +
@@ -787,7 +787,7 @@
 
     var css = getComputedStyle(document.documentElement);
     var pv = function (nm, fb) { var v = (css.getPropertyValue(nm) || '').trim(); return v || fb; };
-    var accent = pv('--accent', '#43B0CC'), text2 = pv('--text-2', '#8296A9'), border = pv('--border', '#223140');
+    var accent = pv('--accent', '#2F5C87'), text2 = pv('--text-2', '#8296A9'), border = pv('--border', '#223140');
 
     if (simChart) { try { simChart.destroy(); } catch (e) {} simChart = null; }
     simChart = new Chart(canvas.getContext('2d'), {
@@ -801,7 +801,7 @@
         },
         scales: {
           x: { ticks: { color: text2, font: { family: 'IBM Plex Mono', size: 9 }, maxRotation: 55, minRotation: 45, autoSkip: false }, grid: { display: false } },
-          y: { beginAtZero: true, ticks: { color: text2, font: { family: 'IBM Plex Mono', size: 9 }, precision: 0 }, grid: { color: border } },
+          y: { beginAtZero: true, ticks: { color: text2, font: { family: 'IBM Plex Mono', size: 9 }, precision: 0 }, grid: { color: pv('--track', '#E7E0D0') } },
         },
       },
     });

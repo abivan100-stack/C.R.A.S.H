@@ -9,8 +9,8 @@
 
   /* ---- engine constants (mirror app.js) ---- */
   const SEV = {
-    fatal:   { c: '#E4404E', l: 'Fatal',   w: 3 },
-    serious: { c: '#F2933E', l: 'Serious', w: 2 },
+    fatal:   { c: '#BE2F2A', l: 'Fatal',   w: 3 },
+    serious: { c: '#CE8A2E', l: 'Serious', w: 2 },
     slight:  { c: '#E7C64B', l: 'Slight',  w: 1 },
   };
   const CAUSES = ['Over-speeding', 'Wrong-side driving', 'Signal jumping', 'Drunken driving',
@@ -186,7 +186,7 @@
     charts.push(new Chart(el, cfg));
   }
   function setChartDefaults(pal) {
-    Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
+    Chart.defaults.font.family = "'Roboto', sans-serif";
     Chart.defaults.font.size = 11;
     Chart.defaults.color = pal.text2;
     Chart.defaults.borderColor = pal.grid;
@@ -196,7 +196,7 @@
     const tt = Chart.defaults.plugins.tooltip;
     tt.backgroundColor = pal.panel; tt.titleColor = pal.text; tt.bodyColor = pal.text2;
     tt.borderColor = pal.border; tt.borderWidth = 1; tt.padding = 10; tt.displayColors = true; tt.boxPadding = 4;
-    tt.titleFont = { family: "'IBM Plex Sans', sans-serif", weight: '600', size: 12 };
+    tt.titleFont = { family: "'Roboto', sans-serif", weight: '600', size: 12 };
     tt.bodyFont = { family: "'IBM Plex Mono', monospace", size: 11 };
   }
   function catAxis(pal, extra) {
@@ -292,7 +292,7 @@
       options: Object.assign({}, baseOpts, {
         indexAxis: 'y',
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: (i) => '  ' + fmt(i.raw) + ' · ' + Math.round(100 * i.raw / DATA.length) + '%' } } },
-        scales: { x: valAxis(pal), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'IBM Plex Sans', sans-serif", size: 11 } } }) },
+        scales: { x: valAxis(pal), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'Roboto', sans-serif", size: 11 } } }) },
       }),
     });
     const vz = sortedEntries(A.veh);
@@ -302,7 +302,7 @@
       options: Object.assign({}, baseOpts, {
         indexAxis: 'y',
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: (i) => '  ' + fmt(i.raw) + ' · ' + Math.round(100 * i.raw / DATA.length) + '%' } } },
-        scales: { x: valAxis(pal), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'IBM Plex Sans', sans-serif", size: 11 } } }) },
+        scales: { x: valAxis(pal), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'Roboto', sans-serif", size: 11 } } }) },
       }),
     });
   }
@@ -400,7 +400,7 @@
       options: Object.assign({}, baseOpts, {
         indexAxis: 'y',
         plugins: { legend: { display: false }, tooltip: { callbacks: { title: (i) => i[0].label, label: (i) => { const c = A.top[i.dataIndex]; return ['  risk score ' + c.norm + ' / 100', '  ' + fmt(c.count) + ' incidents', '  ' + fmt(c.fatal) + ' fatal · ' + fmt(c.serious) + ' serious']; } } } },
-        scales: { x: valAxis(pal, { max: 100 }), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'IBM Plex Sans', sans-serif", size: 11 } } }) },
+        scales: { x: valAxis(pal, { max: 100 }), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'Roboto', sans-serif", size: 11 } } }) },
       }),
     });
   }
@@ -417,7 +417,7 @@
         indexAxis: 'y',
         plugins: { legend: { display: true, position: 'top', align: 'end' },
           tooltip: { callbacks: { title: (i) => e[i[0].dataIndex].area, label: (i) => '  ' + i.dataset.label.split(' · ')[0] + ' · ' + i.raw + ' /mo' } } },
-        scales: { x: valAxis(pal, { title: { display: true, text: 'incidents per month', color: pal.text3, font: { family: "'IBM Plex Mono', monospace", size: 10 } } }), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'IBM Plex Sans', sans-serif", size: 11 } } }) },
+        scales: { x: valAxis(pal, { title: { display: true, text: 'incidents per month', color: pal.text3, font: { family: "'IBM Plex Mono', monospace", size: 10 } } }), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'Roboto', sans-serif", size: 11 } } }) },
       }),
     });
   }
@@ -430,7 +430,7 @@
       options: Object.assign({}, baseOpts, {
         indexAxis: 'y',
         plugins: { legend: { display: false }, tooltip: { callbacks: { title: (i) => A.queue[i.dataIndex].area, label: (i) => { const r = A.queue[i.dataIndex]; return ['  ≈ ' + fmt(r.prevent) + ' severe preventable', '  cause · ' + r.dom, '  cost · ' + r.iv.cost]; } } } },
-        scales: { x: valAxis(pal, { title: { display: true, text: 'est. preventable severe crashes · 24 mo', color: pal.text3, font: { family: "'IBM Plex Mono', monospace", size: 10 } } }), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'IBM Plex Sans', sans-serif", size: 11 } } }) },
+        scales: { x: valAxis(pal, { title: { display: true, text: 'est. preventable severe crashes · 24 mo', color: pal.text3, font: { family: "'IBM Plex Mono', monospace", size: 10 } } }), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'Roboto', sans-serif", size: 11 } } }) },
       }),
     });
 
@@ -493,7 +493,7 @@
     } catch (err) {
       console.error('Failed to load accidents.json:', err);
       const main = document.querySelector('main');
-      if (main) main.insertAdjacentHTML('afterbegin', '<div style="padding:16px; border:1px solid var(--border); border-radius:8px; color:var(--text-2); font:400 13px \'IBM Plex Sans\',sans-serif;">Could not load ./data/accidents.json — run this page via the local server.</div>');
+      if (main) main.insertAdjacentHTML('afterbegin', '<div style="padding:16px; border:1px solid var(--border); border-radius:8px; color:var(--text-2); font:400 13px \'Roboto\',sans-serif;">Could not load ./data/accidents.json — run this page via the local server.</div>');
       return;
     }
 

@@ -405,7 +405,7 @@
   // app.js fires this once on startup. We deliberately do NOT rebuild the panel from the
   // loaded reports (that caused old notifications to reappear as "just now"). Instead we
   // clear to an empty feed and start the live poll, whose first pass baselines the DB.
-  document.addEventListener('crash:reports-loaded', function () { startFresh(); startPolling(); });
+  document.addEventListener('crash:reports-loaded', function () { items = restoreFromPersisted(); items.forEach(function (n) { knownSigs[n.sig] = true; }); unread = countUnread(); updateBadge(); renderList(); startPolling(); });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPanel);
   else initPanel();

@@ -7,8 +7,8 @@
 <script>
   /* set theme before first paint to avoid a flash */
   (function () {
-    try { var t = localStorage.getItem('cra-theme'); document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark'); }
-    catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+    try { var t = localStorage.getItem('cra-theme'); document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light'); }
+    catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
   })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500;1,6..72,600&family=Roboto:wght@400;500;700&display=swap');
 /* ===================== theme palette (merged, unchanged colours) ===================== */
 :root, :root[data-theme="dark"] {
   color-scheme: dark;
@@ -25,26 +26,26 @@
      The ONLY saturated colours are the severity data hues.
      ============================================================ */
   /* core palette */
-  --canvas: #0C1218;        /* app background            */
-  --surface: #131C26;       /* raised panels             */
-  --surface-2: #182430;     /* nested / hover surfaces    */
-  --border: #223140;        /* hairline borders (used instead of shadows) */
-  --text: #E9EEF3;          /* primary — warm off-white, never pure #fff  */
-  --text-muted: #8296A9;    /* labels / secondary        */
-  --accent: #43B0CC;        /* interactive: selection, focus, active */
-  --fatal: #E4404E; --serious: #F2933E; --slight: #E7C64B;   /* severity — data only, never decorative */
+  --canvas: #16191D;        /* app background            */
+  --surface: #1E232A;       /* raised panels             */
+  --surface-2: #262C34;     /* nested / hover surfaces    */
+  --border: #333B44;        /* hairline borders (used instead of shadows) */
+  --text: #ECEAE4;          /* primary — warm off-white, never pure #fff  */
+  --text-muted: #99A2AC;    /* labels / secondary        */
+  --accent: #6FA3D0;        /* interactive: selection, focus, active */
+  --fatal: #BE2F2A; --serious: #CE8A2E; --slight: #E7C64B;   /* severity — data only, never decorative */
   /* flat accent + severity tints (no gradients) */
-  --accent-ink: #06121A;    /* text / icons on an accent fill */
-  --accent-faint: rgba(67,176,204,0.06);
-  --accent-soft:  rgba(67,176,204,0.12);
-  --accent-line:  rgba(67,176,204,0.30);
-  --accent-glow:  rgba(67,176,204,0.55);
-  --fatal-tint:   rgba(228,64,78,0.14);
-  --serious-tint: rgba(242,147,62,0.12);
-  --selection:    rgba(67,176,204,0.26);
+  --accent-ink: #14202B;    /* text / icons on an accent fill */
+  --accent-faint: rgba(111,163,208,0.10);
+  --accent-soft:  rgba(111,163,208,0.16);
+  --accent-line:  rgba(111,163,208,0.32);
+  --accent-glow:  rgba(111,163,208,0.50);
+  --fatal-tint:   rgba(190,47,42,0.18);
+  --serious-tint: rgba(206,138,46,0.16);
+  --selection:    rgba(111,163,208,0.28);
   /* typography — three deliberate roles */
-  --font-display: 'Space Grotesk', sans-serif;   /* headings, section titles, big figures */
-  --font-body:    'IBM Plex Sans', sans-serif;   /* UI + body copy */
+  --font-display: 'Newsreader', Georgia, serif;   /* headings, section titles, big figures */
+  --font-body:    'Roboto', system-ui, sans-serif;   /* UI + body copy */
   --font-mono:    'IBM Plex Mono', monospace;    /* ALL numbers / coords / timestamps (tabular) */
   /* type scale */
   --fs-display: 28px; --fs-display-lg: 40px;
@@ -57,43 +58,44 @@
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
   --space-5: 24px; --space-6: 32px; --space-7: 48px;
   /* radii — one tight container radius; pills are pill-shaped */
-  --radius: 6px; --radius-sm: 4px; --radius-lg: 10px; --radius-pill: 999px;
+  --radius: 3px; --radius-sm: 2px; --radius-lg: 4px; --radius-pill: 999px;
   /* elevation — used sparingly, only for elements floating over the map */
-  --shadow-1: 0 1px 4px rgba(0,0,0,0.35);
-  --shadow-2: 0 10px 30px rgba(0,0,0,0.45);
+  --shadow-1: 0 1px 3px rgba(0,0,0,0.30);
+  --shadow-2: 0 14px 34px -10px rgba(0,0,0,0.50);
   /* ---- runtime tokens the JS reads (getComputedStyle) / injects (var(--x) strings):
      kept as LITERALS, in lockstep with the palette above, so JS never resolves a var() chain ---- */
-  --bg: #0C1218; --bg-deep: #090E13; --panel: #131C26; --panel-2: #16212D;
-  --border-soft: #182430; --row-hover: #17222E; --track: #1A2733; --row-alt: #1A2733;
-  --text-2: #8296A9; --text-3: #6F8499; --text-4: #4E6377;   /* text-3 lifted 5C7185->6F8499 for WCAG AA (4.9:1) */
-  --accent-2: #74C8DC;
-  --dow-text: #C7D3DE; --chart-day: #6E8BA3; --chart-night: #33475C; --hist: #46617A; --hist-peak: #8FB3CC;
-  --cmpA: #43B0CC; --cmpB: #C08CE6;      /* area-compare series (previously undefined in the shell) */
-  --attrib-bg: rgba(12,18,24,0.72);
+  --bg: #16191D; --bg-deep: #101316; --panel: #1E232A; --panel-2: #242A32;
+  --border-soft: #2A313A; --row-hover: #242A31; --track: #2A313A; --row-alt: #22272E;
+  --text-2: #99A2AC; --text-3: #8A96A3; --text-4: #5A636E;   /* text-3 lifted 5C7185->6F8499 for WCAG AA (4.9:1) */
+  --accent-2: #8FB8DC;
+  --dow-text: #C7CDD4; --chart-day: #5F7488; --chart-night: #33475C; --hist: #A79F8D; --hist-peak: #6FA3D0;
+  --cmpA: #6FA3D0; --cmpB: #C2925A;      /* area-compare series (previously undefined in the shell) */
+  --attrib-bg: rgba(22,25,29,0.72);
 }
 :root[data-theme="light"] {
   color-scheme: light;
   /* core palette */
-  --canvas: #EDF1F5; --surface: #FFFFFF; --surface-2: #E6EBF0; --border: #D6DEE6;
-  --text: #16202B; --text-muted: #566472; --accent: #1B8FAC;
-  --fatal: #E4404E; --serious: #F2933E; --slight: #E7C64B;
+  --canvas: #F4F0E7; --surface: #FCFAF4; --surface-2: #EBE5D8; --border: #D9D1C1;
+  --text: #221F18; --text-muted: #6E675A; --accent: #2F5C87;
+  --fatal: #BE2F2A; --serious: #CE8A2E; --slight: #E7C64B;
   /* flat accent + severity tints */
-  --accent-ink: #FFFFFF;
-  --accent-faint: rgba(27,143,172,0.07);
-  --accent-soft:  rgba(27,143,172,0.13);
-  --accent-line:  rgba(27,143,172,0.30);
-  --accent-glow:  rgba(27,143,172,0.45);
-  --fatal-tint:   rgba(228,64,78,0.12);
-  --serious-tint: rgba(242,147,62,0.14);
-  --selection:    rgba(27,143,172,0.22);
+  --accent-ink: #FCFBF8;
+  --accent-faint: rgba(47,92,135,0.05);
+  --accent-soft:  rgba(47,92,135,0.10);
+  --accent-line:  rgba(47,92,135,0.26);
+  --accent-glow:  rgba(47,92,135,0.40);
+  --fatal-tint:   rgba(190,47,42,0.12);
+  --serious-tint: rgba(206,138,46,0.14);
+  --selection:    rgba(47,92,135,0.16);
   /* runtime mirror (JS reads/injects these) */
-  --bg: #EDF1F5; --bg-deep: #E1E7ED; --panel: #FFFFFF; --panel-2: #F6F8FB;
-  --border-soft: #E6EBF0; --row-hover: #EEF2F7; --track: #E5EAF0; --row-alt: #EEF2F7;
-  --text-2: #566472; --text-3: #5D6B7B; --text-4: #A4B0BC;   /* text-3 darkened 7E8D9C->5D6B7B for WCAG AA (4.8:1) */
-  --accent-2: #2C6F8C;
-  --dow-text: #33475C; --chart-day: #7C93A8; --chart-night: #45607A; --hist: #93A6B8; --hist-peak: #256E8B;
-  --cmpA: #1B8FAC; --cmpB: #8A5CC7;
-  --attrib-bg: rgba(255,255,255,0.80);
+  --bg: #F4F0E7; --bg-deep: #EAE4D7; --panel: #FCFAF4; --panel-2: #F6F1E7;
+  --border-soft: #E7E0D0; --row-hover: #EFEADE; --track: #E7E0D0; --row-alt: #F1ECE0;
+  --text-2: #6E675A; --text-3: #857D6D; --text-4: #A79E8E;   /* text-3 darkened 7E8D9C->5D6B7B for WCAG AA (4.8:1) */
+  --accent-2: #24486B;
+  --dow-text: #4A4534; --chart-day: #5F7488; --chart-night: #33475C; --hist: #A79F8D; --hist-peak: #2F5C87;
+  --cmpA: #2F5C87; --cmpB: #A9773C;
+  --attrib-bg: rgba(252,250,244,0.85);
+  --shadow-1: 0 1px 2px rgba(34,31,24,0.06); --shadow-2: 0 14px 34px -18px rgba(34,31,24,0.16);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); }
@@ -203,8 +205,8 @@ a:hover { color: var(--accent-2); }
 .leaflet-control-zoom { margin: 0 14px 14px 0 !important; box-shadow: var(--shadow-1) !important; }
 .leaflet-bar { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .leaflet-bar a { width: 32px; height: 32px; line-height: 32px; font-size: 19px; font-weight: 500; background: var(--panel); color: var(--text-2); border-bottom: 1px solid var(--border); }
-.leaflet-bar a:first-child { border-radius: 6px 6px 0 0; }
-.leaflet-bar a:last-child { border-radius: 0 0 6px 6px; border-bottom: none; }
+.leaflet-bar a:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.leaflet-bar a:last-child { border-radius: 0 0 var(--radius) var(--radius); border-bottom: none; }
 .leaflet-bar a:hover { background: var(--row-hover); color: var(--text); }
 .leaflet-bar a:active { background: var(--accent-soft); color: var(--accent); }
 .leaflet-bar a.leaflet-disabled { background: var(--bg-deep); color: var(--text-4); }
@@ -266,8 +268,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .hosp-divicon { background: none; border: none; }
 .hosp-marker { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: var(--radius); box-sizing: border-box; box-shadow: var(--shadow-1); }
 .hosp-marker svg { display: block; }
-.hosp-marker.hosp-pri { background: var(--accent); color: #0C1218; border: 1px solid rgba(255,255,255,0.85); }
-.hosp-marker.hosp-gov { background: #EAF6FA; color: var(--accent); border: 1px solid var(--accent); }
+.hosp-marker.hosp-pri { background: var(--accent); color: var(--accent-ink); border: 1px solid rgba(255,255,255,0.85); }
+.hosp-marker.hosp-gov { background: var(--surface); color: var(--accent); border: 1px solid var(--accent); }
 .hosp-pop-dot { flex: none; width: 9px; height: 9px; border-radius: 2px; background: var(--accent); display: inline-block; }
 .hosp-link { pointer-events: none; }
 /* hospital distance UI (dossier): compare dropdown, tabular km, line swatches, honest note */
@@ -278,7 +280,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .hosp-km { font: 500 12px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); }
 .hosp-line-swatch { flex: none; display: inline-block; width: 16px; height: 0; border-top: 2px solid transparent; }
 .hosp-line-swatch.nearest { border-top-color: var(--accent); }
-.hosp-line-swatch.marked { border-top-style: dashed; border-top-color: #FFFFFF; }
+.hosp-line-swatch.marked { border-top-style: dashed; border-top-color: var(--text-3); }
 .hosp-note { font: 400 9.5px var(--font-mono); color: var(--text-3); margin: 11px 0 2px; letter-spacing: 0.02em; }
 /* ===================== C.R.A.S.H Bot section ===================== */
 .bot-root { display: flex; height: calc(100vh - 58px); min-height: 0; background: var(--bg); }
@@ -338,7 +340,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .bot-examples { flex: none; display: flex; flex-wrap: wrap; gap: 7px; padding: 0 16px 4px; }
 .bot-examples[hidden] { display: none; }
 .bot-ex { font: 400 11px var(--font-body); color: var(--text-2); background: var(--bg); border: 1px solid var(--border);
-  border-radius: 14px; padding: 6px 11px; cursor: pointer; }
+  border-radius: var(--radius); padding: 6px 11px; cursor: pointer; }
 .bot-ex:hover { color: var(--accent); border-color: var(--accent); }
 .bot-inputrow { flex: none; display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--border); }
 #botInput { flex: 1; min-width: 0; font: 400 13px var(--font-body); color: var(--text); background: var(--bg);
@@ -421,7 +423,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 /* the report form now leads the tab — don't add the extra section gap above the first block */
 .report-root > .section:first-child { margin-top: 0; }
 .report-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 22px 20px; display: flex; flex-direction: column; gap: 11px; }
-.rc-badge { width: 40px; height: 40px; border-radius: var(--radius); background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.rc-badge { width: 40px; height: 40px; border-radius: var(--radius); background: var(--accent-faint); border: 1px solid var(--accent-line); color: var(--accent); display: flex; align-items: center; justify-content: center; }
 .rc-title { font: 600 18px var(--font-display); }
 .rc-desc { font: 400 12.5px var(--font-body); color: var(--text-2); line-height: 1.6; flex: 1; }
 .rc-label { font: 500 8.5px var(--font-mono); letter-spacing: 0.16em; color: var(--text-2); text-transform: uppercase; margin-top: 2px; }
@@ -528,7 +530,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 .af-sev button { flex: 1; font: 500 11.5px var(--font-mono); padding: 10px 8px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg); color: var(--text-2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; transition: border-color .15s ease, color .15s ease, background .15s ease; }
 .af-sev button:hover { border-color: var(--text-3); }
 .af-sev button .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-.af-sev button[aria-pressed="true"] { color: var(--text); background: rgba(255,255,255,0.03); }
+.af-sev button[aria-pressed="true"] { color: var(--text); background: var(--surface-2); }
 .af-err { color: var(--fatal); font: 500 11px var(--font-mono); min-height: 15px; }
 .af-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
 .af-actions .rc-btn { margin-top: 0; }
@@ -581,11 +583,11 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 /* error state on the numeric field */
 .sim-num.invalid { border-color: var(--fatal); }
 .sim-num.invalid:hover { border-color: var(--fatal); }
-.sim-num.invalid:focus, .sim-num.invalid:focus-visible { border-color: var(--fatal); box-shadow: 0 0 0 3px rgba(228,64,78,0.28); }
+.sim-num.invalid:focus, .sim-num.invalid:focus-visible { border-color: var(--fatal); box-shadow: 0 0 0 3px rgba(190,47,42,0.30); }
 /* numeric projection-horizon field — whole months 1–24, themed to the dark UI */
 .sim-num { width: 100%; box-sizing: border-box; font: 500 13px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 10px; -moz-appearance: textfield; appearance: textfield; }
 .sim-num:hover { border-color: var(--accent); }
-.sim-num:focus, .sim-num:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(67,176,204,0.28); }
+.sim-num:focus, .sim-num:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-line); }
 .sim-num::-webkit-outer-spin-button, .sim-num::-webkit-inner-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
 .sim-actions { display: flex; gap: 10px; margin-top: 0; }
 .sim-actions .rc-btn { margin-top: 0; flex: 1; }
@@ -605,7 +607,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 .sim-legend-t { font: 500 10px var(--font-mono); color: var(--text-2); }
 .sim-legend-i { display: flex; align-items: center; gap: 6px; font: 400 10px var(--font-mono); color: var(--text-2); }
 .sim-legend .sw { width: 8px; height: 8px; border-radius: 50%; }
-.sim-rank { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); border: 2px solid rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; font: 700 12px var(--font-display); font-variant-numeric: tabular-nums; box-shadow: 0 0 0 4px rgba(67,176,204,0.22), 0 2px 7px rgba(0,0,0,0.55); cursor: pointer; }
+.sim-rank { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); border: 2px solid rgba(255,255,255,0.85); display: flex; align-items: center; justify-content: center; font: 700 12px var(--font-display); font-variant-numeric: tabular-nums; box-shadow: 0 0 0 4px var(--accent-soft), 0 2px 6px rgba(0,0,0,0.28); cursor: pointer; }
 .sim-rank:hover { background: var(--accent-2); }
 /* results sidebar (STEP 5) */
 .sim-results-body[hidden] { display: none; }
@@ -614,7 +616,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 .sim-total-note { font: 400 11px var(--font-body); color: var(--text-3); margin-top: 5px; }
 /* low-confidence banner (STEP 6) — a rare scenario backed by little history */
 .sim-lowconf { display: flex; gap: 9px; align-items: flex-start; margin-top: 14px; padding: 10px 12px; border-radius: var(--radius);
-  background: rgba(242,147,62,0.09); border: 1px solid rgba(242,147,62,0.32); color: var(--text-2);
+  background: var(--serious-tint); border: 1px solid rgba(206,138,46,0.34); color: var(--text-2);
   font: 400 11.5px var(--font-body); line-height: 1.5; }
 .sim-lowconf[hidden] { display: none; }
 .sim-lowconf svg { flex: none; margin-top: 1px; color: var(--serious); }
@@ -696,7 +698,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 /* ---- click-to-navigate marker highlight (STEP 3) ---- */
 .report-focus-icon { pointer-events: none; }
 .report-focus-ring { width: 44px; height: 44px; box-sizing: border-box; border-radius: 50%; border: 2.5px solid var(--accent);
-  box-shadow: 0 0 0 3px rgba(67,176,204,0.18), 0 0 16px rgba(67,176,204,0.55); animation: reportFocusPulse 1.2s ease-in-out infinite; }
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 16px var(--accent-glow); animation: reportFocusPulse 1.2s ease-in-out infinite; }
 .report-focus-ring.no-pulse { animation: none; }
 @keyframes reportFocusPulse { 0%, 100% { transform: scale(0.82); opacity: 0.55; } 50% { transform: scale(1.06); opacity: 1; } }
 /* reduced motion: fade only (no slide) — override the global no-transition rule for toasts */
@@ -750,11 +752,11 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       <aside id="rail" style="width: 296px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-right: 1px solid var(--border);">
         <div style="padding: 14px 16px 11px; border-bottom: 1px solid var(--border); flex: none;">
           <div style="font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: 0.18em; color: var(--text-2); text-transform: uppercase;">Ranked danger index</div>
-          <div style="font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-2); margin-top: 4px;">Top 10 junctions · Jul 2024 – Jun 2026</div>
+          <div style="font: 400 11px var(--font-body); color: var(--text-2); margin-top: 4px;">Top 10 junctions · Jul 2024 – Jun 2026</div>
           <div id="filterNote" style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--accent); margin-top: 3px; min-height: 13px;"></div>
         </div>
         <div id="railList" style="flex: 1; overflow-y: auto; min-height: 0;">
-          <div id="railPlaceholder" style="padding: 18px 16px; font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-3); line-height: 1.6;">Loading incident data…</div>
+          <div id="railPlaceholder" style="padding: 18px 16px; font: 400 11px var(--font-body); color: var(--text-3); line-height: 1.6;">Loading incident data…</div>
         </div>
         <div style="flex: none; padding: 10px 16px 12px; border-top: 1px solid var(--border);">
           <div style="font: 400 9.5px 'IBM Plex Mono', monospace; color: var(--text-3); line-height: 1.5;">Risk score = severity-weighted incidents (fatal ×3, serious ×2, slight ×1) per 250 m cell.</div>
@@ -858,8 +860,8 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
               <line x1="1" y1="15" x2="8" y2="15" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
               <line x1="22" y1="15" x2="29" y2="15" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
             </svg>
-            <div style="font: 500 15px 'Space Grotesk', sans-serif;">Select a zone</div>
-            <div style="font: 400 12.5px 'IBM Plex Sans', sans-serif; line-height: 1.55; color: var(--text-2); max-width: 220px;">Choose a junction from the ranked index, or a bloom on the map, to open its dossier.</div>
+            <div style="font: 500 15px var(--font-display);">Select a zone</div>
+            <div style="font: 400 12.5px var(--font-body); line-height: 1.55; color: var(--text-2); max-width: 220px;">Choose a junction from the ranked index, or a bloom on the map, to open its dossier.</div>
           </div>
           <div id="dossierFull" style="display: none; flex-direction: column; min-height: 0; height: 100%;"></div>
         </div>
@@ -1307,11 +1309,11 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="./report.js?v=phase5e"></script>
-<script src="./app.js?v=phase17"></script>
-<script src="./analytics.js?v=phase8h"></script>
-<script src="./simulate.js?v=phase14"></script>
-<script src="./notifications.js?v=8"></script>
-<script src="./bot.js?v=8"></script>
+<script src="./app.js?v=phase18"></script>
+<script src="./analytics.js?v=phase8i"></script>
+<script src="./simulate.js?v=phase15"></script>
+<script src="./notifications.js?v=9"></script>
+<script src="./bot.js?v=9"></script>
 
 <script>
 (function () {
@@ -1374,7 +1376,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
   }
   pills.forEach(function (p) { p.addEventListener('click', function () { show(p.dataset.section); }); });
   var brand = document.getElementById('brandHome');
-  if (brand) brand.addEventListener('click', function () { show('map'); });
+  if (brand) brand.addEventListener('click', function () { window.location.href = './landing.html'; });
 
   /* ---- hamburger sheet (<768px) ---- */
   var navToggle = document.getElementById('navToggle');
@@ -1420,8 +1422,8 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
   /* ---- Report an accident (citizen form) ---- */
   var PIN_HTML =
     '<svg class="af-pin" width="28" height="36" viewBox="0 0 28 36" aria-hidden="true">' +
-    '<path d="M14 35S25 22.5 25 13A11 11 0 1 0 3 13C3 22.5 14 35 14 35Z" fill="#43B0CC" stroke="#06121A" stroke-width="1.6" stroke-linejoin="round"/>' +
-    '<circle cx="14" cy="13" r="4.2" fill="#06121A"/></svg>';
+    '<path d="M14 35S25 22.5 25 13A11 11 0 1 0 3 13C3 22.5 14 35 14 35Z" fill="#2F5C87" stroke="#14202B" stroke-width="1.6" stroke-linejoin="round"/>' +
+    '<circle cx="14" cy="13" r="4.2" fill="#14202B"/></svg>';
 
   var formInited = false;
   var afMap = null, afTiles = null, afMarker = null, afAccCircle = null;
@@ -1702,7 +1704,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     if (prev && map) map.removeLayer(prev);
     if (isPicker) pickerAccCircle = null; else afAccCircle = null;
     if (!map || typeof acc !== 'number' || !isFinite(acc) || acc <= 0) return;
-    var accent = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#43B0CC').trim() || '#43B0CC';
+    var accent = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#2F5C87').trim() || '#2F5C87';
     var ring = L.circle([lat, lng], { radius: acc, color: accent, weight: 1, opacity: 0.5,
       fillColor: accent, fillOpacity: 0.10, interactive: false }).addTo(map);
     if (isPicker) pickerAccCircle = ring; else afAccCircle = ring;
@@ -1868,7 +1870,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       center: [13.05, 80.23], zoom: 11, zoomControl: true, attributionControl: false,
       zoomSnap: 0.25, minZoom: 10, maxZoom: 18,
     });
-    afTiles = L.tileLayer('https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(afMap);
+    afTiles = L.tileLayer((window.CRASH_APP && window.CRASH_APP.tileUrl) ? window.CRASH_APP.tileUrl() : 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(afMap);
     document.addEventListener('crash:themechange', function () { if (afTiles && window.CRASH_APP) afTiles.setUrl(window.CRASH_APP.tileUrl()); });
     afMap.on('click', function (e) {
       if (!isValidLandPoint(e.latlng.lat, e.latlng.lng)) {   // same sea-guard as the fullscreen picker
@@ -1926,7 +1928,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     if (sevWrap) sevWrap.addEventListener('click', function (e) {
       var btn = e.target.closest('button[data-sev]'); if (!btn) return;
       af.sev = btn.dataset.sev;
-      var colors = { fatal: '#E4404E', serious: '#F2933E', slight: '#E7C64B' };
+      var colors = { fatal: '#BE2F2A', serious: '#CE8A2E', slight: '#E7C64B' };
       Array.prototype.forEach.call(sevWrap.querySelectorAll('button'), function (b) {
         var on = b === btn;
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
