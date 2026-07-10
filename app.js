@@ -2020,4 +2020,17 @@ window.CRASH_APP = {
 
   /* fly the map to a citizen report + highlight it (notifications click-to-navigate) */
   focusReport: function (r) { return focusReport(r); },
+
+  // ---- map-layer builders + data reused by the C.R.A.S.H Bot map (bot.js) so it renders
+  //      the SAME dot tooltips / risk blooms / emerging / hospitals as the home map ----
+  hotspots: function () { return ((app.hotspotsFull && app.hotspotsFull.length) ? app.hotspotsFull : (app.hotspots || [])).slice(); },
+  emerging: function () { return (app.emerging || []).slice(); },
+  hospitals: function () { return (app.hospitals || (app.hospitals = placeHospitals(app.raw))).slice(); },
+  nearestHospital: function (lat, lng) { return nearestHospitalTo(lat, lng); },
+  bloomIcon: function (h) { return bloomIcon(h, false); },
+  hotspotTipHtml: function (h) { return hotspotTipHtml(h); },
+  pointTipHtml: function (a) { return pointTipHtml(a); },
+  pointPopupHtml: function (a) { return popupHtml(a); },
+  hospitalIcon: function (type) { return hospitalIcon(type); },
+  hospitalPopupHtml: function (h) { return hospitalPopupHtml(h); },
 };
