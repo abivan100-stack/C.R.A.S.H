@@ -9,8 +9,8 @@
   (function () {
     try {
       var t = localStorage.getItem('cra-theme');
-      document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
-    } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+      document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+    } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
   })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,35 +19,36 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500;1,6..72,600&family=Roboto:wght@400;500;700&display=swap');
 /* ---- Theme palette ---- */
 :root, :root[data-theme="dark"] {
-  --bg: #0C1218; --bg-deep: #090E13; --panel: #131C26;
-  --border: #223140; --border-soft: #182430; --row-hover: #17222E; --track: #1A2733; --row-alt: #1A2733;
-  --text: #E9EEF3; --text-2: #8296A9; --text-3: #5C7185; --text-4: #4E6377;
-  --accent: #43B0CC; --accent-2: #74C8DC;
-  --dow-text: #C7D3DE; --chart-day: #6E8BA3; --chart-night: #33475C; --hist: #46617A; --hist-peak: #8FB3CC;
-  --attrib-bg: rgba(12,18,24,0.72);
+  --bg: #16191D; --bg-deep: #101316; --panel: #1E232A;
+  --border: #333B44; --border-soft: #2A313A; --row-hover: #242A31; --track: #2A313A; --row-alt: #22272E;
+  --text: #ECEAE4; --text-2: #99A2AC; --text-3: #8A96A3; --text-4: #5A636E;
+  --accent: #6FA3D0; --accent-2: #8FB8DC; --accent-ink: #14202B;
+  --dow-text: #C7CDD4; --chart-day: #5F7488; --chart-night: #33475C; --hist: #A79F8D; --hist-peak: #6FA3D0;
+  --attrib-bg: rgba(22,25,29,0.72);
 }
 :root[data-theme="light"] {
-  --bg: #EDF1F5; --bg-deep: #E1E7ED; --panel: #FFFFFF;
-  --border: #D6DEE6; --border-soft: #E6EBF0; --row-hover: #EEF2F7; --track: #E5EAF0; --row-alt: #EEF2F7;
-  --text: #16202B; --text-2: #566472; --text-3: #7E8D9C; --text-4: #A4B0BC;
-  --accent: #1B8FAC; --accent-2: #2C6F8C;
-  --dow-text: #33475C; --chart-day: #7C93A8; --chart-night: #45607A; --hist: #93A6B8; --hist-peak: #256E8B;
-  --attrib-bg: rgba(255,255,255,0.80);
+  --bg: #F4F0E7; --bg-deep: #EAE4D7; --panel: #FCFAF4;
+  --border: #D9D1C1; --border-soft: #E7E0D0; --row-hover: #EFEADE; --track: #E7E0D0; --row-alt: #F1ECE0;
+  --text: #221F18; --text-2: #6E675A; --text-3: #857D6D; --text-4: #A79E8E;
+  --accent: #2F5C87; --accent-2: #24486B; --accent-ink: #FCFBF8;
+  --dow-text: #4A4534; --chart-day: #5F7488; --chart-night: #33475C; --hist: #A79F8D; --hist-peak: #2F5C87;
+  --attrib-bg: rgba(252,250,244,0.85);
 }
 html { transition: background 0.25s ease; }
 #themeToggle:hover { background: var(--row-hover) !important; color: var(--text) !important; }
 #themeToggle:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 #analyticsLink:hover, #compareLink:hover, #strategyBtn:hover { border-color: var(--accent); color: var(--accent); }
 #analyticsLink:focus-visible, #compareLink:focus-visible, #strategyBtn:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
-#strategyBtn.active { border-color: var(--accent); color: var(--accent); background: rgba(67,176,204,0.12); }
+#strategyBtn.active { border-color: var(--accent); color: var(--accent); background: rgba(47,92,135,0.12); }
 
-html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; }
+html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text); font-family: 'Roboto', sans-serif; }
 * { box-sizing: border-box; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { color: var(--accent-2); text-decoration: underline; }
-::selection { background: rgba(67,176,204,0.28); }
+::selection { background: rgba(47,92,135,0.28); }
 @keyframes bloomIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
 @keyframes sweep { from { transform: translateX(-48px); } to { transform: translateX(168px); } }
 #railList::-webkit-scrollbar, #dossierBody::-webkit-scrollbar { width: 8px; }
@@ -68,7 +69,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 
 /* ---- Leaflet integration: keep the dark cartographic look ---- */
 #map { position: absolute; inset: 0; z-index: 0; background: var(--bg); }
-.leaflet-container { background: var(--bg); font-family: 'IBM Plex Sans', sans-serif; outline: none; }
+.leaflet-container { background: var(--bg); font-family: 'Roboto', sans-serif; outline: none; }
 /* Dark popup to match the design */
 .leaflet-popup-content-wrapper {
   background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
@@ -77,10 +78,10 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 .leaflet-popup-content { margin: 10px 12px; line-height: 1.5; }
 .leaflet-popup-close-button { color: var(--text-2) !important; }
 .leaflet-popup-close-button:hover { color: var(--text) !important; }
-.acc-pop-sev { font: 600 12.5px 'Space Grotesk', sans-serif; letter-spacing: 0.02em; display: flex; align-items: center; gap: 7px; }
+.acc-pop-sev { font: 600 12.5px 'Newsreader', sans-serif; letter-spacing: 0.02em; display: flex; align-items: center; gap: 7px; }
 .acc-pop-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .acc-pop-row { font: 400 10.5px 'IBM Plex Mono', monospace; color: var(--text-2); margin-top: 4px; font-variant-numeric: tabular-nums; }
-.acc-pop-area { font: 500 11.5px 'IBM Plex Sans', sans-serif; color: var(--text); margin-top: 6px; }
+.acc-pop-area { font: 500 11.5px 'Roboto', sans-serif; color: var(--text); margin-top: 6px; }
 /* CARTO/OSM attribution, styled subtle to match */
 .leaflet-control-attribution {
   background: var(--attrib-bg) !important; color: var(--text-4) !important;
@@ -95,7 +96,7 @@ a:hover { color: var(--accent-2); text-decoration: underline; }
 .leaflet-bar a:first-child { border-radius: 6px 6px 0 0; }
 .leaflet-bar a:last-child { border-radius: 0 0 6px 6px; border-bottom: none; }
 .leaflet-bar a:hover { background: var(--row-hover); color: var(--text); }
-.leaflet-bar a:active { background: rgba(67,176,204,0.18); color: var(--accent); }
+.leaflet-bar a:active { background: rgba(47,92,135,0.18); color: var(--accent); }
 .leaflet-bar a.leaflet-disabled { background: var(--bg-deep); color: var(--text-4); }
 
 /* ---- Risk blooms (top-10 signature markers) ---- */
@@ -159,7 +160,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #filtersBtn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
 #filtersBtn .chev { transition: transform .2s ease; }
 #filtersBtn[aria-expanded="true"] .chev { transform: rotate(180deg); }
-#filterCount { display: none; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent); color: #06121A;
+#filterCount { display: none; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent); color: var(--accent-ink);
   font: 600 10px 'IBM Plex Mono', monospace; align-items: center; justify-content: center; }
 #filterCount.on { display: inline-flex; }
 #filterPanel { box-shadow: 0 12px 34px rgba(0,0,0,0.42); max-height: 72vh; overflow: auto; }
@@ -189,14 +190,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 </style>
 </head>
 <body>
-<div data-screen-label="Hotspot analysis" style="position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; overflow: hidden;">
+<div data-screen-label="Hotspot analysis" style="position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-family: 'Roboto', sans-serif; overflow: hidden;">
 
   <header style="height: 52px; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 0 18px; border-bottom: 1px solid var(--border); z-index: 60;">
     <a href="./index.html" title="Back to CRASH home" style="display: flex; align-items: center; gap: 12px; min-width: 0; text-decoration: none; color: inherit;">
-      <span style="flex: none; width: 22px; height: 22px; border-radius: 5px; background: var(--accent); color: #08121A; display: flex; align-items: center; justify-content: center; font: 700 13px 'Space Grotesk', sans-serif;">C</span>
+      <span style="flex: none; width: 22px; height: 22px; border-radius: 5px; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; font: 700 13px 'Newsreader', sans-serif;">C</span>
       <div style="min-width: 0;">
         <div style="font: 500 8.5px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; color: var(--text-2); text-transform: uppercase;">CRASH · Greater Chennai</div>
-        <div style="font: 500 15px 'Space Grotesk', sans-serif; letter-spacing: 0.01em; margin-top: 1px; white-space: nowrap;">Accident hotspot analysis</div>
+        <div style="font: 500 15px 'Newsreader', sans-serif; letter-spacing: 0.01em; margin-top: 1px; white-space: nowrap;">Accident hotspot analysis</div>
       </div>
     </a>
     <div style="display: flex; align-items: center; gap: 22px;">
@@ -239,12 +240,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     <aside id="rail" style="width: 296px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-right: 1px solid var(--border);">
       <div style="padding: 14px 16px 11px; border-bottom: 1px solid var(--border); flex: none;">
         <div style="font: 500 10px 'IBM Plex Mono', monospace; letter-spacing: 0.18em; color: var(--text-2); text-transform: uppercase;">Ranked danger index</div>
-        <div style="font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-2); margin-top: 4px;">Top 10 junctions · Jul 2024 – Jun 2026</div>
+        <div style="font: 400 11px 'Roboto', sans-serif; color: var(--text-2); margin-top: 4px;">Top 10 junctions · Jul 2024 – Jun 2026</div>
         <div id="filterNote" style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--accent); margin-top: 3px; min-height: 13px;"></div>
       </div>
       <div id="railList" style="flex: 1; overflow-y: auto; min-height: 0;">
         <!-- ranked danger index rows are injected here in Phase 3 -->
-        <div id="railPlaceholder" style="padding: 18px 16px; font: 400 11px 'IBM Plex Sans', sans-serif; color: var(--text-3); line-height: 1.6;">Loading incident data…</div>
+        <div id="railPlaceholder" style="padding: 18px 16px; font: 400 11px 'Roboto', sans-serif; color: var(--text-3); line-height: 1.6;">Loading incident data…</div>
       </div>
       <div style="flex: none; padding: 10px 16px 12px; border-top: 1px solid var(--border);">
         <div style="font: 400 9.5px 'IBM Plex Mono', monospace; color: var(--text-3); line-height: 1.5;">Risk score = severity-weighted incidents (fatal ×3, serious ×2, slight ×1) per 250 m cell.</div>
@@ -281,8 +282,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
       <!-- Legend -->
       <div id="maplegend" style="position: absolute; left: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 9px; z-index: 10;">
         <div style="display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 5px; padding: 7px 11px;">
-          <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E4404E;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Fatal</span></span>
-          <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #F2933E;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Serious</span></span>
+          <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #BE2F2A;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Fatal</span></span>
+          <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #CE8A2E;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Serious</span></span>
           <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E7C64B;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Slight</span></span>
           <span style="width: 1px; height: 12px; background: var(--border);"></span>
           <span id="legendNote" style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-3);">Incident points · coloured by severity</span>
@@ -342,8 +343,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
           <line x1="1" y1="15" x2="8" y2="15" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
           <line x1="22" y1="15" x2="29" y2="15" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
         </svg>
-        <div style="font: 500 15px 'Space Grotesk', sans-serif;">Select a zone</div>
-        <div style="font: 400 12.5px 'IBM Plex Sans', sans-serif; line-height: 1.55; color: var(--text-2); max-width: 220px;">Choose a junction from the ranked index, or a bloom on the map, to open its dossier.</div>
+        <div style="font: 500 15px 'Newsreader', sans-serif;">Select a zone</div>
+        <div style="font: 400 12.5px 'Roboto', sans-serif; line-height: 1.55; color: var(--text-2); max-width: 220px;">Choose a junction from the ranked index, or a bloom on the map, to open its dossier.</div>
       </div>
       <!-- Populated zone dossier is injected here -->
       <div id="dossierFull" style="display: none; flex-direction: column; min-height: 0; height: 100%;"></div>

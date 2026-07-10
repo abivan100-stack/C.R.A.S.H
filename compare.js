@@ -6,7 +6,7 @@
 'use strict';
 (function () {
 
-  const SEV = { fatal: { c: '#E4404E', l: 'Fatal', w: 3 }, serious: { c: '#F2933E', l: 'Serious', w: 2 }, slight: { c: '#E7C64B', l: 'Slight', w: 1 } };
+  const SEV = { fatal: { c: '#BE2F2A', l: 'Fatal', w: 3 }, serious: { c: '#CE8A2E', l: 'Serious', w: 2 }, slight: { c: '#E7C64B', l: 'Slight', w: 1 } };
   const CAUSES = ['Over-speeding', 'Wrong-side driving', 'Signal jumping', 'Drunken driving',
     'Mobile phone use', 'Hit and run', 'Pothole / bad road', 'Pedestrian crossing error',
     'Improper overtaking', 'Vehicle defect', 'Poor visibility'];
@@ -116,13 +116,13 @@
   function rgba(hex, al) { const c = hexToRgb(hex); return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + al + ')'; }
 
   function setChartDefaults(pal) {
-    Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
+    Chart.defaults.font.family = "'Roboto', sans-serif";
     Chart.defaults.font.size = 11; Chart.defaults.color = pal.text2; Chart.defaults.borderColor = pal.grid;
     const lg = Chart.defaults.plugins.legend; lg.labels.color = pal.text2; lg.labels.boxWidth = 10; lg.labels.boxHeight = 10;
     lg.labels.font = { family: "'IBM Plex Mono', monospace", size: 10 };
     const tt = Chart.defaults.plugins.tooltip; tt.backgroundColor = pal.panel; tt.titleColor = pal.text; tt.bodyColor = pal.text2;
     tt.borderColor = pal.border; tt.borderWidth = 1; tt.padding = 10; tt.boxPadding = 4;
-    tt.titleFont = { family: "'IBM Plex Sans', sans-serif", weight: '600', size: 12 };
+    tt.titleFont = { family: "'Roboto', sans-serif", weight: '600', size: 12 };
     tt.bodyFont = { family: "'IBM Plex Mono', monospace", size: 11 };
   }
   function newChart(id, cfg) { const el = document.getElementById(id); if (el) charts.push(new Chart(el, cfg)); }
@@ -156,7 +156,7 @@
       options: Object.assign({}, baseOpts, {
         indexAxis: 'y',
         plugins: { legend: { display: true, position: 'top', align: 'end' }, tooltip: { callbacks: { label: (i) => '  ' + i.dataset.label + ' · ' + i.raw + '%' } } },
-        scales: { x: valAxis(pal, { stacked: true, max: 100, ticks: { color: pal.text2, font: { family: "'IBM Plex Mono', monospace", size: 10 }, callback: (v) => v + '%' } }), y: catAxis(pal, { stacked: true, ticks: { color: pal.text, font: { family: "'IBM Plex Sans', sans-serif", size: 11 } } }) },
+        scales: { x: valAxis(pal, { stacked: true, max: 100, ticks: { color: pal.text2, font: { family: "'IBM Plex Mono', monospace", size: 10 }, callback: (v) => v + '%' } }), y: catAxis(pal, { stacked: true, ticks: { color: pal.text, font: { family: "'Roboto', sans-serif", size: 11 } } }) },
       }),
     });
 
@@ -187,7 +187,7 @@
       options: Object.assign({}, baseOpts, {
         indexAxis: 'y',
         plugins: { legend: { display: true, position: 'top', align: 'end' }, tooltip: { callbacks: { label: (i) => '  ' + i.dataset.label + ' · ' + i.raw + '%' } } },
-        scales: { x: valAxis(pal, { ticks: { color: pal.text2, font: { family: "'IBM Plex Mono', monospace", size: 10 }, callback: (v) => v + '%' } }), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'IBM Plex Sans', sans-serif", size: 10.5 } } }) },
+        scales: { x: valAxis(pal, { ticks: { color: pal.text2, font: { family: "'IBM Plex Mono', monospace", size: 10 }, callback: (v) => v + '%' } }), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'Roboto', sans-serif", size: 10.5 } } }) },
       }),
     });
 
@@ -202,7 +202,7 @@
       options: Object.assign({}, baseOpts, {
         indexAxis: 'y',
         plugins: { legend: { display: true, position: 'top', align: 'end' }, tooltip: { callbacks: { label: (i) => '  ' + i.dataset.label + ' · ' + i.raw + '%' } } },
-        scales: { x: valAxis(pal, { ticks: { color: pal.text2, font: { family: "'IBM Plex Mono', monospace", size: 10 }, callback: (v) => v + '%' } }), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'IBM Plex Sans', sans-serif", size: 10.5 } } }) },
+        scales: { x: valAxis(pal, { ticks: { color: pal.text2, font: { family: "'IBM Plex Mono', monospace", size: 10 }, callback: (v) => v + '%' } }), y: catAxis(pal, { ticks: { color: pal.text, font: { family: "'Roboto', sans-serif", size: 10.5 } } }) },
       }),
     });
 
