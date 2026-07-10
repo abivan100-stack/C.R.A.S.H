@@ -21,7 +21,7 @@ from xml.sax.saxutils import escape as xml_escape
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pymongo import MongoClient
@@ -486,6 +486,15 @@ def ask(req: AskRequest):
 @app.get("/backend/{rest:path}", include_in_schema=False)
 def _block_backend(rest: str):
     raise HTTPException(status_code=404, detail="Not Found")
+
+
+# The site HOME ("/") is the marketing landing page. Registered BEFORE the static
+# mount so it wins over StaticFiles' html=True (which would otherwise serve
+# index.html at "/"). index.html — the live app — stays reachable at /index.html.
+@app.get("/", include_in_schema=False)
+def home():
+    """Serve the editorial landing page as the site home."""
+    return FileResponse(os.path.join(FRONTEND_DIR, "landing.html"))
 
 
 # Mounted LAST so it can't shadow the API routes. html=True serves index.html at "/".

@@ -1376,7 +1376,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
   }
   pills.forEach(function (p) { p.addEventListener('click', function () { show(p.dataset.section); }); });
   var brand = document.getElementById('brandHome');
-  if (brand) brand.addEventListener('click', function () { show('map'); });
+  if (brand) brand.addEventListener('click', function () { window.location.href = './landing.html'; });
 
   /* ---- hamburger sheet (<768px) ---- */
   var navToggle = document.getElementById('navToggle');
