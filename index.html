@@ -518,7 +518,14 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 .picker-readout { flex: none; font: 500 12px var(--font-mono); color: var(--text-2);
   background: var(--panel); border-top: 1px solid var(--border); padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom)); line-height: 1.5; }
 .picker-readout b { color: var(--accent); font-weight: 600; }
-@media (max-width: 560px) { .picker-title { font-size: 14px; } .picker-confirm { padding: 10px 12px; } }
+@media (max-width: 560px) {
+  .picker-title { font-size: 14px; }
+  .picker-confirm { padding: 10px 12px; }
+  .picker-head-actions { gap: 7px; flex-wrap: wrap; justify-content: flex-end; }   /* never overflow the top bar */
+  .picker-geo-btn { min-height: 44px; padding: 10px 12px; }                         /* comfortable tap target */
+  .picker-geo-label { display: none; }        /* compact: show just the 📍 on phones (aria-label covers the name) */
+  .picker-geo-emoji { font-size: 16px; }
+}
 /* ---- Main-map place search ---- */
 .mapsearch-box { display: flex; align-items: center; gap: 7px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; box-shadow: var(--shadow-1); }
 .mapsearch-box:focus-within { border-color: var(--accent); }
@@ -1293,7 +1300,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
   <div class="picker-head">
     <div class="picker-title">Select accident location</div>
     <div class="picker-head-actions">
-      <button id="pickerGeoBtn" class="picker-geo-btn" type="button" title="Center on your current position">
+      <button id="pickerGeoBtn" class="picker-geo-btn" type="button" aria-label="Use my current location" title="Center on your current position">
         <span class="picker-geo-emoji" aria-hidden="true">📍</span>
         <span class="picker-geo-label">My location</span>
       </button>
@@ -1684,10 +1691,15 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
      back to manual picking. Browser geolocation only works on HTTPS or localhost.
      ==========================================================================*/
   var GEO_OPTS = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+  var geoPermState = null;   // Phase 2: 'granted' | 'prompt' | 'denied' | null when the Permissions API is unavailable
 
   function geoErrorText(err) {
     var code = err && err.code;
-    if (code === 1) return 'Location permission was blocked — pick the spot on the map instead.';   // PERMISSION_DENIED
+    if (code === 1) {   // PERMISSION_DENIED — a persistent block gets "re-enable in settings" guidance
+      return geoPermState === 'denied'
+        ? 'Location is blocked for this site — turn it on in your browser’s site settings, or pick the spot on the map.'
+        : 'Location permission was blocked — pick the spot on the map instead.';
+    }
     if (code === 3) return 'Location is taking too long — pick it on the map.';                        // TIMEOUT
     return 'Couldn’t get your location — pick it on the map.';                                     // POSITION_UNAVAILABLE + anything else
   }
@@ -1761,6 +1773,29 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
         }, function (msg) { var readout = pk('pickerReadout'); if (readout) readout.innerHTML = msg; });
       });
     }
+  })();
+
+  /* Phase 2 — proactive permission awareness (progressive enhancement). Reflects a
+     blocked state in the button tooltips + error text. Already-granted needs nothing:
+     getCurrentPosition never re-prompts when permission is 'granted'. */
+  function applyGeoPermHint() {
+    var blocked = geoPermState === 'denied';
+    [pk('afGeoBtn'), pk('pickerGeoBtn')].forEach(function (b) {
+      if (!b) return;
+      b.title = blocked
+        ? 'Location is blocked for this site — turn it on in your browser settings, or pick the spot on the map.'
+        : (b.id === 'afGeoBtn' ? 'Center the map on your current position' : 'Center on your current position');
+    });
+  }
+  (function watchGeoPermission() {
+    if (!navigator.permissions || !navigator.permissions.query) return;   // older browsers: skip; Phase 1 error handling still covers denial
+    try {
+      navigator.permissions.query({ name: 'geolocation' }).then(function (status) {
+        geoPermState = status.state;
+        applyGeoPermHint();
+        status.onchange = function () { geoPermState = status.state; applyGeoPermHint(); };
+      }).catch(function () {});
+    } catch (e) { /* some browsers throw for the 'geolocation' permission name */ }
   })();
 
   /* ---- Main-map place search: filter the app's Chennai areas, fly the map there ---- */
