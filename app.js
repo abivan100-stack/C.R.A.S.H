@@ -1189,15 +1189,19 @@ function setJunctionsVisible(on) {
   if (!app.junctionLayer) buildJunctionLayer();
   if (app.junctionsOn) app.junctionLayer.addTo(app.map);
   else if (app.map && app.map.hasLayer(app.junctionLayer)) app.junctionLayer.remove();
-  const btn = document.getElementById('junctionsBtn');
-  if (btn) { btn.classList.toggle('active', app.junctionsOn); btn.setAttribute('aria-pressed', app.junctionsOn ? 'true' : 'false'); }
+  const tog = document.getElementById('junctionsToggle');
+  if (tog) {
+    tog.setAttribute('aria-checked', app.junctionsOn ? 'true' : 'false');
+    const txt = tog.querySelector('.ftoggle-txt');
+    if (txt) txt.textContent = app.junctionsOn ? 'Shown on map' : 'Hidden';
+  }
   const leg = document.getElementById('legendJunction');
   if (leg) leg.style.display = app.junctionsOn ? 'flex' : 'none';
 }
 
 function setupJunctionsToggle() {
-  const btn = document.getElementById('junctionsBtn');
-  if (btn) btn.addEventListener('click', () => setJunctionsVisible(!app.junctionsOn));
+  const tog = document.getElementById('junctionsToggle');
+  if (tog) tog.addEventListener('click', () => setJunctionsVisible(!app.junctionsOn));
 }
 
 /* Mark a SPECIFIC hospital for comparison (from a marker click or the dropdown).

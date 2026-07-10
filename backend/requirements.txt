@@ -8,3 +8,6 @@ python-dotenv
 # C.R.A.S.H Bot: official Anthropic SDK for the /ask endpoint (question -> filters).
 # The API key is read from ANTHROPIC_API_KEY (env), never hardcoded.
 anthropic
+# Lets Python verify HTTPS via the OS trust store, so the AI call works behind a
+# corporate TLS-inspecting proxy (avoids CERTIFICATE_VERIFY_FAILED). Harmless in prod.
+truststore

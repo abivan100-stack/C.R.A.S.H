@@ -408,7 +408,24 @@ def _get_anthropic():
         from anthropic import Anthropic
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"anthropic SDK is not installed: {exc}")
-    _anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY)
+    # On a corporate TLS-inspecting proxy, Python's default certifi bundle can't verify
+    # the re-signed certificate (CERTIFICATE_VERIFY_FAILED), so the AI call fails. Give
+    # THIS client an httpx transport that verifies against the OS trust store (which
+    # trusts the proxy CA, like the browser does). Scoped to the Anthropic client only —
+    # a GLOBAL truststore patch recurses in pymongo's SSL setup on some Python builds.
+    http_client = None
+    try:
+        import ssl
+        import httpx
+        import truststore
+        ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        http_client = httpx.Client(verify=ctx)
+    except Exception:
+        http_client = None   # truststore absent (e.g. prod with standard CAs) — use SDK default
+    _anthropic_client = (
+        Anthropic(api_key=ANTHROPIC_API_KEY, http_client=http_client)
+        if http_client is not None else Anthropic(api_key=ANTHROPIC_API_KEY)
+    )
     return _anthropic_client
 
 

@@ -268,10 +268,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #hospitalsBtn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 #hospitalsBtn:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 #hospitalsBtn svg { color: var(--accent); }
-#junctionsBtn { display: inline-flex; align-items: center; gap: 7px; font: 500 12px var(--font-mono); letter-spacing: 0.02em; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 11px; cursor: pointer; }
-#junctionsBtn:hover { border-color: var(--accent); color: var(--accent); }
-#junctionsBtn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-#junctionsBtn:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+/* critical-junctions layer toggle inside the Filters panel */
+.fgroup-layer { border-top: 1px solid var(--border); padding-top: 12px; }
+.ftoggle { display: flex; align-items: center; gap: 9px; width: 100%; background: transparent; border: none; padding: 2px 0; cursor: pointer; }
+.ftoggle-sw { flex: none; position: relative; width: 32px; height: 18px; border-radius: var(--radius-pill); background: var(--surface-2); border: 1px solid var(--border); transition: background .15s ease, border-color .15s ease; }
+.ftoggle-knob { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted); transition: transform .15s ease, background .15s ease; }
+.ftoggle[aria-checked="true"] .ftoggle-sw { background: var(--accent-soft); border-color: var(--accent-line); }
+.ftoggle[aria-checked="true"] .ftoggle-knob { transform: translateX(14px); background: var(--accent); }
+.ftoggle-txt { font: 500 11px var(--font-mono); letter-spacing: 0.02em; color: var(--text-muted); }
+.ftoggle[aria-checked="true"] .ftoggle-txt { color: var(--accent); }
+.ftoggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-sm); }
 /* hospital markers — distinct calm teal/white medical cross, never severity colours.
    Government: light chip + teal cross · Private: teal chip + dark cross. */
 .hosp-divicon { background: none; border: none; }
@@ -785,10 +791,6 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
               <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 2h3v4.5H14v3H9.5V14h-3V9.5H2v-3h4.5z" fill="currentColor"/></svg>
               Hospitals
             </button>
-            <button id="junctionsBtn" type="button" aria-pressed="true" title="Show Chennai's critical high-traffic junctions">
-              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1v14M1 8h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="8" r="2.2" fill="currentColor"/></svg>
-              Junctions
-            </button>
           </div>
           <div id="filterPanel" role="group" aria-label="Filters" style="pointer-events: auto; display: none; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 14px; width: min(300px, 64vw);">
             <div class="fgroup"><div class="flabel">Source</div><div id="segSource" class="segctl" style="display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg);"></div><div id="citizenCountNote" style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-3); margin-top: 6px;">0 citizen reports</div></div>
@@ -797,6 +799,12 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
             <div class="fgroup"><div class="flabel">Weather</div><div id="segWeather" class="segctl" style="display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg);"></div></div>
             <div class="fgroup"><div class="flabel">Day of week</div><div id="segDow" style="display: flex; flex-wrap: wrap; gap: 5px;"></div></div>
             <div class="fgroup"><div class="flabel">Cause</div><select id="filterCause" class="fselect"></select></div>
+            <div class="fgroup fgroup-layer"><div class="flabel">Critical junctions</div>
+              <button id="junctionsToggle" class="ftoggle" type="button" role="switch" aria-checked="true">
+                <span class="ftoggle-sw"><span class="ftoggle-knob"></span></span>
+                <span class="ftoggle-txt">Shown on map</span>
+              </button>
+            </div>
             <button id="filterReset" type="button">Reset all filters</button>
           </div>
         </div>
@@ -1302,7 +1310,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="./report.js?v=phase5e"></script>
-<script src="./app.js?v=phase15"></script>
+<script src="./app.js?v=phase16"></script>
 <script src="./analytics.js?v=phase8h"></script>
 <script src="./simulate.js?v=phase14"></script>
 <script src="./notifications.js?v=8"></script>
