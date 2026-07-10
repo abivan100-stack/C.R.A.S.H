@@ -338,6 +338,10 @@ ASK_SYSTEM_PROMPT = (
     "comparisons, max/min, percentages). Never invent figures that aren't in or derivable\n"
     "from the summary; if it genuinely doesn't cover something, say so briefly. Discuss ONLY\n"
     "Chennai road accidents; for anything else, politely redirect in one sentence.\n\n"
+    "The DATA SUMMARY also lists Chennai's major hospitals and, for each area, its nearest\n"
+    "hospital with the straight-line distance in km. Hospital access and emergency-response\n"
+    "proximity ARE in scope \u2014 answer those from that data, and note the distances are\n"
+    "straight-line (not road distance) when it matters.\n\n"
     "Respond with ONLY a JSON object (no text outside it):\n"
     '{"answer": "<your natural-language answer as plain text; may use **bold**; concise>",\n'
     ' "filters": {"area": <valid area or null>, "severity": "fatal"|"serious"|"slight"|null,\n'

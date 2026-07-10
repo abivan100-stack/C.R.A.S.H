@@ -17,6 +17,7 @@
   var BOT_UNAVAILABLE = 'C.R.A.S.H Bot is unavailable right now — try the example questions or the filters.';
 
   var botMap = null, botPointLayer = null, botTiles = null, botBounds = null, chatInited = false, busy = false;
+  var botBloomLayer = null, botEmergeLayer = null, botHospLayer = null, botHospOn = false;
 
   function app() { return window.CRASH_APP || null; }
   function records() { var a = app(); return (a && a.records && a.records()) || []; }
@@ -62,12 +63,13 @@
   }
 
   // ---- the data digest sent to the AI -------------------------------------
-  var _digest = null, _digestN = -1;
+  var _digest = null, _digestKey = '';
   function topKey(obj) { var b = null, bn = -1; Object.keys(obj).forEach(function (k) { if (obj[k] > bn) { bn = obj[k]; b = k; } }); return b; }
   function descList(obj) { return Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a]; }).map(function (k) { return k + ' ' + obj[k]; }).join(', '); }
   function buildDigest() {
     var recs = records();
-    if (_digest && _digestN === recs.length) return _digest;   // cache until the dataset changes
+    var _key = recs.length + '|' + ((app() && app().hospitals) ? 'h' : '0');
+    if (_digest && _digestKey === _key) return _digest;   // cache until dataset OR hospital availability changes
     var g = { total: recs.length, fatal: 0, serious: 0, slight: 0, day: 0, night: 0, clear: 0, rain: 0, fog: 0 };
     var byArea = {}, byCause = {}, byVehicle = {};
     recs.forEach(function (a) {
@@ -76,8 +78,9 @@
       if (a.weather === 'rain') g.rain++; else if (a.weather === 'fog') g.fog++; else g.clear++;
       if (a.cause) byCause[a.cause] = (byCause[a.cause] || 0) + 1;
       if (a.vehicle) byVehicle[a.vehicle] = (byVehicle[a.vehicle] || 0) + 1;
-      var r = byArea[a.area] || (byArea[a.area] = { total: 0, fatal: 0, serious: 0, slight: 0, day: 0, night: 0, clear: 0, rain: 0, fog: 0, cause: {}, vehicle: {} });
+      var r = byArea[a.area] || (byArea[a.area] = { total: 0, fatal: 0, serious: 0, slight: 0, day: 0, night: 0, clear: 0, rain: 0, fog: 0, cause: {}, vehicle: {}, latSum: 0, lngSum: 0, geoN: 0 });
       r.total++; if (r[a.severity] !== undefined) r[a.severity]++;
+      if (isFinite(a.lat) && isFinite(a.lng)) { r.latSum += a.lat; r.lngSum += a.lng; r.geoN++; }
       if (isNight(a)) r.night++; else r.day++;
       if (a.weather === 'rain') r.rain++; else if (a.weather === 'fog') r.fog++; else r.clear++;
       if (a.cause) r.cause[a.cause] = (r.cause[a.cause] || 0) + 1;
@@ -96,7 +99,35 @@
       var r = byArea[name];
       L.push(name + ' | ' + r.total + ' | ' + r.fatal + '/' + r.serious + '/' + r.slight + ' | ' + r.day + '/' + r.night + ' | ' + r.clear + '/' + r.rain + '/' + r.fog + ' | ' + (topKey(r.cause) || '-') + ' | ' + (topKey(r.vehicle) || '-'));
     });
-    _digest = L.join('\n'); _digestN = recs.length;
+
+    // ---- hospitals + per-area nearest-hospital distances -----------------------
+    // Reuses the home map's placed hospital list and the SAME Haversine as the zone
+    // dossier, so the AI's hospital answers line up with what the map shows.
+    var ap = app();
+    if (ap && ap.hospitals) {
+      var hosps = ap.hospitals() || [];
+      if (hosps.length) {
+        L.push('');
+        L.push('HOSPITALS on the map (' + hosps.length + ' major Chennai hospitals) \u2014 columns: NAME | type | area');
+        hosps.forEach(function (h) { L.push(h.name + ' | ' + h.type + ' | ' + h.area); });
+      }
+    }
+    if (ap && ap.nearestHospital) {
+      var hRows = [];
+      Object.keys(byArea).forEach(function (name) {
+        var r = byArea[name];
+        if (!r.geoN) return;
+        var nh = ap.nearestHospital(r.latSum / r.geoN, r.lngSum / r.geoN);
+        if (nh && nh.hospital) hRows.push({ area: name, name: nh.hospital.name, type: nh.hospital.type, km: nh.km });
+      });
+      if (hRows.length) {
+        hRows.sort(function (x, y) { return y.km - x.km; });   // farthest (most underserved) first
+        L.push('');
+        L.push('Nearest hospital to each area (straight-line km from the mean location of that area\'s accidents; farthest first) \u2014 columns: AREA | nearest hospital | type | km');
+        hRows.forEach(function (r) { L.push(r.area + ' | ' + r.name + ' | ' + r.type + ' | ' + r.km.toFixed(1) + ' km'); });
+      }
+    }
+    _digest = L.join('\n'); _digestKey = _key;
     return _digest;
   }
 
@@ -107,13 +138,16 @@
     if (botPointLayer) { botPointLayer.remove(); botPointLayer = null; }
     var canvas = L.canvas({ padding: 0.5 });
     botPointLayer = L.layerGroup();
+    var ap = app();
     recs.forEach(function (a) {
       if (!isFinite(a.lat) || !isFinite(a.lng)) return;
       var color = SEV[a.severity] || SEV.slight;
-      L.circleMarker([a.lat, a.lng], a.citizen
+      var m = L.circleMarker([a.lat, a.lng], a.citizen
         ? { renderer: canvas, radius: 5, stroke: true, color: ACCENT, weight: 2, opacity: 0.95, fillColor: color, fillOpacity: 0.85, bubblingMouseEvents: false }
-        : { renderer: canvas, radius: 3.2, stroke: false, fillColor: color, fillOpacity: 0.5, bubblingMouseEvents: false }
-      ).addTo(botPointLayer);
+        : { renderer: canvas, radius: 3.2, stroke: false, fillColor: color, fillOpacity: 0.5, bubblingMouseEvents: false });
+      if (ap && ap.pointTipHtml) m.bindTooltip(ap.pointTipHtml(a), { className: 'hotspot-tip', direction: 'top', opacity: 1 });
+      if (ap && ap.pointPopupHtml) m.bindPopup(ap.pointPopupHtml(a), { closeButton: true, autoPan: true });
+      m.addTo(botPointLayer);
     });
     botPointLayer.addTo(botMap);
   }
@@ -127,6 +161,73 @@
     recs.forEach(function (a) { if (isFinite(a.lat) && isFinite(a.lng) && inChennai(a.lat, a.lng)) pts.push([a.lat, a.lng]); });
     if (!pts.length) { if (botBounds) botMap.fitBounds(botBounds, { padding: [18, 18] }); return; }
     try { var b = L.latLngBounds(pts); if (b.isValid()) botMap.fitBounds(b, { padding: [26, 26] }); } catch (e) { /* ignore */ }
+  }
+  function botEmergeIcon(i) {
+    var d0 = (0.3 * i).toFixed(2), d1 = (0.3 * i + 1.2).toFixed(2);
+    return L.divIcon({ className: 'em-icon', iconSize: [34, 34], iconAnchor: [17, 17],
+      html: '<div class="em-mark"><span class="em-pulse" style="animation-delay:' + d0 + 's;"></span><span class="em-pulse" style="animation-delay:' + d1 + 's;"></span><span class="em-core"></span></div>' });
+  }
+  /* the SAME signature risk blooms as the home map — top-10 severity-weighted junctions */
+  function renderBotBlooms() {
+    if (!botMap) return;
+    if (botBloomLayer) { botBloomLayer.remove(); botBloomLayer = null; }
+    var a = app(); if (!a || !a.hotspots || !a.bloomIcon) return;
+    var hs = a.hotspots(); if (!hs.length) return;
+    botBloomLayer = L.layerGroup();
+    hs.forEach(function (h) {
+      if (!isFinite(h.lat) || !isFinite(h.lng)) return;
+      var m = L.marker([h.lat, h.lng], { icon: a.bloomIcon(h), riseOnHover: true, zIndexOffset: 400 - (h.rank || 0) });
+      m.bindTooltip(a.hotspotTipHtml(h), { className: 'hotspot-tip', direction: 'top', opacity: 1 });
+      m.bindPopup(a.hotspotTipHtml(h), { closeButton: true });
+      botBloomLayer.addLayer(m);
+    });
+    botBloomLayer.addTo(botMap);
+  }
+  /* the emerging-hotspot pulse markers (surging junctions) */
+  function renderBotEmerging() {
+    if (!botMap) return;
+    if (botEmergeLayer) { botEmergeLayer.remove(); botEmergeLayer = null; }
+    var a = app(); if (!a || !a.emerging) return;
+    var em = a.emerging(); if (!em.length) return;
+    botEmergeLayer = L.layerGroup();
+    em.forEach(function (e, i) {
+      if (!isFinite(e.lat) || !isFinite(e.lng)) return;
+      L.marker([e.lat, e.lng], { icon: botEmergeIcon(i), zIndexOffset: 250, riseOnHover: true,
+        title: (e.area || 'Junction') + ' · emerging · +' + e.pctIncrease + '% recent rate' }).addTo(botEmergeLayer);
+    });
+    botEmergeLayer.addTo(botMap);
+  }
+  /* hospital layer (built once) + an on-map toggle control, mirroring the home map's Hospitals toggle */
+  function buildBotHospitals() {
+    var a = app(); if (!a || !a.hospitals || !a.hospitalIcon) return null;
+    var layer = L.layerGroup();
+    a.hospitals().forEach(function (h) {
+      if (!isFinite(h.dlat) || !isFinite(h.dlng)) return;
+      var m = L.marker([h.dlat, h.dlng], { icon: a.hospitalIcon(h.type), riseOnHover: true, keyboard: false });
+      m.bindPopup(a.hospitalPopupHtml(h), { closeButton: true, autoPan: true });
+      layer.addLayer(m);
+    });
+    return layer;
+  }
+  function setBotHospitals(on, btn) {
+    botHospOn = !!on;
+    if (!botHospLayer) botHospLayer = buildBotHospitals();
+    if (botHospLayer && botMap) { if (botHospOn) botHospLayer.addTo(botMap); else if (botMap.hasLayer(botHospLayer)) botHospLayer.remove(); }
+    if (btn) { btn.style.borderColor = botHospOn ? 'var(--accent)' : 'var(--border)'; btn.style.color = botHospOn ? 'var(--accent)' : 'var(--text-2)'; btn.setAttribute('aria-pressed', botHospOn ? 'true' : 'false'); }
+  }
+  function addHospToggle() {
+    if (!botMap || !L.Control) return;
+    var Ctl = L.Control.extend({ options: { position: 'topleft' },
+      onAdd: function () {
+        var b = L.DomUtil.create('button', '');
+        b.type = 'button'; b.title = 'Show / hide hospitals'; b.setAttribute('aria-pressed', 'false');
+        b.style.cssText = "display:flex;align-items:center;gap:6px;font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.02em;padding:6px 9px;background:var(--panel);color:var(--text-2);border:1px solid var(--border);border-radius:6px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.18);";
+        b.innerHTML = '<span aria-hidden="true" style="color:var(--accent);font-weight:700;">\u271A</span> Hospitals';
+        L.DomEvent.disableClickPropagation(b);
+        L.DomEvent.on(b, 'click', function () { setBotHospitals(!botHospOn, b); });
+        return b;
+      } });
+    new Ctl().addTo(botMap);
   }
   function initBotMap() {
     if (botMap) { botMap.invalidateSize(); return; }
@@ -143,6 +244,9 @@
     botTiles = L.tileLayer(app().tileUrl(), { subdomains: 'abcd', maxZoom: 20 });
     botTiles.addTo(botMap);
     renderBotPoints(records());
+    renderBotBlooms();
+    renderBotEmerging();
+    addHospToggle();
     var reframe = function () { if (botMap) { botMap.invalidateSize(); botMap.fitBounds(botBounds, { padding: [18, 18] }); } };
     requestAnimationFrame(reframe);
     setTimeout(reframe, 160);
