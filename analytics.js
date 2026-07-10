@@ -30,6 +30,9 @@
   const fmt = (n) => Number(n).toLocaleString('en-US');
   const sortedEntries = (obj) => Object.entries(obj).sort((a, b) => b[1] - a[1]);
   function ymLabel(monthIndex) { const ym = MIN_YM + monthIndex; return MON[ym % 12] + " '" + String(Math.floor(ym / 12)).slice(2); }
+  // Calendar-complete months only: drop a trailing partial month (e.g. the current
+  // month, which live citizen reports can add) so the monthly charts don't cliff to ~0.
+  function completeMonths() { const now = new Date(); const nowYM = now.getFullYear() * 12 + now.getMonth(); return Math.max(1, Math.min(MONTHS, nowYM - MIN_YM)); }
 
   /* =========================== compute =========================== */
   function precompute() {
@@ -268,13 +271,14 @@
       }),
     });
 
-    const labels = A.monthTotal.map((_, i) => ymLabel(i));
+    const nShow = completeMonths();
+    const labels = A.monthTotal.slice(0, nShow).map((_, i) => ymLabel(i));
     newChart('chartMonthlySeverity', {
       type: 'bar',
       data: { labels: labels, datasets: [
-        { label: 'Slight', data: A.monthSev.slight, backgroundColor: SEV.slight.c, stack: 's' },
-        { label: 'Serious', data: A.monthSev.serious, backgroundColor: SEV.serious.c, stack: 's' },
-        { label: 'Fatal', data: A.monthSev.fatal, backgroundColor: SEV.fatal.c, stack: 's' },
+        { label: 'Slight', data: A.monthSev.slight.slice(0, nShow), backgroundColor: SEV.slight.c, stack: 's' },
+        { label: 'Serious', data: A.monthSev.serious.slice(0, nShow), backgroundColor: SEV.serious.c, stack: 's' },
+        { label: 'Fatal', data: A.monthSev.fatal.slice(0, nShow), backgroundColor: SEV.fatal.c, stack: 's' },
       ] },
       options: Object.assign({}, baseOpts, {
         plugins: { legend: { display: true, position: 'top', align: 'end' } },
@@ -328,13 +332,15 @@
     });
 
     // city-wide monthly trend, recent window in accent
-    const labels = A.monthTotal.map((_, i) => ymLabel(i));
-    const cut = MONTHS - RECENT_MONTHS;
+    const nShow = completeMonths();
+    const series = A.monthTotal.slice(0, nShow);
+    const labels = series.map((_, i) => ymLabel(i));
+    const cut = nShow - RECENT_MONTHS;
     newChart('chartMonthlyTrend', {
       type: 'line',
-      data: { labels: labels, datasets: [{ data: A.monthTotal, borderWidth: 2, tension: 0.32,
-        pointRadius: A.monthTotal.map((_, i) => i >= cut ? 3 : 0), pointHoverRadius: 5,
-        pointBackgroundColor: A.monthTotal.map((_, i) => i >= cut ? pal.accent : pal.day),
+      data: { labels: labels, datasets: [{ data: series, borderWidth: 2, tension: 0.32,
+        pointRadius: series.map((_, i) => i >= cut ? 3 : 0), pointHoverRadius: 5,
+        pointBackgroundColor: series.map((_, i) => i >= cut ? pal.accent : pal.day),
         borderColor: pal.day, fill: true, backgroundColor: rgba(pal.accent, 0.08),
         segment: { borderColor: (ctx) => ctx.p1DataIndex >= cut ? pal.accent : pal.day } }] },
       options: Object.assign({}, baseOpts, {
