@@ -475,11 +475,20 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 .af-readout b { color: var(--accent); font-weight: 600; }
 .af-pin { filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45)); }
 /* ---- "Pick location on map" button + fullscreen picker overlay (PHASE 1) ---- */
-.af-pick-btn { width: 100%; margin-top: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+.af-pick-btn, .af-geo-btn { width: 100%; margin-top: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   font: 500 12.5px var(--font-mono); letter-spacing: 0.02em; color: var(--accent);
   background: var(--accent-faint); border: 1px solid var(--accent-line); border-radius: var(--radius);
   padding: 11px 14px; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
-.af-pick-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+.af-pick-btn:hover, .af-geo-btn:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); }
+.af-geo-btn:disabled { opacity: 0.6; cursor: default; }
+.af-geo-emoji, .picker-geo-emoji { font-size: 14px; line-height: 1; }
+/* geolocation button in the fullscreen picker's top bar — secondary next to Confirm */
+.picker-geo-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px;
+  font: 500 12.5px var(--font-mono); letter-spacing: 0.02em; color: var(--accent);
+  background: var(--accent-faint); border: 1px solid var(--accent-line); border-radius: var(--radius);
+  padding: 10px 14px; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+.picker-geo-btn:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); }
+.picker-geo-btn:disabled { opacity: 0.6; cursor: default; }
 .picker-overlay { position: fixed; inset: 0; top: 0; right: 0; bottom: 0; left: 0; z-index: 9000;
   display: flex; flex-direction: column; width: 100vw; height: 100vh; height: 100dvh; background: var(--bg-deep); overscroll-behavior: contain; }
 .picker-overlay[hidden] { display: none; }
@@ -1006,6 +1015,10 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
             <div class="af-field full">
               <div class="af-label">Location</div>
               <div id="reportMap" class="af-map"></div>
+              <button id="afGeoBtn" class="af-geo-btn" type="button" title="Center the map on your current position">
+                <span class="af-geo-emoji" aria-hidden="true">📍</span>
+                <span class="af-geo-label">Use my current location</span>
+              </button>
               <button id="openPickerBtn" class="af-pick-btn" type="button">
                 <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
                 Pick location on map
@@ -1280,6 +1293,10 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
   <div class="picker-head">
     <div class="picker-title">Select accident location</div>
     <div class="picker-head-actions">
+      <button id="pickerGeoBtn" class="picker-geo-btn" type="button" title="Center on your current position">
+        <span class="picker-geo-emoji" aria-hidden="true">📍</span>
+        <span class="picker-geo-label">My location</span>
+      </button>
       <button id="pickerConfirm" class="picker-confirm" type="button" disabled>
         <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.5 6.5 13 14 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Confirm location
@@ -1427,7 +1444,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     '<circle cx="14" cy="13" r="4.2" fill="#06121A"/></svg>';
 
   var formInited = false;
-  var afMap = null, afTiles = null, afMarker = null;
+  var afMap = null, afTiles = null, afMarker = null, afAccCircle = null;
   var af = { lat: null, lng: null, area: null, sev: null };
 
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
@@ -1456,6 +1473,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 
   // move/create the pin and record the coordinates (does NOT touch the area)
   function setPin(lat, lng, pan) {
+    if (afAccCircle && afMap) { afMap.removeLayer(afAccCircle); afAccCircle = null; }   // a fresh pick clears the GPS accuracy ring
     af.lat = round6(lat); af.lng = round6(lng);
     if (!afMarker) {
       var icon = L.divIcon({ className: '', html: PIN_HTML, iconSize: [28, 36], iconAnchor: [14, 35] });
@@ -1522,7 +1540,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       lng >= PICK_LNG_MIN && lng <= coastLngAt(lat);
   }
 
-  var pickerMap = null, pickerTiles = null, pickerMarker = null;
+  var pickerMap = null, pickerTiles = null, pickerMarker = null, pickerAccCircle = null;
   var pickedPoint = null;      // {lat,lng} once a VALID point is chosen this session, else null
   var pickerMsgTimer = 0;
   var pickerSavedScroll = { x: 0, y: 0 };   // page scroll captured on open, restored on close
@@ -1550,6 +1568,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 
   function placePickerPin(lat, lng) {
     if (!pickerMap) return;
+    if (pickerAccCircle) { pickerMap.removeLayer(pickerAccCircle); pickerAccCircle = null; }   // a fresh pick clears the GPS accuracy ring
     if (!pickerMarker) {
       var icon = L.divIcon({ className: '', html: PIN_HTML, iconSize: [28, 36], iconAnchor: [14, 35] });
       pickerMarker = L.marker([lat, lng], { icon: icon, keyboard: false }).addTo(pickerMap);
@@ -1561,12 +1580,17 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     if (pickerMarker && pickerMap) { pickerMap.removeLayer(pickerMarker); pickerMarker = null; }
   }
 
-  // STEP 2 — validate the coordinate BEFORE dropping a pin
+  // STEP 2 — validate the coordinate BEFORE dropping a pin (manual clicks only)
   function handlePickerClick(lat, lng) {
     if (!isValidLandPoint(lat, lng)) {
       showPickerMsg();                 // sea / out of bounds → no pin; Confirm stays as-is (disabled if nothing valid yet)
       return;
     }
+    commitPickerPoint(lat, lng);
+  }
+  // commit a VALID picked point (pin + pending state + enable Confirm). Shared by the
+  // manual click above and the "use my location" button — the latter skips the sea-check.
+  function commitPickerPoint(lat, lng) {
     hidePickerMsg();
     pickedPoint = { lat: round6(lat), lng: round6(lng) };
     placePickerPin(pickedPoint.lat, pickedPoint.lng);
@@ -1651,6 +1675,92 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     var openBtn = pk('openPickerBtn'); if (openBtn) openBtn.addEventListener('click', openPicker);
     var confirmBtn = pk('pickerConfirm'); if (confirmBtn) confirmBtn.addEventListener('click', confirmPicker);
     var cancelBtn = pk('pickerCancel'); if (cancelBtn) cancelBtn.addEventListener('click', closePicker);
+  })();
+
+  /* ============================================================================
+     "Use my current location" — browser geolocation for the form + the picker.
+     Reuses the SAME location-setter as a manual pick (setPin / commitPickerPoint).
+     A GPS point outside Chennai is rejected (isValidLandPoint) and the user falls
+     back to manual picking. Browser geolocation only works on HTTPS or localhost.
+     ==========================================================================*/
+  var GEO_OPTS = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+
+  function geoErrorText(err) {
+    var code = err && err.code;
+    if (code === 1) return 'Location permission was blocked — pick the spot on the map instead.';   // PERMISSION_DENIED
+    if (code === 3) return 'Location is taking too long — pick it on the map.';                        // TIMEOUT
+    return 'Couldn’t get your location — pick it on the map.';                                     // POSITION_UNAVAILABLE + anything else
+  }
+
+  // Manage the button's disabled/"Locating…" state so it can't double-fire, then call
+  // onCoords(lat,lng,accuracy) on success or onError(message) on failure. Always re-enables.
+  function runGeolocation(btn, labelEl, onCoords, onError) {
+    if (!navigator.geolocation) { onError('Location isn’t available in this browser — pick it on the map.'); return; }
+    var idle = labelEl ? labelEl.textContent : '';
+    if (btn) btn.disabled = true;
+    if (labelEl) labelEl.textContent = 'Locating…';
+    var settled = false;
+    function restore() { if (btn) btn.disabled = false; if (labelEl) labelEl.textContent = idle; }
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      if (settled) return; settled = true; restore();
+      onCoords(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+    }, function (err) {
+      if (settled) return; settled = true; restore();
+      onError(geoErrorText(err));
+    }, GEO_OPTS);
+  }
+
+  // A faint accuracy ring on the given map, replacing any previous one for that map.
+  function showAccuracyRing(map, isPicker, lat, lng, acc) {
+    var prev = isPicker ? pickerAccCircle : afAccCircle;
+    if (prev && map) map.removeLayer(prev);
+    if (isPicker) pickerAccCircle = null; else afAccCircle = null;
+    if (!map || typeof acc !== 'number' || !isFinite(acc) || acc <= 0) return;
+    var accent = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#43B0CC').trim() || '#43B0CC';
+    var ring = L.circle([lat, lng], { radius: acc, color: accent, weight: 1, opacity: 0.5,
+      fillColor: accent, fillOpacity: 0.10, interactive: false }).addTo(map);
+    if (isPicker) pickerAccCircle = ring; else afAccCircle = ring;
+  }
+
+  (function wireGeolocation() {
+    var supported = ('geolocation' in navigator) && !!navigator.geolocation;
+    // ---- form location area button: commits straight into the report ----
+    var fBtn = pk('afGeoBtn');
+    var fLabel = fBtn ? fBtn.querySelector('.af-geo-label') : null;
+    if (fBtn) {
+      if (!supported) { fBtn.disabled = true; fBtn.title = 'Geolocation isn’t supported by this browser'; }
+      else fBtn.addEventListener('click', function () {
+        runGeolocation(fBtn, fLabel, function (lat, lng, acc) {
+          if (!isValidLandPoint(lat, lng)) {   // GPS bounds check ONLY (off-Chennai → reject, keep manual picking)
+            setErr('You appear to be outside Chennai — pick the accident spot on the map instead.');
+            return;
+          }
+          setPin(lat, lng, false);   // same location-setter as a manual pick (draggable pin, writes af.lat/af.lng)
+          if (afMap) afMap.setView([lat, lng], 16, { animate: true });
+          af.area = (window.CRASH_APP && window.CRASH_APP.nearestArea) ? window.CRASH_APP.nearestArea(lat, lng) : af.area;
+          syncAreaSelect(); updateReadout(); clearInvalid(); setErr('');
+          showAccuracyRing(afMap, false, lat, lng, acc);
+        }, function (msg) { setErr(msg); });
+      });
+    }
+    // ---- fullscreen picker top-bar button: drops a pending pin, user Confirms ----
+    var pBtn = pk('pickerGeoBtn');
+    var pLabel = pBtn ? pBtn.querySelector('.picker-geo-label') : null;
+    if (pBtn) {
+      if (!supported) { pBtn.disabled = true; pBtn.title = 'Geolocation isn’t supported by this browser'; }
+      else pBtn.addEventListener('click', function () {
+        runGeolocation(pBtn, pLabel, function (lat, lng, acc) {
+          var readout = pk('pickerReadout');
+          if (!isValidLandPoint(lat, lng)) {
+            if (readout) readout.innerHTML = 'You appear to be outside Chennai — tap the map to pick the accident spot.';
+            return;
+          }
+          if (pickerMap) pickerMap.setView([lat, lng], 16, { animate: true });
+          commitPickerPoint(lat, lng);   // same valid-pick path as a manual click, minus the sea-check
+          showAccuracyRing(pickerMap, true, lat, lng, acc);
+        }, function (msg) { var readout = pk('pickerReadout'); if (readout) readout.innerHTML = msg; });
+      });
+    }
   })();
 
   /* ---- Main-map place search: filter the app's Chennai areas, fly the map there ---- */
