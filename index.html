@@ -198,13 +198,6 @@ a:hover { color: var(--accent-2); }
   border-radius: var(--radius); box-shadow: var(--shadow-2); padding: 9px 12px; text-align: left; white-space: nowrap; }
 .leaflet-tooltip.hotspot-tip .acc-pop-row { margin-top: 4px; }
 .leaflet-tooltip.hotspot-tip.leaflet-tooltip-top::before { border-top-color: var(--surface); }
-/* critical-junction markers + hover card */
-.junc-divicon { background: none; border: none; }
-.junc-mark { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px;
-  border-radius: var(--radius); background: var(--accent); color: var(--accent-ink);
-  border: 1.5px solid var(--canvas); box-shadow: 0 0 0 3px var(--accent-line), var(--shadow-1); }
-.junc-pop-dot { flex: none; width: 9px; height: 9px; border-radius: 2px; background: var(--accent); display: inline-block; }
-.leaflet-tooltip.junc-tip { white-space: normal; max-width: 264px; }
 .leaflet-control-attribution { background: var(--attrib-bg) !important; color: var(--text-4) !important; font: 400 9px var(--font-mono) !important; padding: 2px 7px !important; }
 .leaflet-control-attribution a { color: var(--text-3) !important; }
 .leaflet-control-zoom { margin: 0 14px 14px 0 !important; box-shadow: var(--shadow-1) !important; }
@@ -268,16 +261,6 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #hospitalsBtn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 #hospitalsBtn:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 #hospitalsBtn svg { color: var(--accent); }
-/* critical-junctions layer toggle inside the Filters panel */
-.fgroup-layer { border-top: 1px solid var(--border); padding-top: 12px; }
-.ftoggle { display: flex; align-items: center; gap: 9px; width: 100%; background: transparent; border: none; padding: 2px 0; cursor: pointer; }
-.ftoggle-sw { flex: none; position: relative; width: 32px; height: 18px; border-radius: var(--radius-pill); background: var(--surface-2); border: 1px solid var(--border); transition: background .15s ease, border-color .15s ease; }
-.ftoggle-knob { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted); transition: transform .15s ease, background .15s ease; }
-.ftoggle[aria-checked="true"] .ftoggle-sw { background: var(--accent-soft); border-color: var(--accent-line); }
-.ftoggle[aria-checked="true"] .ftoggle-knob { transform: translateX(14px); background: var(--accent); }
-.ftoggle-txt { font: 500 11px var(--font-mono); letter-spacing: 0.02em; color: var(--text-muted); }
-.ftoggle[aria-checked="true"] .ftoggle-txt { color: var(--accent); }
-.ftoggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-sm); }
 /* hospital markers — distinct calm teal/white medical cross, never severity colours.
    Government: light chip + teal cross · Private: teal chip + dark cross. */
 .hosp-divicon { background: none; border: none; }
@@ -815,12 +798,6 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
             <div class="fgroup"><div class="flabel">Weather</div><div id="segWeather" class="segctl" style="display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--bg);"></div></div>
             <div class="fgroup"><div class="flabel">Day of week</div><div id="segDow" style="display: flex; flex-wrap: wrap; gap: 5px;"></div></div>
             <div class="fgroup"><div class="flabel">Cause</div><select id="filterCause" class="fselect"></select></div>
-            <div class="fgroup fgroup-layer"><div class="flabel">Critical junctions</div>
-              <button id="junctionsToggle" class="ftoggle" type="button" role="switch" aria-checked="true">
-                <span class="ftoggle-sw"><span class="ftoggle-knob"></span></span>
-                <span class="ftoggle-txt">Shown on map</span>
-              </button>
-            </div>
             <button id="filterReset" type="button">Reset all filters</button>
           </div>
         </div>
@@ -835,10 +812,6 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
             <span id="legendHospital" style="display: none; align-items: center; gap: 12px;">
               <span style="width: 1px; height: 12px; background: var(--border);"></span>
               <span style="display: flex; align-items: center; gap: 6px;"><span class="hosp-marker hosp-pri" style="width: 14px; height: 14px; border-radius: 3px; box-shadow: none;"><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><path d="M5 0.5h2V5h4.5v2H7v4.5H5V7H0.5V5H5z" fill="currentColor"/></svg></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Hospital</span></span>
-            </span>
-            <span id="legendJunction" style="display: none; align-items: center; gap: 12px;">
-              <span style="width: 1px; height: 12px; background: var(--border);"></span>
-              <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: var(--accent); box-shadow: 0 0 0 2px var(--accent-line); display: inline-block;"></span><span style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-2);">Critical junction</span></span>
             </span>
             <span style="width: 1px; height: 12px; background: var(--border);"></span>
             <span id="legendNote" style="font: 400 10px 'IBM Plex Mono', monospace; color: var(--text-3);">Incident points · coloured by severity</span>
@@ -1334,7 +1307,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="./report.js?v=phase5e"></script>
-<script src="./app.js?v=phase16"></script>
+<script src="./app.js?v=phase17"></script>
 <script src="./analytics.js?v=phase8h"></script>
 <script src="./simulate.js?v=phase14"></script>
 <script src="./notifications.js?v=8"></script>

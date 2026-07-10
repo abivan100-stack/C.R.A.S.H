@@ -1106,104 +1106,6 @@ function setupHospitalsToggle() {
   if (btn) btn.addEventListener('click', () => setHospitalsVisible(!app.hospitalsOn));
 }
 
-/* =============================================================================
-   Critical junctions — a curated overlay of Chennai's high-traffic, high-risk
-   intersections. These accident counts are junction-level ANNOTATIONS held here,
-   deliberately SEPARATE from the incident dataset, so they never skew the hotspot
-   engine, the ranked index, or the analytics numbers.
-   ========================================================================== */
-const CRITICAL_JUNCTIONS = [
-  { name: 'Kathipara Junction', lat: 12.9897, lng: 80.2004,
-    roads: 'GST Road × Anna Salai × Inner Ring Road', traffic: 'Very high', peak: '08:00–11:00 · 17:30–21:00',
-    total: 47, fatal: 9, serious: 21, slight: 17, cause: 'High-speed weaving on the cloverleaf ramps' },
-  { name: 'Koyambedu Junction', lat: 13.0694, lng: 80.1948,
-    roads: '100 Feet Road × Poonamallee High Road (CMBT)', traffic: 'Very high', peak: '07:00–10:00 · 18:00–21:00',
-    total: 38, fatal: 6, serious: 17, slight: 15, cause: 'Bus & lorry turns across dense two-wheeler flow' },
-  { name: 'Madhya Kailash Junction', lat: 12.9955, lng: 80.2490,
-    roads: 'Sardar Patel Road × Rajiv Gandhi Salai (OMR)', traffic: 'High', peak: '08:30–10:30 · 18:00–20:30',
-    total: 34, fatal: 5, serious: 15, slight: 14, cause: 'OMR IT-corridor merging speed' },
-  { name: 'Vadapalani Junction', lat: 13.0510, lng: 80.2120,
-    roads: 'Arcot Road × 100 Feet Road (JN Salai)', traffic: 'High', peak: '09:00–11:00 · 18:00–21:00',
-    total: 29, fatal: 4, serious: 13, slight: 12, cause: 'Signal jumping at the Arcot Road crossing' },
-  { name: 'Anna Nagar Roundtana', lat: 13.0850, lng: 80.2101,
-    roads: '2nd Avenue × Shanthi Colony Main Road', traffic: 'High', peak: '08:00–10:00 · 18:00–20:00',
-    total: 22, fatal: 3, serious: 9, slight: 10, cause: 'Lane-cutting around the roundabout' },
-];
-
-/* distinct accent junction node with a crossroads glyph (never a severity colour) */
-function junctionIcon() {
-  return L.divIcon({
-    className: 'junc-divicon', iconSize: [28, 28], iconAnchor: [14, 14], tooltipAnchor: [0, -15],
-    html: '<span class="junc-mark"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">' +
-          '<path d="M8 1.4v13.2M1.4 8h13.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' +
-          '<circle cx="8" cy="8" r="2.3" fill="currentColor"/></svg></span>',
-  });
-}
-
-/* hover card for a junction — identity, the roads that meet, traffic + peak, and
-   its accident record (severity split coloured by severity) */
-function junctionTipHtml(j) {
-  return (
-    '<div class="acc-pop-sev"><span class="junc-pop-dot"></span>' + j.name + '</div>' +
-    '<div class="acc-pop-row">' + j.roads + '</div>' +
-    '<div class="acc-pop-row">' + j.traffic + ' traffic · peak ' + j.peak + '</div>' +
-    '<div class="acc-pop-row"><b style="color:var(--text); font-weight:600;">' + j.total + '</b> accidents · ' +
-      '<span style="color:var(--fatal); font-weight:600;">' + j.fatal + ' fatal</span> · ' +
-      '<span style="color:var(--serious); font-weight:600;">' + j.serious + ' serious</span> · ' +
-      '<span style="color:var(--slight); font-weight:600;">' + j.slight + ' slight</span></div>' +
-    '<div class="acc-pop-row" style="color:var(--accent);">Main cause · ' + j.cause + '</div>'
-  );
-}
-
-/* select the accident cell under a lat/lng (mirrors the map-click 3×3 fallback) */
-function selectNearestCell(lat, lng) {
-  const ci = Math.floor((lat - BBOX.latMin) / CELL);
-  const cj = Math.floor((lng - BBOX.lngMin) / CELL);
-  let cell = app.cellById[ci + '_' + cj];
-  if (!cell) {
-    let best = null;
-    for (let di = -1; di <= 1; di++) {
-      for (let dj = -1; dj <= 1; dj++) {
-        const c = app.cellById[(ci + di) + '_' + (cj + dj)];
-        if (c && (!best || c.count > best.count)) best = c;
-      }
-    }
-    cell = best;
-  }
-  if (cell) selectHotspot(cell.id, { pan: true });
-}
-
-function buildJunctionLayer() {
-  app.junctionLayer = L.layerGroup();
-  CRITICAL_JUNCTIONS.forEach((j) => {
-    const m = L.marker([j.lat, j.lng], { icon: junctionIcon(), riseOnHover: true, keyboard: false, zIndexOffset: 600 });
-    m.bindTooltip(junctionTipHtml(j), { className: 'hotspot-tip junc-tip', direction: 'top', opacity: 1 });
-    m.on('click', () => selectNearestCell(j.lat, j.lng));   // open the surrounding area's dossier
-    app.junctionLayer.addLayer(m);
-  });
-}
-
-/* show/hide the critical-junction overlay (default ON) + its legend chip */
-function setJunctionsVisible(on) {
-  app.junctionsOn = !!on;
-  if (!app.junctionLayer) buildJunctionLayer();
-  if (app.junctionsOn) app.junctionLayer.addTo(app.map);
-  else if (app.map && app.map.hasLayer(app.junctionLayer)) app.junctionLayer.remove();
-  const tog = document.getElementById('junctionsToggle');
-  if (tog) {
-    tog.setAttribute('aria-checked', app.junctionsOn ? 'true' : 'false');
-    const txt = tog.querySelector('.ftoggle-txt');
-    if (txt) txt.textContent = app.junctionsOn ? 'Shown on map' : 'Hidden';
-  }
-  const leg = document.getElementById('legendJunction');
-  if (leg) leg.style.display = app.junctionsOn ? 'flex' : 'none';
-}
-
-function setupJunctionsToggle() {
-  const tog = document.getElementById('junctionsToggle');
-  if (tog) tog.addEventListener('click', () => setJunctionsVisible(!app.junctionsOn));
-}
-
 /* Mark a SPECIFIC hospital for comparison (from a marker click or the dropdown).
    Its distance to the selected zone is shown in the dossier + a white dashed line;
    the choice persists so selecting a new zone recalculates it. */
@@ -1833,7 +1735,6 @@ async function boot() {
   if (sBtn) sBtn.addEventListener('click', () => { ensureDossierVisible(); setDossierTab('strategy'); });
   setupResizers();
   setupHospitalsToggle();
-  setupJunctionsToggle();
   initMap();
 
   let data;
@@ -1872,7 +1773,6 @@ async function boot() {
   frameToChennai();      // tight Chennai view, locked so you can't pan out to all of TN
   renderPoints();
   renderBlooms();
-  setJunctionsVisible(true);   // curated critical-junction overlay, shown by default
   renderEmergeMarkers();  // pulsing markers on the surging junctions
   renderRail();
   renderDossier();
