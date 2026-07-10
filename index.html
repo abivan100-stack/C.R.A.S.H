@@ -1585,6 +1585,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
   }
   function removePickerPin() {
     if (pickerMarker && pickerMap) { pickerMap.removeLayer(pickerMarker); pickerMarker = null; }
+    if (pickerAccCircle && pickerMap) { pickerMap.removeLayer(pickerAccCircle); pickerAccCircle = null; }   // also clear the GPS accuracy ring
   }
 
   // STEP 2 — validate the coordinate BEFORE dropping a pin (manual clicks only)
@@ -2107,6 +2108,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
   function resetForm() {
     af = { lat: null, lng: null, area: null, sev: null };
     if (afMarker && afMap) { afMap.removeLayer(afMarker); afMarker = null; }
+    if (afAccCircle && afMap) { afMap.removeLayer(afAccCircle); afAccCircle = null; }   // also clear the GPS accuracy ring
     clearInvalid(); setErr('');
     var ids = ['afArea', 'afCause', 'afVehicle'];
     ids.forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
