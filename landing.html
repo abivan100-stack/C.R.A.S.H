@@ -212,18 +212,34 @@
   .sec-no { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.14em; color: var(--accent); }
 
   /* ---------- by the numbers ---------- */
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 8px; }
-  .stat { padding: 8px 26px; border-left: 1px solid var(--border); }
-  .stat:first-child { padding-left: 0; border-left: none; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 8px; }
+  .stat { display: flex; flex-direction: column; background: var(--canvas);
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 20px 18px;
+    min-height: 214px; transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease; }
+  .stat:hover { border-color: var(--accent-line); transform: translateY(-2px); box-shadow: 0 14px 30px -22px rgba(47,92,135,0.4); }
   .stat .figure-n {
     display: block; font-family: var(--f-display); font-weight: 600;
-    font-size: clamp(2.6rem, 5vw, 3.7rem); line-height: 1; letter-spacing: -0.02em;
+    font-size: clamp(2.4rem, 4.4vw, 3.3rem); line-height: 1; letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums; color: var(--text);
   }
   .stat.sev-f .figure-n { color: var(--fatal); }
   .stat .figure-n .unit { font-family: var(--f-mono); font-size: .34em; letter-spacing: 0; color: var(--text-3); margin-left: 4px; }
-  .stat .cap { display: block; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
-    font-size: 13.5px; color: var(--text-muted); line-height: 1.45; }
+  .stat-cap { display: block; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-soft);
+    font-size: 13px; color: var(--text-muted); line-height: 1.45; }
+  /* supporting micro-figures that fill each card (data-graphics-desk detail) */
+  .stat-viz { margin-top: auto; padding-top: 20px; }
+  .stat-foot { margin-top: 9px; font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-3); }
+  .sev-bar { display: flex; height: 9px; border-radius: 2px; overflow: hidden; gap: 1.5px; }
+  .sev-bar i { display: block; height: 100%; }
+  .rank-bars, .spark { display: flex; align-items: flex-end; gap: 3px; height: 42px; }
+  .rank-bars i { flex: 1; background: var(--accent-soft); border-top: 2px solid var(--accent); border-radius: 1px 1px 0 0; }
+  .spark i { flex: 1; background: var(--track); border-radius: 1px 1px 0 0; }
+  .spark i.hot { background: var(--accent); }
+  .grid-mini { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .grid-mini i { aspect-ratio: 1 / 1; border: 1px solid var(--border); border-radius: 1px; }
+  .grid-mini i.hot { background: var(--accent-soft); border-color: var(--accent-line); }
+  .grid-mini i.core { background: var(--accent); border-color: var(--accent); }
 
   /* ---------- the case (leader) ---------- */
   .leader { display: grid; grid-template-columns: 1.2fr 1fr; gap: clamp(28px, 5vw, 64px); align-items: start; }
@@ -342,9 +358,7 @@
     .hero-inner { grid-template-columns: 1fr; gap: 40px; }
     .hero h1 { max-width: 18ch; }
     .figure { max-width: 560px; }
-    .stats { grid-template-columns: repeat(2, 1fr); gap: 30px 0; }
-    .stat { padding: 8px 22px; }
-    .stat:nth-child(3) { padding-left: 0; border-left: none; }
+    .stats { grid-template-columns: repeat(2, 1fr); gap: 16px; }
     .leader { grid-template-columns: 1fr; gap: 32px; }
     .argus { grid-template-columns: repeat(2, 1fr); }
     .caps { grid-template-columns: repeat(2, 1fr); }
@@ -361,7 +375,6 @@
     }
     .nav[data-open="true"] .nav-links a { padding: 12px 0; border-bottom: 1px solid var(--border-soft); }
     .stats { grid-template-columns: 1fr; }
-    .stat { border-left: none !important; padding: 8px 0 !important; }
     .argus, .caps, .steps, .aud, .foot-top { grid-template-columns: 1fr; }
     .btn { flex: 1; justify-content: center; }
   }
@@ -455,19 +468,35 @@
     <div class="stats" style="margin-top:34px">
       <div class="stat reveal">
         <span class="figure-n num" data-count="7291">0</span>
-        <span class="cap">Incidents geo-analysed across Greater Chennai</span>
+        <span class="stat-cap">Incidents geo-analysed across Greater Chennai</span>
+        <div class="stat-viz">
+          <div class="sev-bar" aria-hidden="true"><i style="width:58%;background:var(--slight)"></i><i style="width:30%;background:var(--serious)"></i><i style="width:12%;background:var(--fatal)"></i></div>
+        </div>
+        <span class="stat-foot">Slight · Serious · Fatal split</span>
       </div>
       <div class="stat sev-f reveal">
         <span class="figure-n num" data-count="10">0</span>
-        <span class="cap">High-risk junctions ranked by severity</span>
+        <span class="stat-cap">High-risk junctions ranked by severity</span>
+        <div class="stat-viz">
+          <div class="rank-bars" aria-hidden="true"><i style="height:100%"></i><i style="height:82%"></i><i style="height:71%"></i><i style="height:63%"></i><i style="height:54%"></i><i style="height:47%"></i><i style="height:41%"></i><i style="height:35%"></i><i style="height:30%"></i><i style="height:26%"></i></div>
+        </div>
+        <span class="stat-foot">Severity-weighted, worst first</span>
       </div>
       <div class="stat reveal">
         <span class="figure-n num" data-count="250" data-suffix="m">0</span>
-        <span class="cap">Grid resolution for hotspot detection</span>
+        <span class="stat-cap">Grid resolution for hotspot detection</span>
+        <div class="stat-viz">
+          <div class="grid-mini" aria-hidden="true"><i></i><i></i><i class="hot"></i><i></i><i></i><i></i><i></i><i></i><i class="hot"></i><i class="core"></i><i class="hot"></i><i></i><i></i><i></i><i></i><i></i><i class="hot"></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <span class="stat-foot">≈ 0.0022° cells</span>
       </div>
       <div class="stat reveal">
         <span class="figure-n num" data-count="24" data-suffix="mo">0</span>
-        <span class="cap">Rolling window of incident history</span>
+        <span class="stat-cap">Rolling window of incident history</span>
+        <div class="stat-viz">
+          <div class="spark" aria-hidden="true"><i style="height:52%"></i><i style="height:44%"></i><i style="height:58%"></i><i style="height:50%"></i><i style="height:63%"></i><i style="height:55%"></i><i style="height:48%"></i><i style="height:66%"></i><i style="height:70%"></i><i style="height:60%"></i><i style="height:64%"></i><i style="height:72%"></i><i style="height:68%"></i><i style="height:75%"></i><i style="height:71%"></i><i style="height:80%"></i><i style="height:78%"></i><i style="height:74%"></i><i class="hot" style="height:82%"></i><i class="hot" style="height:79%"></i><i class="hot" style="height:88%"></i><i class="hot" style="height:84%"></i><i class="hot" style="height:92%"></i><i class="hot" style="height:100%"></i></div>
+        </div>
+        <span class="stat-foot">Jul '24 – Jun '26</span>
       </div>
     </div>
   </div>
