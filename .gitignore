@@ -16,3 +16,8 @@ venv/
 # OS junk
 .DS_Store
 Thumbs.db
+
+# road-snapping (offline gen) — large/derived caches, not committed (the snapped
+# accidents.json IS committed; the OSM graph + HTTP cache are regenerable)
+data/chennai_drive.graphml
+data/cache/
