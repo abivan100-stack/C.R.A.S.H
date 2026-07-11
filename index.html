@@ -1599,10 +1599,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     pickerTiles = L.tileLayer(url, { subdomains: 'abcd', maxZoom: 20 }).addTo(pickerMap);
     document.addEventListener('crash:themechange', function () { if (pickerTiles && window.CRASH_APP) pickerTiles.setUrl(window.CRASH_APP.tileUrl()); });
     pickerMap.on('click', function (e) { handlePickerClick(e.latlng.lat, e.latlng.lng); });
-    if (window.CRASH_APP && window.CRASH_APP.bbox) {
-      var bb = window.CRASH_APP.bbox();
-      pickerMap.setMaxBounds(L.latLngBounds([bb.latMin, bb.lngMin], [bb.latMax, bb.lngMax]).pad(0.15));
-    }
+    // no maxBounds: the picker must be able to pan to a current-location pin outside Chennai.
   }
 
   function pickerEscHandler(e) { if (e.key === 'Escape') { e.stopPropagation(); closePicker(); } }
@@ -1635,7 +1632,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       removePickerPin();               // clear any pin from a previous session
       setPickerReadout(null);
       // center on the previous selection for context, but do NOT drop a pin or enable Confirm
-      if (af.lat != null && isValidLandPoint(af.lat, af.lng)) pickerMap.setView([af.lat, af.lng], 15, { animate: false });
+      if (af.lat != null && isFinite(af.lat) && isFinite(af.lng)) pickerMap.setView([af.lat, af.lng], 15, { animate: false });
       else pickerMap.setView([13.05, 80.23], 13, { animate: false });   // zoom 13 so streets are visible
       refreshPickerSize();             // invalidateSize now + repeatedly → fills the overlay, never half-rendered
     });
@@ -1653,7 +1650,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 
   // STEP 3 — Confirm: store the point into the report (exactly like an inline map click), then close
   function confirmPicker() {
-    if (!pickedPoint || !isValidLandPoint(pickedPoint.lat, pickedPoint.lng)) return;   // guard: never confirm an invalid point
+    if (!pickedPoint || !isFinite(pickedPoint.lat) || !isFinite(pickedPoint.lng)) return;   // guard: only require a real coordinate (may be outside Chennai)
     setPin(pickedPoint.lat, pickedPoint.lng, true);
     af.area = (window.CRASH_APP && window.CRASH_APP.nearestArea) ? window.CRASH_APP.nearestArea(pickedPoint.lat, pickedPoint.lng) : af.area;
     syncAreaSelect(); updateReadout(); clearInvalid(); setErr('');
@@ -1670,8 +1667,9 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
   /* ============================================================================
      "Use my current location" — browser geolocation for the form + the picker.
      Reuses the SAME location-setter as a manual pick (setPin / commitPickerPoint).
-     A GPS point outside Chennai is rejected (isValidLandPoint) and the user falls
-     back to manual picking. Browser geolocation only works on HTTPS or localhost.
+     A GPS point is accepted even if it is OUTSIDE Chennai (per user request) — the
+     map/picker pan to show it. Manual map CLICKS remain Chennai/land-only (sea-guard).
+     Browser geolocation only works on HTTPS or localhost.
      ==========================================================================*/
   var GEO_OPTS = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
   var geoPermState = null;   // Phase 2: 'granted' | 'prompt' | 'denied' | null when the Permissions API is unavailable
@@ -1726,10 +1724,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       if (!supported) { fBtn.disabled = true; fBtn.title = 'Geolocation isn’t supported by this browser'; }
       else fBtn.addEventListener('click', function () {
         runGeolocation(fBtn, fLabel, function (lat, lng, acc) {
-          if (!isValidLandPoint(lat, lng)) {   // GPS bounds check ONLY (off-Chennai → reject, keep manual picking)
-            setErr('You appear to be outside Chennai — pick the accident spot on the map instead.');
-            return;
-          }
+          // accept the user's real GPS location even if it is outside Chennai (user request)
           setPin(lat, lng, false);   // same location-setter as a manual pick (draggable pin, writes af.lat/af.lng)
           if (afMap) afMap.setView([lat, lng], 16, { animate: true });
           af.area = (window.CRASH_APP && window.CRASH_APP.nearestArea) ? window.CRASH_APP.nearestArea(lat, lng) : af.area;
@@ -1745,11 +1740,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       if (!supported) { pBtn.disabled = true; pBtn.title = 'Geolocation isn’t supported by this browser'; }
       else pBtn.addEventListener('click', function () {
         runGeolocation(pBtn, pLabel, function (lat, lng, acc) {
-          var readout = pk('pickerReadout');
-          if (!isValidLandPoint(lat, lng)) {
-            if (readout) readout.innerHTML = 'You appear to be outside Chennai — tap the map to pick the accident spot.';
-            return;
-          }
+          // accept the user's real GPS location even if it is outside Chennai (user request)
           if (pickerMap) pickerMap.setView([lat, lng], 16, { animate: true });
           commitPickerPoint(lat, lng);   // same valid-pick path as a manual click, minus the sea-check
           showAccuracyRing(pickerMap, true, lat, lng, acc);
@@ -1889,12 +1880,11 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       syncAreaSelect(); updateReadout(); clearInvalid(); setErr('');
     });
 
-    // populate selects + lock the map to Chennai once the live dataset is ready
+    // populate selects once the live dataset is ready. The map is intentionally NOT
+    // locked to Chennai — "Use my current location" may drop the pin outside Chennai
+    // and the map must be able to pan there to show it.
     window.CRASH_APP.onReady(function () {
       afTiles.setUrl(window.CRASH_APP.tileUrl());
-      var bb = window.CRASH_APP.bbox();
-      var bounds = L.latLngBounds([bb.latMin, bb.lngMin], [bb.latMax, bb.lngMax]);
-      afMap.setMaxBounds(bounds.pad(0.08));
       afMap.invalidateSize();
 
       var areaList = document.getElementById('afAreaList');
