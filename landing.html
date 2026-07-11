@@ -780,7 +780,7 @@
 
 <!-- Leaflet — real basemap for the hero figure -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="./maptiler.js?v=1"></script>
+<script src="./maptiler.js?v=2"></script>
 
 <script>
 /* =========================================================================
@@ -980,7 +980,7 @@
     setTimeout(fit, 120);
     var rt;
     window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(fit, 160); }, { passive: true });
-    // base tiles are theme-independent (single MapTiler style) — no setUrl on theme change
+    document.addEventListener('crash:landing-theme', function () { refreshBaseLayer(tiles); });
     if (hasIO) {
       new IntersectionObserver(function (es, obs) {
         es.forEach(function (en) { if (en.isIntersecting) { fit(); obs.disconnect(); } });

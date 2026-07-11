@@ -1316,12 +1316,12 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="./report.js?v=phase5e"></script>
-<script src="./maptiler.js?v=1"></script>
-<script src="./app.js?v=phase20"></script>
+<script src="./maptiler.js?v=2"></script>
+<script src="./app.js?v=phase21"></script>
 <script src="./analytics.js?v=phase8j"></script>
-<script src="./simulate.js?v=phase16"></script>
+<script src="./simulate.js?v=phase17"></script>
 <script src="./notifications.js?v=9"></script>
-<script src="./bot.js?v=13"></script>
+<script src="./bot.js?v=14"></script>
 
 <script>
 (function () {
@@ -1596,6 +1596,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       zoomSnap: 0.25, minZoom: 10, maxZoom: 19,
     });
     pickerTiles = addBaseLayer(pickerMap);
+    document.addEventListener('crash:themechange', function () { refreshBaseLayer(pickerTiles); });
     pickerMap.on('click', function (e) { handlePickerClick(e.latlng.lat, e.latlng.lng); });
     // no maxBounds: the picker must be able to pan to a current-location pin outside Chennai.
   }
@@ -1867,6 +1868,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       zoomSnap: 0.25, minZoom: 10, maxZoom: 18,
     });
     afTiles = addBaseLayer(afMap);
+    document.addEventListener('crash:themechange', function () { refreshBaseLayer(afTiles); });
     afMap.on('click', function (e) {
       if (!isValidLandPoint(e.latlng.lat, e.latlng.lng)) {   // same sea-guard as the fullscreen picker
         setErr('Please select a location on land within Chennai.');

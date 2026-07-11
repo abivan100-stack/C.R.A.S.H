@@ -61,6 +61,7 @@
 
     // keep the results chart in sync with the theme toggle (the MapTiler base layer is theme-independent)
     document.addEventListener('crash:themechange', function () {
+      refreshBaseLayer(tileLayer);
       if (lastProjection && simChart) renderChart(lastProjection.pts);
     });
   }

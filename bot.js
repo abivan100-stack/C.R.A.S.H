@@ -364,7 +364,7 @@
   }
 
   // keep the bot map's tiles in sync with the app-wide theme toggle
-  document.addEventListener('crash:themechange', function () { ACCENT = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || ACCENT); if (botLastRecs) renderBotPoints(botLastRecs); });
+  document.addEventListener('crash:themechange', function () { refreshBaseLayer(botTiles); ACCENT = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || ACCENT); if (botLastRecs) renderBotPoints(botLastRecs); });
   // re-fit on resize while the section is visible
   var _brt;
   window.addEventListener('resize', function () {

@@ -290,6 +290,7 @@ function currentTheme() {
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   try { localStorage.setItem('cra-theme', theme); } catch (e) { /* ignore */ }
+  refreshBaseLayer(app.tileLayer);
   renderThemeToggle();
 }
 function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); }
@@ -1805,6 +1806,7 @@ document.addEventListener('DOMContentLoaded', boot);
    sizes to 0 while its container is display:none).
    ========================================================================== */
 document.addEventListener('crash:themechange', function () {
+  refreshBaseLayer(app.tileLayer);
   ACCENT = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || ACCENT);
   if (app.map) {
     if (app.focusRing) app.focusRing.setStyle({ color: ACCENT });
