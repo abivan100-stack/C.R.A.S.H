@@ -241,8 +241,7 @@
       minZoom: 9, maxZoom: 19, zoomSnap: 0.25, zoomDelta: 0.5, maxBounds: maxB, maxBoundsViscosity: 1.0 });
     botMap.fitBounds(botBounds, { padding: [18, 18] });   // frame the fixed Chennai bbox, not raw data bounds
     L.control.zoom({ position: 'bottomright' }).addTo(botMap);
-    botTiles = L.tileLayer(app().tileUrl(), { subdomains: 'abcd', maxZoom: 20 });
-    botTiles.addTo(botMap);
+    botTiles = addBaseLayer(botMap);
     renderBotPoints(records());
     renderBotBlooms();
     renderBotEmerging();
@@ -365,7 +364,7 @@
   }
 
   // keep the bot map's tiles in sync with the app-wide theme toggle
-  document.addEventListener('crash:themechange', function () { if (botTiles && app()) botTiles.setUrl(app().tileUrl()); ACCENT = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || ACCENT); if (botLastRecs) renderBotPoints(botLastRecs); });
+  document.addEventListener('crash:themechange', function () { refreshBaseLayer(botTiles); ACCENT = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || ACCENT); if (botLastRecs) renderBotPoints(botLastRecs); });
   // re-fit on resize while the section is visible
   var _brt;
   window.addEventListener('resize', function () {

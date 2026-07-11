@@ -780,6 +780,7 @@
 
 <!-- Leaflet — real basemap for the hero figure -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="./maptiler.js?v=2"></script>
 
 <script>
 /* =========================================================================
@@ -896,10 +897,7 @@
     var el = document.getElementById('cityMap');
     if (!el || typeof L === 'undefined') return;   // Leaflet unavailable -> frame + caption still stand
     var BBOX = { latMin: 12.80, latMax: 13.22, lngMin: 80.03, lngMax: 80.32 };   // Greater Chennai (matches the app)
-    var TILES = {
-      light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    };
+    /* base tiles come from the shared addBaseLayer() (maptiler.js) */
     var SEV = { fatal: '#BE2F2A', serious: '#CE8A2E', slight: '#E7C64B' };
     function theme() { return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
 
@@ -909,7 +907,7 @@
       doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false, tap: false,
       zoomSnap: 0.1, fadeAnimation: false, preferCanvas: true
     }).setView([13.02, 80.19], 11);
-    var tiles = L.tileLayer(TILES[theme()], { maxZoom: 19, detectRetina: true }).addTo(map);
+    var tiles = addBaseLayer(map);
 
     // blooms sit BELOW the incident dots
     map.createPane('bloomPane');
@@ -982,7 +980,7 @@
     setTimeout(fit, 120);
     var rt;
     window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(fit, 160); }, { passive: true });
-    document.addEventListener('crash:landing-theme', function () { tiles.setUrl(TILES[theme()]); });
+    document.addEventListener('crash:landing-theme', function () { refreshBaseLayer(tiles); });
     if (hasIO) {
       new IntersectionObserver(function (es, obs) {
         es.forEach(function (en) { if (en.isIntersecting) { fit(); obs.disconnect(); } });

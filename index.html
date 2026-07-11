@@ -1316,11 +1316,12 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
 <script src="./report.js?v=phase5e"></script>
-<script src="./app.js?v=phase19"></script>
+<script src="./maptiler.js?v=2"></script>
+<script src="./app.js?v=phase21"></script>
 <script src="./analytics.js?v=phase8j"></script>
-<script src="./simulate.js?v=phase15"></script>
+<script src="./simulate.js?v=phase17"></script>
 <script src="./notifications.js?v=9"></script>
-<script src="./bot.js?v=12"></script>
+<script src="./bot.js?v=14"></script>
 
 <script>
 (function () {
@@ -1594,10 +1595,8 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       center: [13.05, 80.23], zoom: 12, zoomControl: true, attributionControl: false,
       zoomSnap: 0.25, minZoom: 10, maxZoom: 19,
     });
-    var url = (window.CRASH_APP && window.CRASH_APP.tileUrl) ? window.CRASH_APP.tileUrl()
-            : 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-    pickerTiles = L.tileLayer(url, { subdomains: 'abcd', maxZoom: 20 }).addTo(pickerMap);
-    document.addEventListener('crash:themechange', function () { if (pickerTiles && window.CRASH_APP) pickerTiles.setUrl(window.CRASH_APP.tileUrl()); });
+    pickerTiles = addBaseLayer(pickerMap);
+    document.addEventListener('crash:themechange', function () { refreshBaseLayer(pickerTiles); });
     pickerMap.on('click', function (e) { handlePickerClick(e.latlng.lat, e.latlng.lng); });
     // no maxBounds: the picker must be able to pan to a current-location pin outside Chennai.
   }
@@ -1868,8 +1867,8 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       center: [13.05, 80.23], zoom: 11, zoomControl: true, attributionControl: false,
       zoomSnap: 0.25, minZoom: 10, maxZoom: 18,
     });
-    afTiles = L.tileLayer((window.CRASH_APP && window.CRASH_APP.tileUrl) ? window.CRASH_APP.tileUrl() : 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(afMap);
-    document.addEventListener('crash:themechange', function () { if (afTiles && window.CRASH_APP) afTiles.setUrl(window.CRASH_APP.tileUrl()); });
+    afTiles = addBaseLayer(afMap);
+    document.addEventListener('crash:themechange', function () { refreshBaseLayer(afTiles); });
     afMap.on('click', function (e) {
       if (!isValidLandPoint(e.latlng.lat, e.latlng.lng)) {   // same sea-guard as the fullscreen picker
         setErr('Please select a location on land within Chennai.');
@@ -1884,7 +1883,6 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     // locked to Chennai — "Use my current location" may drop the pin outside Chennai
     // and the map must be able to pan there to show it.
     window.CRASH_APP.onReady(function () {
-      afTiles.setUrl(window.CRASH_APP.tileUrl());
       afMap.invalidateSize();
 
       var areaList = document.getElementById('afAreaList');

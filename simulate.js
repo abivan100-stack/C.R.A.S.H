@@ -50,9 +50,7 @@
     });
     L.control.zoom({ position: 'bottomright', zoomInTitle: 'Zoom in', zoomOutTitle: 'Zoom out' }).addTo(map);
 
-    tileLayer = L.tileLayer(bridge().tileUrl(), {
-      subdomains: 'abcd', maxZoom: 20, attribution: '© OpenStreetMap contributors © CARTO',
-    }).addTo(map);
+    tileLayer = addBaseLayer(map);
 
     var bb = bridge().bbox();
     var bounds = L.latLngBounds([bb.latMin, bb.lngMin], [bb.latMax, bb.lngMax]);
@@ -61,9 +59,9 @@
     map.setMinZoom(map.getZoom());        // can't zoom out past the city frame
     map.__homeBounds = bounds;            // remembered so Reset can zoom back out
 
-    // keep the basemap (and, if shown, the results chart) in sync with the theme toggle
+    // keep the results chart in sync with the theme toggle (the MapTiler base layer is theme-independent)
     document.addEventListener('crash:themechange', function () {
-      if (tileLayer) tileLayer.setUrl(bridge().tileUrl());
+      refreshBaseLayer(tileLayer);
       if (lastProjection && simChart) renderChart(lastProjection.pts);
     });
   }
