@@ -23,11 +23,7 @@ const VEHICLES = ['Two-wheeler', 'Car', 'Auto-rickshaw', 'Bus (MTC/Private)',
 const CHENNAI = { center: [13.05, 80.23], zoom: 11 };
 const BBOX = { latMin: 12.80, latMax: 13.22, lngMin: 80.03, lngMax: 80.32 };   // south extended to frame Kattankulathur (GST Rd)
 
-/* CARTO basemaps — dark for the dark theme, Positron for the light theme */
-const TILES = {
-  dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-};
+/* Base map tiles come from the shared addBaseLayer() (maptiler.js) — one source for every map. */
 
 /* Hotspot engine tuning */
 const CELL = 0.0022;          // ~250 m grid cell
@@ -294,7 +290,6 @@ function currentTheme() {
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   try { localStorage.setItem('cra-theme', theme); } catch (e) { /* ignore */ }
-  if (app.tileLayer) app.tileLayer.setUrl(TILES[theme]);
   renderThemeToggle();
 }
 function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); }
@@ -352,11 +347,7 @@ function initMap() {
   });
   L.control.zoom({ position: 'bottomright', zoomInTitle: 'Zoom in', zoomOutTitle: 'Zoom out' }).addTo(app.map);
 
-  app.tileLayer = L.tileLayer(TILES[currentTheme()], {
-    subdomains: 'abcd',
-    maxZoom: 20,
-    attribution: '© OpenStreetMap contributors © CARTO',
-  }).addTo(app.map);
+  app.tileLayer = addBaseLayer(app.map);
 }
 
 /* Frame and lock the view to the actual accident extent — Chennai only,
@@ -1814,7 +1805,6 @@ document.addEventListener('DOMContentLoaded', boot);
    sizes to 0 while its container is display:none).
    ========================================================================== */
 document.addEventListener('crash:themechange', function () {
-  if (app.tileLayer) app.tileLayer.setUrl(TILES[currentTheme()]);
   ACCENT = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || ACCENT);
   if (app.map) {
     if (app.focusRing) app.focusRing.setStyle({ color: ACCENT });
@@ -1969,7 +1959,6 @@ window.CRASH_APP = {
   nearestArea: function (lat, lng) { return nearestAreaTo(lat, lng); },
   bbox: function () { return { latMin: BBOX.latMin, latMax: BBOX.latMax, lngMin: BBOX.lngMin, lngMax: BBOX.lngMax }; },
   center: function () { return CHENNAI.center.slice(); },
-  tileUrl: function () { return TILES[currentTheme()]; },
   // the live in-memory dataset + the exact grid definition, so the Simulate model
   // reuses the SAME ~250 m cells and cell key as the hotspot engine
   records: function () { return app.raw; },
