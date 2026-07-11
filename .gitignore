@@ -18,6 +18,7 @@ venv/
 Thumbs.db
 
 # road-snapping (offline gen) — large/derived caches, not committed (the snapped
-# accidents.json IS committed; the OSM graph + HTTP cache are regenerable)
-data/chennai_drive.graphml
-data/cache/
+# accidents.json + citizen_seed.json ARE committed; the OSM graph + HTTP cache
+# are regenerable, so they stay out of git)
+scripts/chennai_drive.graphml
+scripts/cache/
