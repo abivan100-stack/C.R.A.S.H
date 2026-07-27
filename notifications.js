@@ -12,6 +12,9 @@
   'use strict';
 
   var SEV_COLOR = { fatal: '#E4404E', serious: '#F2933E', slight: '#E7C64B' };
+
+  var CU = window.CU;
+  if (!CU) throw new Error('CRASH_UTILS not loaded — load shared/utils.js first');
   var TOAST_LIFE = 4000;    // toast auto-dismiss (ms)
   var TOAST_MAX = 4;        // cap the visible toast stack
   var MAX_ITEMS = 20;       // keep only the most recent N in the panel
@@ -26,13 +29,8 @@
   var knownSigs = {};       // { signature: true } — every report already surfaced; backend polling checks this so it never re-notifies a known report (uncapped, unlike `items`)
   var clearedSet = {};      // { signature: true } — reports the user explicitly cleared; never rebuilt into the panel on refresh, so "Clear" sticks across reloads
 
-  function escapeHtml(s) {
-    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-    });
-  }
   function summarize(r) {   // "Two-wheeler · Hit and run · Adyar"
-    return [r.vehicle, r.cause, r.area].filter(Boolean).map(escapeHtml).join(' · ');
+    return [r.vehicle, r.cause, r.area].filter(Boolean).map(CU.escapeHtml).join(' · ');
   }
 
   // relative "time since filed": just now / N min ago / N hr ago / N d ago / date
@@ -166,10 +164,10 @@
 
   function rowHtml(n) {
     var color = SEV_COLOR[n.severity] || SEV_COLOR.slight;
-    return '<button class="notify-row' + (n.read ? '' : ' unread') + '" type="button" data-id="' + escapeHtml(n.id) + '">' +
+    return '<button class="notify-row' + (n.read ? '' : ' unread') + '" type="button" data-id="' + CU.escapeHtml(n.id) + '">' +
       '<span class="notify-dot" style="background:' + color + '"></span>' +
       '<span class="notify-row-main"><span class="notify-row-text">' + summarize(n) + '</span></span>' +
-      '<span class="notify-time">' + escapeHtml(relativeTime(n.ts)) + '</span>' +
+      '<span class="notify-time">' + CU.escapeHtml(relativeTime(n.ts)) + '</span>' +
     '</button>';
   }
   function renderList() {

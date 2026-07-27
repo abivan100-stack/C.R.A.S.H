@@ -25,11 +25,13 @@
   const MON = C.MON;
   const DOW = C.DOW;
 
+  var CU = window.CU;
+  if (!CU) throw new Error('CRASH_UTILS not loaded — load shared/utils.js first');
+
   let DATA = [], AGG = null, charts = [];
   let MONTHS = 0, LASTM = 0, MIN_YM = 0;
 
-  const fmt = (n) => Number(n).toLocaleString('en-US');
-  const sortedEntries = (obj) => Object.entries(obj).sort((a, b) => b[1] - a[1]);
+  const fmt = CU.fmt, sortedEntries = CU.sortedEntries;
   function ymLabel(monthIndex) { const ym = MIN_YM + monthIndex; return MON[ym % 12] + " '" + String(Math.floor(ym / 12)).slice(2); }
   // Calendar-complete months only: drop a trailing partial month (e.g. the current
   // month, which live citizen reports can add) so the monthly charts don't cliff to ~0.
@@ -155,15 +157,7 @@
   }
 
   /* =========================== theme + palette =========================== */
-  function currentTheme() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
-  function cssv(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
-  function palette() {
-    return { text: cssv('--text'), text2: cssv('--text-2'), text3: cssv('--text-3'),
-      grid: cssv('--track'), border: cssv('--border'), accent: cssv('--accent'), accent2: cssv('--accent-2'),
-      day: cssv('--chart-day'), night: cssv('--chart-night'), panel: cssv('--panel'), bg: cssv('--bg') };
-  }
-  function hexToRgb(h) { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map((x) => x + x).join(''); const n = parseInt(h, 16); return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }; }
-  function rgba(hex, a) { const c = hexToRgb(hex); return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + a + ')'; }
+  var currentTheme = CU.currentTheme, cssv = CU.cssv, palette = CU.palette, hexToRgb = CU.hexToRgb, rgba = CU.rgba;
 
   function renderThemeToggle() {
     if (window.CRASH_SHELL) return;   // the shell owns the single header theme toggle

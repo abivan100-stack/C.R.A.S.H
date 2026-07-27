@@ -53,9 +53,7 @@ const app = {
 };
 
 /* ---- Small helpers ---- */
-const fmt = (n) => n.toLocaleString('en-US');
-function hourOf(dt) { return parseInt(dt.slice(11, 13), 10); }
-function isNight(dt) { const h = hourOf(dt); return h < 6 || h >= 18; }
+const fmt = CU.fmt, hourOf = CU.hourOf, isNight = CU.isNight;
 
 /* =============================================================================
    Segmented controls — render the design's filter chips
@@ -259,9 +257,7 @@ function ensureDossierVisible() {
 /* =============================================================================
    Theme (dark / light)
    ========================================================================== */
-function currentTheme() {
-  return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-}
+function currentTheme() { return CU.currentTheme(); }
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   try { localStorage.setItem('cra-theme', theme); } catch (e) { /* ignore */ }
@@ -1137,7 +1133,7 @@ function accidentsForHotspot(h, records) {
     Math.floor((a.lng - BBOX.lngMin) / CELL) === cj);
 }
 
-const pad2 = (n) => String(n).padStart(2, '0');
+const pad2 = CU.pad2;
 const WEATHER_LABEL = { clear: 'Clear', rain: 'Rain', fog: 'Fog' };
 
 /* Uppercase mono section label used across the dossier */

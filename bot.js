@@ -24,12 +24,8 @@
 
   function app() { return window.CRASH_APP || null; }
   function records() { var a = app(); return (a && a.records && a.records()) || []; }
-  function isNight(a) {
-    if (typeof a._night === 'boolean') return a._night;
-    var h = parseInt(String(a.datetime || '').slice(11, 13), 10);
-    return h < 6 || h >= 18;
-  }
-  function fmtNum(n) { return Number(n).toLocaleString('en-US'); }
+  var CU = window.CU;
+  if (!CU) throw new Error('CRASH_UTILS not loaded — load shared/utils.js first');
 
   function cleanFilters(f) {
     f = (f && typeof f === 'object') ? f : {};
@@ -44,8 +40,8 @@
     return records().filter(function (a) {
       if (f.area && a.area !== f.area) return false;
       if (f.severity && a.severity !== f.severity) return false;
-      if (f.timeOfDay === 'day' && isNight(a)) return false;
-      if (f.timeOfDay === 'night' && !isNight(a)) return false;
+      if (f.timeOfDay === 'day' && CU.isNight(a.datetime)) return false;
+      if (f.timeOfDay === 'night' && !CU.isNight(a.datetime)) return false;
       if (f.weather && a.weather !== f.weather) return false;
       if (f.cause && a.cause !== f.cause) return false;
       if (f.vehicle && a.vehicle !== f.vehicle) return false;
@@ -77,14 +73,14 @@
     var byArea = {}, byCause = {}, byVehicle = {};
     recs.forEach(function (a) {
       if (g[a.severity] !== undefined) g[a.severity]++;
-      if (isNight(a)) g.night++; else g.day++;
+      if (CU.isNight(a.datetime)) g.night++; else g.day++;
       if (a.weather === 'rain') g.rain++; else if (a.weather === 'fog') g.fog++; else g.clear++;
       if (a.cause) byCause[a.cause] = (byCause[a.cause] || 0) + 1;
       if (a.vehicle) byVehicle[a.vehicle] = (byVehicle[a.vehicle] || 0) + 1;
       var r = byArea[a.area] || (byArea[a.area] = { total: 0, fatal: 0, serious: 0, slight: 0, day: 0, night: 0, clear: 0, rain: 0, fog: 0, cause: {}, vehicle: {}, latSum: 0, lngSum: 0, geoN: 0 });
       r.total++; if (r[a.severity] !== undefined) r[a.severity]++;
       if (isFinite(a.lat) && isFinite(a.lng)) { r.latSum += a.lat; r.lngSum += a.lng; r.geoN++; }
-      if (isNight(a)) r.night++; else r.day++;
+      if (CU.isNight(a.datetime)) r.night++; else r.day++;
       if (a.weather === 'rain') r.rain++; else if (a.weather === 'fog') r.fog++; else r.clear++;
       if (a.cause) r.cause[a.cause] = (r.cause[a.cause] || 0) + 1;
       if (a.vehicle) r.vehicle[a.vehicle] = (r.vehicle[a.vehicle] || 0) + 1;
@@ -272,16 +268,12 @@
     renderBotPoints(matched);
     if (matched.length) fitTo(matched);
     else if (f.area && app().areaCentroid) { var c = app().areaCentroid(f.area); if (c) botMap.setView(c, 14); }
-    showChip('Showing: <b>' + escapeHtml(filterSummary(f)) + '</b> · <b>' + fmtNum(matched.length) + '</b> found');
+    showChip('Showing: <b>' + CU.escapeHtml(filterSummary(f)) + '</b> · <b>' + CU.fmt(matched.length) + '</b> found');
   }
 
   // ---- chat ---------------------------------------------------------------
-  function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-
-  /* render the AI's plain-text answer with light markdown: **bold**, line breaks, and
-     simple "- " / "1." bullet lines. HTML is escaped first, so it's injection-safe. */
   function renderAnswer(text) {
-    var esc = escapeHtml(String(text || '').trim()).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    var esc = CU.escapeHtml(String(text || '').trim()).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
     var out = '', inList = false;
     esc.split(/\r?\n/).forEach(function (ln) {
       var m = ln.match(/^\s*(?:[-•*]|\d+[.)])\s+(.*)$/);
@@ -325,7 +317,7 @@
     busy = true;
     var send = document.getElementById('botSend');
     if (send) send.disabled = true;
-    addMsg('user', escapeHtml(question));
+    addMsg('user', CU.escapeHtml(question));
     typingOn();
 
     var API = window.API_BASE || '';

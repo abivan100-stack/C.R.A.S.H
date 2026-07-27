@@ -31,10 +31,9 @@
   const C = { accent: [27, 143, 172], dark: [22, 32, 43], gray: [86, 100, 114], light: [240, 243, 247],
     calloutBg: [231, 244, 248], white: [255, 255, 255], rule: [214, 222, 230], head: [22, 32, 43], row: [246, 248, 251] };
 
-  const fmt = (n) => Number(n).toLocaleString('en-US');
-  const pad2 = (n) => String(n).padStart(2, '0');
-  const pct = (v, t) => Math.round(100 * v / (t || 1)) + '%';
-  const sortedEntries = (o) => Object.entries(o).sort((a, b) => b[1] - a[1]);
+  var CU = window.CU;
+  if (!CU) throw new Error('CRASH_UTILS not loaded — load shared/utils.js first');
+  const fmt = CU.fmt, pad2 = CU.pad2, pct = CU.pct, sortedEntries = CU.sortedEntries;
   const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const safeName = (s) => String(s).replace(/[\\/:*?"<>|]+/g, '').trim() || 'report';   // strip chars illegal in filenames
 

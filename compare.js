@@ -30,11 +30,9 @@
   let charts = [];
   const state = { a: null, b: null, swapped: false };   // swapped = user overrode the rank ordering
 
-  const fmt = (n) => Number(n).toLocaleString('en-US');
-  const pct0 = (x) => Math.round(x) + '%';
-  const pct1 = (x) => (Math.round(x * 10) / 10) + '%';
-  const mult = (x) => (Math.round(x * 10) / 10) + '×';
-  const sortedEntries = (o) => Object.entries(o).sort((a, b) => b[1] - a[1]);
+  var CU = window.CU;
+  if (!CU) throw new Error('CRASH_UTILS not loaded — load shared/utils.js first');
+  const fmt = CU.fmt, sortedEntries = CU.sortedEntries;
 
   /* =========================== compute =========================== */
   function precompute() {
@@ -106,14 +104,7 @@
   function normDim(key, s) { const r = NORM[key]; const v = DIMS.find((d) => d.key === key).get(s); return r.max > r.min ? Math.round(100 * (v - r.min) / (r.max - r.min)) : 50; }
 
   /* =========================== theme + charts =========================== */
-  function currentTheme() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
-  function cssv(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
-  function palette() {
-    return { text: cssv('--text'), text2: cssv('--text-2'), text3: cssv('--text-3'), grid: cssv('--track'), border: cssv('--border'),
-      a: cssv('--cmpA'), b: cssv('--cmpB'), accent: cssv('--accent'), panel: cssv('--panel') };
-  }
-  function hexToRgb(h) { h = (h || '').replace('#', ''); if (h.length === 3) h = h.split('').map((x) => x + x).join(''); const n = parseInt(h, 16); return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }; }
-  function rgba(hex, al) { const c = hexToRgb(hex); return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + al + ')'; }
+  var currentTheme = CU.currentTheme, cssv = CU.cssv, palette = CU.palette, hexToRgb = CU.hexToRgb, rgba = CU.rgba;
 
   function setChartDefaults(pal) {
     Chart.defaults.font.family = "'Roboto', sans-serif";

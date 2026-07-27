@@ -18,6 +18,8 @@
   /* ---- shared constants ---- */
   var C = window.CRASH_CONSTANTS;
   if (!C) throw new Error('CRASH_CONSTANTS not loaded — load shared/constants.js first');
+  var CU = window.CU;
+  if (!CU) throw new Error('CRASH_UTILS not loaded — load shared/utils.js first');
   var SEV_COLOR = C.SEV.fatal ? { fatal: C.SEV.fatal.color, serious: C.SEV.serious.color, slight: C.SEV.slight.color } : { fatal: '#BE2F2A', serious: '#CE8A2E', slight: '#E7C64B' };
   var SEV_LABEL = C.SEV.fatal ? { fatal: C.SEV.fatal.label, serious: C.SEV.serious.label, slight: C.SEV.slight.label } : { fatal: 'Fatal', serious: 'Serious', slight: 'Slight' };
 
@@ -719,7 +721,7 @@
   /* =========================================================================
      STEP 5 — results sidebar: projected total, ranked hotspots, chart
      ======================================================================== */
-  function fmtInt(n) { return Number(n).toLocaleString('en-US'); }
+  function fmtInt(n) { return CU.fmt(n); }
 
   function renderResults(pts, hs, scenario, cellMap, meta) {
     var empty = document.getElementById('simEmpty');

@@ -1313,6 +1313,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 <script src="./vendor/leaflet-heat.js"></script>
 <script src="./vendor/chart.umd.js"></script>
 <script src="./shared/constants.js"></script>
+<script src="./shared/utils.js"></script>
 <script src="./intervention-model.js?v=2"></script>
 <script src="./vendor/jspdf.umd.min.js"></script>
 <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
@@ -1330,9 +1331,11 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 
   /* ---- shared constants (for SEV_LABEL in report form) ---- */
   var C = window.CRASH_CONSTANTS;
+  var CU = window.CU;
+  if (!CU) throw new Error('CRASH_UTILS not loaded');
 
   /* ---- theme toggle (single owner; app.js + analytics.js react to the event) ---- */
-  function currentTheme() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
+  function currentTheme() { return CU.currentTheme(); }
   function renderTheme() {
     var b = document.getElementById('themeToggle'); if (!b) return;
     var light = currentTheme() === 'light';
@@ -1441,7 +1444,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
   var afMap = null, afTiles = null, afMarker = null, afAccCircle = null;
   var af = { lat: null, lng: null, area: null, sev: null };
 
-  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  var pad2 = CU.pad2;
   function nowLocalInput() {
     var d = new Date();
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
@@ -1796,7 +1799,6 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     if (window.CRASH_APP && window.CRASH_APP.onReady) window.CRASH_APP.onReady(buildIndex);
 
     function norm(s) { return String(s == null ? '' : s).toLowerCase().trim(); }
-    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
     function match(q) {
       q = norm(q);
@@ -1820,7 +1822,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
         results.innerHTML = shown.map(function (it, i) {
           return '<button type="button" class="mapsearch-item" role="option" data-i="' + i + '">' +
             '<svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 15s5-4.5 5-9A5 5 0 1 0 3 6c0 4.5 5 9 5 9z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="6" r="1.7" fill="currentColor"/></svg>' +
-            '<span>' + esc(it.label) + '</span></button>';
+            '<span>' + CU.escapeHtml(it.label) + '</span></button>';
         }).join('');
       }
       openList();
@@ -2141,9 +2143,6 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 
     function plural(n) { return n === 1 ? '' : 's'; }
 
-    function xmlEscape(s) {
-      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
     function colLetter(i) { return String.fromCharCode(65 + i); }
 
     /* auto-fit width per column = longest cell (or header) + padding, clamped so one
@@ -2172,7 +2171,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
           return '<c r="' + ref + '"><v>' + value + '</v></c>';
         }
         var s = (value === null || value === undefined) ? '' : String(value);
-        return '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + xmlEscape(s) + '</t></is></c>';
+        return '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + CU.escapeHtml(s) + '</t></is></c>';
       }
       var body = ['<row r="1">' + COLUMNS.map(function (key, i) {
         return cell(colLetter(i) + '1', key, key);
