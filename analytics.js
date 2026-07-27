@@ -27,6 +27,8 @@
 
   var CU = window.CU;
   if (!CU) throw new Error('CRASH_UTILS not loaded — load shared/utils.js first');
+  var CE = window.CE;
+  if (!CE) throw new Error('CRASH_ENGINE not loaded — load shared/engine.js first');
 
   let DATA = [], AGG = null, charts = [];
   let MONTHS = 0, LASTM = 0, MIN_YM = 0;
@@ -39,67 +41,11 @@
 
   /* =========================== compute =========================== */
   function precompute() {
-    let minYM = Infinity, maxYM = -Infinity;
-    DATA.forEach((a) => {
-      a._h = parseInt(a.datetime.slice(11, 13), 10);
-      a._night = a._h < 6 || a._h >= 18;
-      const d = a.datetime.slice(0, 10).split('-');
-      a._dow = (new Date(+d[0], +d[1] - 1, +d[2]).getDay() + 6) % 7;
-      a._ym = (+d[0]) * 12 + (+d[1] - 1);
-      if (a._ym < minYM) minYM = a._ym;
-      if (a._ym > maxYM) maxYM = a._ym;
-    });
-    MIN_YM = minYM; MONTHS = maxYM - minYM + 1; LASTM = MONTHS - 1;
-    DATA.forEach((a) => { a._month = a._ym - minYM; });
+    var m = CE.precompute(DATA);
+    MIN_YM = m.minYM; MONTHS = m.monthCount; LASTM = m.lastMonth;
   }
-
-  function gridCells() {
-    const map = new Map();
-    for (const a of DATA) {
-      const ci = Math.floor((a.lat - BBOX.latMin) / CELL);
-      const cj = Math.floor((a.lng - BBOX.lngMin) / CELL);
-      const k = ci + '_' + cj;
-      let c = map.get(k);
-      if (!c) {
-        c = { ci, cj, count: 0, score: 0, fatal: 0, serious: 0, slight: 0, night: 0,
-              areas: {}, cause: {}, recent: 0, baseline: 0, recentScore: 0,
-              months: new Array(MONTHS).fill(0), sumLat: 0, sumLng: 0 };
-        map.set(k, c);
-      }
-      c.count++; c.score += SEV[a.severity].w; c[a.severity]++;
-      if (a._night) c.night++;
-      c.areas[a.area] = (c.areas[a.area] || 0) + 1;
-      c.cause[a.cause] = (c.cause[a.cause] || 0) + 1;
-      c.months[a._month]++;
-      if (a._month > LASTM - RECENT_MONTHS) { c.recent++; c.recentScore += SEV[a.severity].w; } else c.baseline++;
-      c.sumLat += a.lat; c.sumLng += a.lng;
-    }
-    const arr = [...map.values()];
-    arr.forEach((c) => { c.area = sortedEntries(c.areas)[0][0]; c.lat = c.sumLat / c.count; c.lng = c.sumLng / c.count; });
-    return arr;
-  }
-
-  function computeEmerging(cells) {
-    const baseMonths = Math.max(1, MONTHS - RECENT_MONTHS);
-    const cand = [];
-    for (const c of cells) {
-      if (c.recent < EMERGE_MIN_RECENT) continue;
-      const rr = c.recent / RECENT_MONTHS, br = c.baseline / baseMonths;
-      const lift = br > 0 ? rr / br : 3;
-      if (lift < EMERGE_LIFT) continue;
-      cand.push({ area: c.area, ci: c.ci, cj: c.cj, recent: c.recent, baseline: c.baseline,
-        recentRate: rr, baseRate: br, lift: lift, pct: Math.round((lift - 1) * 100),
-        priority: c.recentScore * (lift - 1) });
-    }
-    cand.sort((a, b) => b.priority - a.priority);
-    const pick = [];
-    for (const c of cand) {
-      if (pick.length >= EMERGE_TOP_N) break;
-      if (pick.some((p) => Math.abs(p.ci - c.ci) <= SUPPRESS && Math.abs(p.cj - c.cj) <= SUPPRESS)) continue;
-      pick.push(c);
-    }
-    return pick;
-  }
+  function gridCells() { return CE.gridCells(DATA, BBOX, CELL, RECENT_MONTHS, MONTHS, function (s) { return SEV[s].w; }); }
+  function computeEmerging(cells) { return CE.computeEmerging(cells, RECENT_MONTHS, MONTHS, EMERGE_MIN_RECENT, EMERGE_LIFT, EMERGE_TOP_N, SUPPRESS); }
 
   function computeAgg() {
     const sev = { fatal: 0, serious: 0, slight: 0 };

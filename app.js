@@ -24,6 +24,8 @@ const EMERGE_TOP_N = C.EMERGE_TOP_N;
 const SEGMENTS = C.SEGMENTS;
 let ACCENT = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#43B0CC');
 const CHENNAI = { center: [13.05, 80.23], zoom: 11 };
+const CE = window.CE;
+if (!CE) throw new Error('CRASH_ENGINE not loaded — load shared/engine.js first');
 
 /* ---- App state ---- */
 const app = {
@@ -478,41 +480,10 @@ function computeHotspots(records) {
   const gFatalShare = gF / gN;
   const gSeriousShare = gS / gN;
 
-  const cells = new Map();
-  for (const a of records) {
-    const ci = Math.floor((a.lat - BBOX.latMin) / CELL);
-    const cj = Math.floor((a.lng - BBOX.lngMin) / CELL);
-    const key = ci + '_' + cj;
-    let c = cells.get(key);
-    if (!c) {
-      c = { key, ci, cj, count: 0, score: 0,
-            fatal: 0, serious: 0, slight: 0,
-            sumLat: 0, sumLng: 0, areas: {} };
-      cells.set(key, c);
-    }
-    c.count++;
-    c.score += (SEV[a.severity] || SEV.slight).weight;   // fatal 3, serious 2, slight 1
-    c[a.severity] = (c[a.severity] || 0) + 1;
-    c.sumLat += a.lat;
-    c.sumLng += a.lng;
-    c.areas[a.area] = (c.areas[a.area] || 0) + 1;
-  }
-
-  const all = [...cells.values()];
+  const all = CE.gridCells(records, BBOX, CELL, 0, null, (s) => (SEV[s] || SEV.slight).weight);
   const highRiskZones = all.filter((c) => c.score >= HIGH_RISK_MIN).length;
 
-  // rank all cells by severity-weighted score
-  all.sort((a, b) => b.score - a.score || b.count - a.count);
-
-  // non-max suppression so the top 10 are 10 separate junctions
-  const picked = [];
-  for (const c of all) {
-    if (picked.length >= TOP_N) break;
-    const clash = picked.some((p) =>
-      Math.abs(p.ci - c.ci) <= SUPPRESS && Math.abs(p.cj - c.cj) <= SUPPRESS);
-    if (!clash) picked.push(c);
-  }
-
+  const picked = CE.topJunctions(all, TOP_N, SUPPRESS);
   const topRaw = picked.length ? picked[0].score : 1;
   const rankByKey = {};
   picked.forEach((c, i) => { rankByKey[c.key] = i + 1; });
@@ -523,7 +494,7 @@ function computeHotspots(records) {
     const fShare = c.fatal / c.count;
     const sShare = c.serious / c.count;
     const dom = fShare >= gFatalShare ? 'fatal'
-              : sShare >= gSeriousShare ? 'serious' : 'slight';   // most severe class over-represented vs city average
+              : sShare >= gSeriousShare ? 'serious' : 'slight';
     const area = Object.entries(c.areas).sort((a, b) => b[1] - a[1])[0][0];
     return {
       id: c.key, ci: c.ci, cj: c.cj,
@@ -1807,11 +1778,9 @@ function prepRecord(a) {
 }
 /* (re)derive the month span across the whole dataset and each record's _month */
 function recomputeMonths() {
-  let minYM = Infinity, maxYM = -Infinity;
-  app.raw.forEach((a) => { if (a._ym < minYM) minYM = a._ym; if (a._ym > maxYM) maxYM = a._ym; });
-  app.monthCount = maxYM - minYM + 1;
-  app.lastMonth = app.monthCount - 1;
-  app.raw.forEach((a) => { a._month = a._ym - minYM; });
+  var m = CE.precompute(app.raw);
+  app.monthCount = m.monthCount;
+  app.lastMonth = m.lastMonth;
 }
 
 /* a stored report must be well-formed before we trust it in the engines */

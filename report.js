@@ -33,6 +33,8 @@
 
   var CU = window.CU;
   if (!CU) throw new Error('CRASH_UTILS not loaded — load shared/utils.js first');
+  var CE = window.CE;
+  if (!CE) throw new Error('CRASH_ENGINE not loaded — load shared/engine.js first');
   const fmt = CU.fmt, pad2 = CU.pad2, pct = CU.pct, sortedEntries = CU.sortedEntries;
   const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const safeName = (s) => String(s).replace(/[\\/:*?"<>|]+/g, '').trim() || 'report';   // strip chars illegal in filenames
@@ -54,50 +56,10 @@
   }
 
   /* ---------------- compute ---------------- */
-  function monthMeta(records) {
-    let mn = Infinity, mx = -Infinity;
-    for (const a of records) { const ym = (+a.datetime.slice(0, 4)) * 12 + (+a.datetime.slice(5, 7) - 1); if (ym < mn) mn = ym; if (ym > mx) mx = ym; }
-    return { min: mn, max: mx, count: mx - mn + 1 };
-  }
-  function gridCells(records, mm) {
-    const map = new Map();
-    for (const a of records) {
-      const ci = Math.floor((a.lat - BBOX.latMin) / CELL), cj = Math.floor((a.lng - BBOX.lngMin) / CELL), k = ci + '_' + cj;
-      let c = map.get(k);
-      if (!c) { c = { ci, cj, count: 0, score: 0, fatal: 0, serious: 0, slight: 0, night: 0, areas: {}, cause: {}, recent: 0, baseline: 0, recentScore: 0, sumLat: 0, sumLng: 0 }; map.set(k, c); }
-      c.count++; c.score += W[a.severity]; c[a.severity]++;
-      const h = +a.datetime.slice(11, 13); if (h < 6 || h >= 18) c.night++;
-      c.areas[a.area] = (c.areas[a.area] || 0) + 1; c.cause[a.cause] = (c.cause[a.cause] || 0) + 1;
-      const month = ((+a.datetime.slice(0, 4)) * 12 + (+a.datetime.slice(5, 7) - 1)) - mm.min;
-      if (month > mm.count - 1 - RECENT_MONTHS) { c.recent++; c.recentScore += W[a.severity]; } else c.baseline++;
-      c.sumLat += a.lat; c.sumLng += a.lng;
-    }
-    const arr = [...map.values()];
-    arr.forEach((c) => { c.area = sortedEntries(c.areas)[0][0]; c.lat = c.sumLat / c.count; c.lng = c.sumLng / c.count; });
-    return arr;
-  }
-  function topJunctions(cells) {
-    const byScore = cells.slice().sort((a, b) => b.score - a.score || b.count - a.count);
-    const top = [];
-    for (const c of byScore) { if (top.length >= TOP_N) break; if (top.some((p) => Math.abs(p.ci - c.ci) <= SUPPRESS && Math.abs(p.cj - c.cj) <= SUPPRESS)) continue; top.push(c); }
-    const topRaw = top.length ? top[0].score : 1;
-    top.forEach((c) => { c.norm = Math.max(1, Math.round(100 * Math.pow(c.score / topRaw, 0.6))); });
-    return top;
-  }
-  function emergingCells(cells, mm) {
-    const baseMonths = Math.max(1, mm.count - RECENT_MONTHS);
-    const cand = [];
-    for (const c of cells) {
-      if (c.recent < EMERGE_MIN_RECENT) continue;
-      const rr = c.recent / RECENT_MONTHS, br = c.baseline / baseMonths, lift = br > 0 ? rr / br : 3;
-      if (lift < EMERGE_LIFT) continue;
-      cand.push({ area: c.area, ci: c.ci, cj: c.cj, recent: c.recent, baseline: c.baseline, lift: lift, pct: Math.round((lift - 1) * 100), priority: c.recentScore * (lift - 1) });
-    }
-    cand.sort((a, b) => b.priority - a.priority);
-    const pick = [];
-    for (const c of cand) { if (pick.length >= EMERGE_TOP_N) break; if (pick.some((p) => Math.abs(p.ci - c.ci) <= SUPPRESS && Math.abs(p.cj - c.cj) <= SUPPRESS)) continue; pick.push(c); }
-    return pick;
-  }
+  function monthMeta(records) { return CE.monthMeta(records); }
+  function gridCells(records, mm) { return CE.gridCells(records, BBOX, CELL, RECENT_MONTHS, mm.count, function (s) { return W[s]; }); }
+  function topJunctions(cells) { return CE.topJunctions(cells, TOP_N, SUPPRESS); }
+  function emergingCells(cells, mm) { return CE.computeEmerging(cells, RECENT_MONTHS, mm.count, EMERGE_MIN_RECENT, EMERGE_LIFT, EMERGE_TOP_N, SUPPRESS); }
   function priorityQueue(top) {
     const M = root.CRASH_INTERVENTIONS;
     return top.map((c) => {
@@ -108,6 +70,7 @@
     }).sort((a, b) => b.prevent - a.prevent);
   }
   function cityData(records) {
+    CE.precompute(records);
     const mm = monthMeta(records);
     const sev = { fatal: 0, serious: 0, slight: 0 }, cause = {}, veh = {};
     for (const a of records) { sev[a.severity]++; cause[a.cause] = (cause[a.cause] || 0) + 1; veh[a.vehicle] = (veh[a.vehicle] || 0) + 1; }

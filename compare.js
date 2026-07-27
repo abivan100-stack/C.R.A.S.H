@@ -32,22 +32,14 @@
 
   var CU = window.CU;
   if (!CU) throw new Error('CRASH_UTILS not loaded — load shared/utils.js first');
+  var CE = window.CE;
+  if (!CE) throw new Error('CRASH_ENGINE not loaded — load shared/engine.js first');
   const fmt = CU.fmt, sortedEntries = CU.sortedEntries;
 
   /* =========================== compute =========================== */
   function precompute() {
-    let minYM = Infinity, maxYM = -Infinity;
-    DATA.forEach((a) => {
-      a._h = parseInt(a.datetime.slice(11, 13), 10);
-      a._night = a._h < 6 || a._h >= 18;
-      const d = a.datetime.slice(0, 10).split('-');
-      a._dow = (new Date(+d[0], +d[1] - 1, +d[2]).getDay() + 6) % 7;
-      a._ym = (+d[0]) * 12 + (+d[1] - 1);
-      if (a._ym < minYM) minYM = a._ym;
-      if (a._ym > maxYM) maxYM = a._ym;
-    });
-    MIN_YM = minYM; MONTHS = maxYM - minYM + 1; LASTM = MONTHS - 1;
-    DATA.forEach((a) => { a._month = a._ym - minYM; });
+    var m = CE.precompute(DATA);
+    MIN_YM = m.minYM; MONTHS = m.monthCount; LASTM = m.lastMonth;
   }
 
   function computeAll() {
