@@ -22,3 +22,8 @@ Thumbs.db
 # are regenerable, so they stay out of git)
 scripts/chennai_drive.graphml
 scripts/cache/
+venv/
+__pycache__/
+*.pyc
+.env
+node_modules/
