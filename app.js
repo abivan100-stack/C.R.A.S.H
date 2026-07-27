@@ -6,49 +6,24 @@
 
 'use strict';
 
-/* ---- Constants shared across phases ---- */
-const SEV = {
-  fatal:   { color: '#BE2F2A', label: 'Fatal',   weight: 3 },
-  serious: { color: '#CE8A2E', label: 'Serious', weight: 2 },
-  slight:  { color: '#E7C64B', label: 'Slight',  weight: 1 },
-};
+/* ---- Shared constants (loaded via shared/constants.js) ---- */
+const C = window.CRASH_CONSTANTS;
+const SEV = C.SEV;
+const CAUSES = C.CAUSES;
+const VEHICLES = C.VEHICLES;
+const BBOX = C.BBOX;
+const CELL = C.CELL;
+const TOP_N = C.TOP_N;
+const SUPPRESS = C.SUPPRESS;
+const HIGH_RISK_MIN = C.HIGH_RISK_MIN;
+const SELECT_ZOOM = C.SELECT_ZOOM;
+const RECENT_MONTHS = C.RECENT_MONTHS;
+const EMERGE_LIFT = C.EMERGE_LIFT;
+const EMERGE_MIN_RECENT = C.EMERGE_MIN_RECENT;
+const EMERGE_TOP_N = C.EMERGE_TOP_N;
+const SEGMENTS = C.SEGMENTS;
 let ACCENT = (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#43B0CC');
-
-const CAUSES = ['Over-speeding', 'Wrong-side driving', 'Signal jumping', 'Drunken driving',
-  'Mobile phone use', 'Hit and run', 'Pothole / bad road', 'Pedestrian crossing error',
-  'Improper overtaking', 'Vehicle defect', 'Poor visibility'];
-const VEHICLES = ['Two-wheeler', 'Car', 'Auto-rickshaw', 'Bus (MTC/Private)',
-  'Lorry / Truck', 'LCV / Van', 'Bicycle', 'Unknown (fled)'];
-
 const CHENNAI = { center: [13.05, 80.23], zoom: 11 };
-const BBOX = { latMin: 12.80, latMax: 13.22, lngMin: 80.03, lngMax: 80.32 };   // south extended to frame Kattankulathur (GST Rd)
-
-/* Base map tiles come from the shared addBaseLayer() (maptiler.js) — one source for every map. */
-
-/* Hotspot engine tuning */
-const CELL = 0.0022;          // ~250 m grid cell
-const TOP_N = 10;             // ranked danger index length
-const SUPPRESS = 2;           // non-max suppression radius, in cells (~500 m):
-                              // keeps the top-10 as 10 distinct junctions, not
-                              // split halves of one cluster
-const HIGH_RISK_MIN = 40;     // severity-weighted score for a cell to count as a "high-risk zone"
-const SELECT_ZOOM = 15;       // zoom level when a hotspot is selected (instant setView — no animated fly, which would flicker the canvas/bloom layers)
-
-/* Emerging-hotspot engine (Phase 2) — flag cells whose recent monthly rate is
-   climbing sharply against their own longer baseline. */
-const RECENT_MONTHS = 6;      // "recent" window = last 6 months of the record
-const EMERGE_LIFT = 1.5;      // recent monthly rate must be >= 1.5x the baseline rate
-const EMERGE_MIN_RECENT = 8;  // and have at least this many recent incidents (noise guard)
-const EMERGE_TOP_N = 6;       // how many distinct emerging junctions to surface
-
-/* Segmented filter definitions (wired live in Phase 5) */
-const SEGMENTS = {
-  source:  { id: 'segSource',  options: [['All', 'all'], ['Official only', 'official'], ['Citizen only', 'citizen']] },
-  sev:     { id: 'segSev',     options: [['All', 'all'], ['Fatal + serious', 'fs'], ['Fatal', 'f']] },
-  time:    { id: 'segTime',    options: [['All', 'all'], ['Day', 'day'], ['Night', 'night']] },
-  weather: { id: 'segWeather', options: [['All', 'all'], ['Clear', 'clear'], ['Rain', 'rain'], ['Fog', 'fog']] },
-  dow:     { id: 'segDow', chips: true, options: [['All', 'all'], ['Mon', 0], ['Tue', 1], ['Wed', 2], ['Thu', 3], ['Fri', 4], ['Sat', 5], ['Sun', 6]] },
-};
 
 /* ---- App state ---- */
 const app = {
@@ -79,8 +54,8 @@ const app = {
 
 /* ---- Small helpers ---- */
 const fmt = (n) => n.toLocaleString('en-US');
-function hourOf(dt) { return parseInt(dt.slice(11, 13), 10); }        // "YYYY-MM-DD HH:MM"
-function isNight(dt) { const h = hourOf(dt); return h < 6 || h >= 18; } // night = 18:00–06:00
+function hourOf(dt) { return parseInt(dt.slice(11, 13), 10); }
+function isNight(dt) { const h = hourOf(dt); return h < 6 || h >= 18; }
 
 /* =============================================================================
    Segmented controls — render the design's filter chips

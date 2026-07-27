@@ -3,20 +3,31 @@
    Self-contained: recomputes aggregates from raw records with the SAME engine
    constants as the dashboard, so the report always matches what's on screen.
    Builds two branded PDFs via jsPDF + autotable:
-     CRASHReport.city(records)         — city-wide safety report
-     CRASHReport.zone(records, meta)   — per-zone report from a subset of records
+      CRASHReport.city(records)         — city-wide safety report
+      CRASHReport.zone(records, meta)   — per-zone report from a subset of records
    Depends on: window.jspdf (+ autotable plugin) and window.CRASH_INTERVENTIONS.
    ========================================================================== */
 'use strict';
 (function (root) {
 
-  const W = { fatal: 3, serious: 2, slight: 1 };
-  const BBOX = { latMin: 12.80, lngMin: 80.03 }, CELL = 0.0022, SUP = 2, TOP_N = 10, HIGH_RISK_MIN = 40;   // south extended for Kattankulathur (GST Rd)
-  const RECENT_MONTHS = 6, EMERGE_LIFT = 1.5, EMERGE_MIN_RECENT = 8, EMERGE_TOP_N = 6;
-  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  /* ---- engine constants (from shared/constants.js) ---- */
+  const C_SHARED = window.CRASH_CONSTANTS;
+  if (!C_SHARED) throw new Error('CRASH_CONSTANTS not loaded — load shared/constants.js first');
+  const SEV = C_SHARED.SEV;
+  const BBOX = C_SHARED.BBOX;
+  const CELL = C_SHARED.CELL;
+  const SUPPRESS = C_SHARED.SUPPRESS;
+  const TOP_N = C_SHARED.TOP_N;
+  const HIGH_RISK_MIN = C_SHARED.HIGH_RISK_MIN;
+  const RECENT_MONTHS = C_SHARED.RECENT_MONTHS;
+  const EMERGE_LIFT = C_SHARED.EMERGE_LIFT;
+  const EMERGE_MIN_RECENT = C_SHARED.EMERGE_MIN_RECENT;
+  const EMERGE_TOP_N = C_SHARED.EMERGE_TOP_N;
+  const MON = C_SHARED.MON;
+  const DOW = C_SHARED.DOW;
+  const W = { fatal: SEV.fatal.weight, serious: SEV.serious.weight, slight: SEV.slight.weight };
 
-  // palette (RGB)
+  // palette (RGB) — PDF-specific, not shared
   const C = { accent: [27, 143, 172], dark: [22, 32, 43], gray: [86, 100, 114], light: [240, 243, 247],
     calloutBg: [231, 244, 248], white: [255, 255, 255], rule: [214, 222, 230], head: [22, 32, 43], row: [246, 248, 251] };
 
@@ -69,7 +80,7 @@
   function topJunctions(cells) {
     const byScore = cells.slice().sort((a, b) => b.score - a.score || b.count - a.count);
     const top = [];
-    for (const c of byScore) { if (top.length >= TOP_N) break; if (top.some((p) => Math.abs(p.ci - c.ci) <= SUP && Math.abs(p.cj - c.cj) <= SUP)) continue; top.push(c); }
+    for (const c of byScore) { if (top.length >= TOP_N) break; if (top.some((p) => Math.abs(p.ci - c.ci) <= SUPPRESS && Math.abs(p.cj - c.cj) <= SUPPRESS)) continue; top.push(c); }
     const topRaw = top.length ? top[0].score : 1;
     top.forEach((c) => { c.norm = Math.max(1, Math.round(100 * Math.pow(c.score / topRaw, 0.6))); });
     return top;
@@ -85,7 +96,7 @@
     }
     cand.sort((a, b) => b.priority - a.priority);
     const pick = [];
-    for (const c of cand) { if (pick.length >= EMERGE_TOP_N) break; if (pick.some((p) => Math.abs(p.ci - c.ci) <= SUP && Math.abs(p.cj - c.cj) <= SUP)) continue; pick.push(c); }
+    for (const c of cand) { if (pick.length >= EMERGE_TOP_N) break; if (pick.some((p) => Math.abs(p.ci - c.ci) <= SUPPRESS && Math.abs(p.cj - c.cj) <= SUPPRESS)) continue; pick.push(c); }
     return pick;
   }
   function priorityQueue(top) {

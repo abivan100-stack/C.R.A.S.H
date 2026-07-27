@@ -6,15 +6,15 @@
 'use strict';
 (function () {
 
-  const SEV = { fatal: { c: '#BE2F2A', l: 'Fatal', w: 3 }, serious: { c: '#CE8A2E', l: 'Serious', w: 2 }, slight: { c: '#E7C64B', l: 'Slight', w: 1 } };
-  const CAUSES = ['Over-speeding', 'Wrong-side driving', 'Signal jumping', 'Drunken driving',
-    'Mobile phone use', 'Hit and run', 'Pothole / bad road', 'Pedestrian crossing error',
-    'Improper overtaking', 'Vehicle defect', 'Poor visibility'];
-  const VEHICLES = ['Two-wheeler', 'Car', 'Auto-rickshaw', 'Bus (MTC/Private)',
-    'Lorry / Truck', 'LCV / Van', 'Bicycle', 'Unknown (fled)'];
-  const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const RECENT_MONTHS = 6;
+  /* ---- engine constants (from shared/constants.js) ---- */
+  const C = window.CRASH_CONSTANTS;
+  if (!C) throw new Error('CRASH_CONSTANTS not loaded — load shared/constants.js first');
+  const SEV = C.SEV;
+  const CAUSES = C.CAUSES;
+  const VEHICLES = C.VEHICLES;
+  const DOW = C.DOW;
+  const MON = C.MON;
+  const RECENT_MONTHS = C.RECENT_MONTHS;
 
   const DIMS = [
     { key: 'volume', label: 'Volume', get: (s) => s.total },

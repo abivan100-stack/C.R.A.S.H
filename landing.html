@@ -780,6 +780,7 @@
 
 <!-- Leaflet — real basemap for the hero figure -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="./shared/constants.js"></script>
 <script src="./maptiler.js?v=2"></script>
 
 <script>
@@ -896,9 +897,10 @@
   function cityMap() {
     var el = document.getElementById('cityMap');
     if (!el || typeof L === 'undefined') return;   // Leaflet unavailable -> frame + caption still stand
-    var BBOX = { latMin: 12.80, latMax: 13.22, lngMin: 80.03, lngMax: 80.32 };   // Greater Chennai (matches the app)
+    var C = window.CRASH_CONSTANTS;
+    var BBOX = C.BBOX;
     /* base tiles come from the shared addBaseLayer() (maptiler.js) */
-    var SEV = { fatal: '#BE2F2A', serious: '#CE8A2E', slight: '#E7C64B' };
+    var SEV = C.SEV;
     function theme() { return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
 
     // a locked, decorative map — no zoom/drag/scroll so it reads as a figure, not a widget
@@ -935,7 +937,7 @@
         if (typeof a.lat !== 'number' || typeof a.lng !== 'number') continue;
         var fatal = a.severity === 'fatal';
         L.circleMarker([a.lat, a.lng], { radius: fatal ? 2.6 : 2, stroke: false,
-          fillColor: SEV[a.severity] || SEV.slight, fillOpacity: fatal ? 0.9 : 0.6, interactive: false }).addTo(map);
+          fillColor: (SEV[a.severity] || SEV.slight).color, fillOpacity: fatal ? 0.9 : 0.6, interactive: false }).addTo(map);
       }
       // ---- risk blooms over the top severity-weighted cells (fatal x3, serious x2, slight x1) ----
       var CELL = 0.006, cells = {};

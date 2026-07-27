@@ -15,12 +15,16 @@
 (function () {
   'use strict';
 
+  /* ---- shared constants ---- */
+  var C = window.CRASH_CONSTANTS;
+  if (!C) throw new Error('CRASH_CONSTANTS not loaded — load shared/constants.js first');
+  var SEV_COLOR = C.SEV.fatal ? { fatal: C.SEV.fatal.color, serious: C.SEV.serious.color, slight: C.SEV.slight.color } : { fatal: '#BE2F2A', serious: '#CE8A2E', slight: '#E7C64B' };
+  var SEV_LABEL = C.SEV.fatal ? { fatal: C.SEV.fatal.label, serious: C.SEV.serious.label, slight: C.SEV.slight.label } : { fatal: 'Fatal', serious: 'Serious', slight: 'Slight' };
+
   var map = null, tileLayer = null, wired = false, simulated = false;
   var pointLayer = null, heatLayer = null, rankLayer = null, animRaf = 0, canvasRenderer = null;   // STEP 4 projection layers
   var simChart = null, lastProjection = null;   // STEP 5 results sidebar
   var runNonce = 0;   // bumped on every "Run" click → each run is a fresh Monte Carlo realization (slight run-to-run variation); held constant while live-filtering so a run stays self-consistent
-  var SEV_COLOR = { fatal: '#BE2F2A', serious: '#CE8A2E', slight: '#E7C64B' };
-  var SEV_LABEL = { fatal: 'Fatal', serious: 'Serious', slight: 'Slight' };
   // STEP 6 — results-panel empty-state copy: default vs. a scenario with no history
   var EMPTY_TITLE = 'No projection yet';
   var EMPTY_NOTE = 'Run the simulation to project where accidents are likely to concentrate — with a projected total, ranked hotspots, and a chart.';

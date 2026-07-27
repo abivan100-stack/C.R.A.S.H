@@ -7,22 +7,23 @@
 'use strict';
 (function () {
 
-  /* ---- engine constants (mirror app.js) ---- */
-  const SEV = {
-    fatal:   { c: '#BE2F2A', l: 'Fatal',   w: 3 },
-    serious: { c: '#CE8A2E', l: 'Serious', w: 2 },
-    slight:  { c: '#E7C64B', l: 'Slight',  w: 1 },
-  };
-  const CAUSES = ['Over-speeding', 'Wrong-side driving', 'Signal jumping', 'Drunken driving',
-    'Mobile phone use', 'Hit and run', 'Pothole / bad road', 'Pedestrian crossing error',
-    'Improper overtaking', 'Vehicle defect', 'Poor visibility'];
-  const VEHICLES = ['Two-wheeler', 'Car', 'Auto-rickshaw', 'Bus (MTC/Private)',
-    'Lorry / Truck', 'LCV / Van', 'Bicycle', 'Unknown (fled)'];
-  const BBOX = { latMin: 12.80, lngMin: 80.03 };   // south extended to frame Kattankulathur (GST Rd)
-  const CELL = 0.0022, SUPPRESS = 2, TOP_N = 10, HIGH_RISK_MIN = 40;
-  const RECENT_MONTHS = 6, EMERGE_LIFT = 1.5, EMERGE_MIN_RECENT = 8, EMERGE_TOP_N = 6;
-  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  /* ---- engine constants (from shared/constants.js) ---- */
+  const C = window.CRASH_CONSTANTS;
+  if (!C) throw new Error('CRASH_CONSTANTS not loaded — load shared/constants.js first');
+  const SEV = C.SEV;
+  const CAUSES = C.CAUSES;
+  const VEHICLES = C.VEHICLES;
+  const BBOX = C.BBOX;
+  const CELL = C.CELL;
+  const SUPPRESS = C.SUPPRESS;
+  const TOP_N = C.TOP_N;
+  const HIGH_RISK_MIN = C.HIGH_RISK_MIN;
+  const RECENT_MONTHS = C.RECENT_MONTHS;
+  const EMERGE_LIFT = C.EMERGE_LIFT;
+  const EMERGE_MIN_RECENT = C.EMERGE_MIN_RECENT;
+  const EMERGE_TOP_N = C.EMERGE_TOP_N;
+  const MON = C.MON;
+  const DOW = C.DOW;
 
   let DATA = [], AGG = null, charts = [];
   let MONTHS = 0, LASTM = 0, MIN_YM = 0;
