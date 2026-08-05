@@ -1705,7 +1705,7 @@ async function boot() {
   // has saved. Both feed every engine exactly like the base data; the seed is
   // never written back to localStorage (see persistCitizenReports).
   let seed = [];
-  try { const sres = await fetch('./data/citizen_seed.json?v=1'); if (sres.ok) seed = await sres.json(); }
+  try { const sres = await fetch('./data/citizen_seed.json?v=9'); if (sres.ok) seed = await sres.json(); }
   catch (e) { /* seed is optional */ }
   // STEP 3 — merge SHARED citizen reports from the backend (so reports filed on
   // OTHER devices show up here) with this browser's LOCAL ones, de-duplicated by

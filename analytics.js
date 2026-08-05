@@ -453,7 +453,7 @@
     }
 
     let seed = [];
-    try { const sres = await fetch('./data/citizen_seed.json?v=1'); if (sres.ok) seed = await sres.json(); } catch (e) { /* optional */ }
+    try { const sres = await fetch('./data/citizen_seed.json?v=9'); if (sres.ok) seed = await sres.json(); } catch (e) { /* optional */ }
     DATA = data.concat(loadSeed(seed)).concat(loadCitizen());   // base + shipped seed + this browser's reports
     precompute();
     AGG = computeAgg();
