@@ -41,11 +41,21 @@ cross-device notification bug. Region: Singapore. Health check: `/health`.
 records, anchored to 15+ real Chennai junctions (Kathipara, Guindy, Adyar,
 Koyambedu, Anna Salai, Velachery, Tambaram, Porur, Vandalur, Poonamallee,
 Saidapet, Teynampet, Padi, and more), covering Jul 2024–Jun 2026. Seeded
-(`random.seed(42)`) for reproducibility. Realistic correlations baked in:
-over-speeding is the top cause; two-wheelers ~40% of vehicles involved;
-hit-and-runs skew night; potholes skew rain/fog; lorries skew fatal; night
-and rain increase severity. This dataset is served as a **static file** —
-the backend never reads or queries it.
+(`random.seed(42)`) for reproducibility. Actual count is **10,169** across 30
+areas; severity split 637 fatal (6.3%) / 3,256 serious (32.0%) / 6,276 slight
+(61.7%). Correlations genuinely present: over-speeding is the top cause;
+two-wheelers ~40% of vehicles involved.
+
+⚠️ **"night and rain increase severity" is FALSE.** It was documented here but
+never implemented. Measured directly from the shipped data during the production
+audit: fatal share is 6.2% night vs 6.3% day, 6.5% rain vs 6.2% clear, 5.9% fog
+— *below* baseline. The generator fixes each area's severity mix BEFORE drawing
+time and weather, so the two are independent by construction. **Do not repeat
+this claim to judges** — it is checkable in one line of JS.
+
+This dataset is served as a **static file** — the backend never reads or queries
+it. Coordinates are road-snapped by `scripts/snap_to_roads.py`; the
+`*.backup.json` files are the genuine pre-snap inputs, not stale copies.
 
 **Database** — MongoDB Atlas. The **only** live, stateful store — used
 exclusively for citizen-submitted reports (collections: `accidents_db` /
@@ -189,6 +199,44 @@ the design language above.
 **Still outstanding:** browser geolocation in the Report tab, the full
 C.R.A.S.H Bot build-out, a judge Q&A cheat-sheet, a presentation deck and
 3-speaker script, and a GitHub `v1.0.0` release tag.
+
+### Production audit (branch `hardening/production-audit`)
+
+A full security/correctness/reliability audit ran across the whole repo.
+Eight parallel subagents produced 326 raw findings, deduplicated to 260.
+See `audit/` — `00-baseline.md`, `01-findings.md`, `02-plan.md`,
+`03-deferred.md`, `04-summary.md`.
+
+**The project now has tests, and they are the gate.** There was no test
+suite, no linter and no CI before this. Now:
+
+```
+npm test          # 83 JS (node:test) + 255 pytest
+npm run lint      # ruff (zero findings) + parse-check on all 12 JS files
+```
+
+Run all four before committing. No new runtime dependencies were added:
+the JS suite uses Node's built-in runner, so `package.json` still has
+zero dependencies.
+
+**Things that changed that you must not undo:**
+- `CU.escapeHtml` is **mandatory** on any record-derived value reaching
+  `innerHTML` or a Leaflet popup/tooltip. Citizen reports are
+  attacker-controlled. `tests/js/xss-sinks.test.js` enforces this.
+- Never index `SEV[...]` with a severity string — use `C.isSeverity()` /
+  `C.sevOf()`. A bare lookup resolves `Object.prototype` members, and
+  `severity:"toString"` poisoned the ranking engine.
+- `clearTimeout` for a fetch abort belongs in `finally` (or a trailing
+  `.then`), never in the headers callback — otherwise a stalled body
+  never aborts.
+- The backend serves an **allowlist** of site files, not the repo root.
+  Adding a new asset type means updating `SITE_DIRS` / `ROOT_EXTENSIONS`
+  in `backend/main.py`.
+- `backend/requirements.txt` is fully pinned. Upgrade deliberately.
+
+**Known liability, kept by decision:** `/health` pings MongoDB and is
+Render's `healthCheckPath`, so an Atlas outage takes the whole site down.
+If a demo goes dark, check Atlas first. See `audit/03-deferred.md`.
 
 **Keep this file up to date** — when something durable changes (a
 feature ships, a rule changes), edit this file and commit it. A stale

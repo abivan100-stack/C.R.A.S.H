@@ -96,16 +96,23 @@ git clone https://github.com/abivan100-stack/C.R.A.S.H.git
 cd C.R.A.S.H
 
 # Create and activate a Python virtual environment
-python3 -m venv venv
-source venv/bin/activate
+python -m venv .venv
+source .venv/Scripts/activate      # Windows (Git Bash)
+# source .venv/bin/activate        # macOS / Linux
 
-# Install backend dependencies
+# Install backend dependencies (exact pinned versions)
 pip install -r backend/requirements.txt
+
+# Test-only tooling, not needed to run the app
+pip install pytest httpx ruff mongomock
 
 # Configure environment variables (optional for basic map + analytics)
 cp backend/.env.example backend/.env
 # Edit backend/.env with your MONGODB_URI and ANTHROPIC_API_KEY
 ```
+
+`backend/requirements.txt` is **fully pinned**. Upgrade deliberately —
+`pip install -U <package>`, run the suite, then commit the new pin on its own.
 
 ### Run locally
 
@@ -115,6 +122,34 @@ npm start
 
 This starts Uvicorn with hot reload at `http://localhost:8000`. The backend
 serves both the API and the static frontend on a single origin.
+
+The app runs with **no environment variables at all** — the map, analytics,
+comparison and simulation need none of them. Only citizen reports (MongoDB) and
+the AI bot (Anthropic) require configuration, and both degrade cleanly when it
+is absent.
+
+### Test, lint and verify
+
+There is no build step. These four commands are the whole gate, and all four
+must be green before anything is committed:
+
+```bash
+npm test            # both suites
+npm run test:js     # Node's built-in runner — 83 tests, zero dependencies
+npm run test:py     # pytest — 255 tests, no network calls (mongomock + stubs)
+npm run lint        # ruff + a parse check on all 12 JS files
+```
+
+`npm run test:py` and `npm run lint:py` call `python`, so activate the venv
+first (or they will find the system interpreter).
+
+The JS suite runs on Node's built-in `node:test` — no jest, no vitest, no npm
+dependencies at all, which is why `package.json` still has none. The shared
+modules are IIFEs over `typeof window !== 'undefined' ? window : this`, so they
+`require()` unchanged under CommonJS.
+
+No test contacts a real service: MongoDB is `mongomock`, Anthropic is stubbed,
+and the fetch tests stand up a local HTTP server on an ephemeral port.
 
 ### Pages
 
@@ -128,13 +163,48 @@ serves both the API and the static frontend on a single origin.
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `MONGODB_URI` | For reports | MongoDB Atlas connection string |
-| `ANTHROPIC_API_KEY` | For AI bot | Anthropic API key for C.R.A.S.H Bot |
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `MONGODB_URI` | For reports | — | MongoDB Atlas connection string. A malformed value disables citizen reports only; the rest of the site still serves. |
+| `ANTHROPIC_API_KEY` | For AI bot | — | Anthropic API key for `/ask`. Absent → the bot returns 503 and the UI says it is unavailable. |
+| `CORS_ALLOW_ORIGINS` | No | *(empty)* | Comma-separated extra origins. Empty means same-origin only, which is correct for the normal single-service deployment. |
+| `ASK_RATE_LIMIT` | No | `20` | Max `/ask` requests per IP per window. |
+| `ASK_RATE_WINDOW_SECONDS` | No | `60` | The rate-limit window. |
+| `ASK_TIMEOUT_SECONDS` | No | `25` | Anthropic request timeout. Keep it at or below the frontend's 30s abort. |
+| `LOG_LEVEL` | No | `INFO` | Standard Python logging level. |
 
-Both are set in `backend/.env` for local development and in the Render service
-environment for production.
+Secrets are set in `backend/.env` for local development (gitignored) and in the
+Render service environment for production. **Never commit a real value** — the
+only tracked env file is `backend/.env.example`.
+
+### Runbook — operating the deployed service
+
+**Logs.** Every request gets an ID, returned as `X-Request-ID` and included in
+error responses as `(request abc123def456)`. To investigate a user report, take
+that ID and grep the Render logs for `[req=abc123def456]` — the full cause and
+traceback are there. Client-facing messages are deliberately generic; the Mongo
+URI and API key are never logged.
+
+**Known operational liability.** `render.yaml` uses `/health` as its
+`healthCheckPath`, and `/health` pings MongoDB. If Atlas is down or the free-tier
+database is paused, Render marks the whole service unhealthy and the entire site
+goes dark — including the map and analytics, which need no database. This was
+reviewed and deliberately kept; see `audit/03-deferred.md`. **If a demo goes dark,
+check Atlas first.**
+
+**Cold starts.** The Render free plan spins down after ~15 minutes idle and takes
+30–60s to wake. Load the site a few minutes before any demo. The map itself
+paints from the static dataset and does not wait on the backend.
+
+**Rate limiting** on `/ask` is in-process and resets on restart, so it is a cost
+guard rather than a shared quota. `X-Forwarded-For` is trusted for client
+identity and is spoofable — acceptable for blunting accidental abuse, not for
+defending against a determined attacker.
+
+**The MapTiler key** in `maptiler.js` is public by design: the browser fetches
+tiles directly, so the key reaches every visitor whatever you do. Restrict it to
+your Render domain plus `localhost` in the MapTiler dashboard — that, not
+hiding it, is the control.
 
 ## API Endpoints
 
@@ -191,12 +261,28 @@ Env:     MONGODB_URI · ANTHROPIC_API_KEY · PYTHON_VERSION=3.12.7
 
 ## Dataset
 
-`data/accidents.json` contains ~10,000 synthetic accident records modelled on 15+
-real Chennai junctions (Kathipara, Guindy, Adyar, Koyambedu, Anna Salai,
-Velachery, and more). The dataset is seeded (`random.seed(42)`) for
-reproducibility and includes realistic correlations (over-speeding as top cause,
-two-wheelers ~40% of vehicles, night/rain increases severity). Not an official
-record.
+`data/accidents.json` contains **10,169** synthetic accident records across 30
+Chennai areas, modelled on real junctions (Kathipara, Guindy, Adyar, Koyambedu,
+Anna Salai, Velachery, and more), spanning **Jul 2024 – Jun 2026**. The dataset
+is seeded (`random.seed(42)`) for reproducibility. Not an official record.
+
+Severity split: **637 fatal (6.3%)**, **3,256 serious (32.0%)**, **6,276 slight
+(61.7%)**.
+
+Correlations that are genuinely present: over-speeding is the top cause, and
+two-wheelers are roughly 40% of vehicles involved.
+
+**Correction:** earlier documentation claimed "night and rain increase severity".
+That is **not** in the data, and the audit measured it directly — fatal share is
+6.2% at night vs 6.3% by day, 6.5% in rain vs 6.2% in clear, and 5.9% in fog,
+i.e. *below* baseline. The generator fixes each area's severity mix before it
+draws the time and weather, so the two are independent by construction. Don't
+repeat the old claim in a presentation; a judge can check it.
+
+Coordinates are snapped to the road network by `scripts/snap_to_roads.py`. The
+`*.backup.json` files are the genuine pre-snap inputs, not stale copies —
+re-running the generator alone would overwrite the snapped coordinates. See
+`audit/03-deferred.md`.
 
 ## License
 
