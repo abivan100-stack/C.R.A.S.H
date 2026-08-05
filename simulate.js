@@ -20,6 +20,10 @@
   if (!C) throw new Error('CRASH_CONSTANTS not loaded — load shared/constants.js first');
   var CU = window.CU;
   if (!CU) throw new Error('CRASH_UTILS not loaded — load shared/utils.js first');
+  /* HTML-escape — mandatory on record-derived values reaching innerHTML or a
+     Leaflet popup. Leaflet's marker `title` option is set as a DOM property, so
+     it is not an HTML sink and is deliberately left alone. */
+  var esc = CU.escapeHtml;
   var SEV_COLOR = C.SEV.fatal ? { fatal: C.SEV.fatal.color, serious: C.SEV.serious.color, slight: C.SEV.slight.color } : { fatal: '#BE2F2A', serious: '#CE8A2E', slight: '#E7C64B' };
   var SEV_LABEL = C.SEV.fatal ? { fatal: C.SEV.fatal.label, serious: C.SEV.serious.label, slight: C.SEV.slight.label } : { fatal: 'Fatal', serious: 'Serious', slight: 'Slight' };
 
@@ -616,7 +620,7 @@
   }
   function rankPopup(rank, h) {
     return '<div class="acc-pop-sev" style="color:var(--accent); font-weight:600;">◆ Projected hotspot #' + rank + '</div>' +
-      '<div class="acc-pop-area">' + h.area + '</div>' +
+      '<div class="acc-pop-area">' + esc(h.area) + '</div>' +
       '<div class="acc-pop-row">' + h.count + ' projected incidents</div>' +
       '<div class="acc-pop-row">' + h.fatal + ' fatal · ' + h.serious + ' serious · ' + h.slight + ' slight</div>';
   }
@@ -761,7 +765,7 @@
       return '<button class="sim-row" type="button" data-lat="' + h.lat + '" data-lng="' + h.lng + '">' +
         '<span class="sim-row-rank">' + (i + 1) + '</span>' +
         '<span class="sim-row-main">' +
-          '<span class="sim-row-area">' + h.area + '</span>' +
+          '<span class="sim-row-area">' + esc(h.area) + '</span>' +
           '<span class="sim-mb">' +
             '<span style="width:' + f.toFixed(1) + '%;background:#BE2F2A"></span>' +
             '<span style="width:' + s.toFixed(1) + '%;background:#CE8A2E"></span>' +

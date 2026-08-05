@@ -56,6 +56,10 @@ const app = {
 
 /* ---- Small helpers ---- */
 const fmt = CU.fmt, hourOf = CU.hourOf, isNight = CU.isNight;
+/* HTML-escape. MANDATORY on every record-derived value that reaches innerHTML,
+   bindPopup or bindTooltip: citizen reports are attacker-controlled (anyone can
+   POST /report) and Leaflet binds popup/tooltip strings as HTML. */
+const esc = CU.escapeHtml;
 
 /* =============================================================================
    Segmented controls — render the design's filter chips
@@ -372,8 +376,8 @@ function pointTipHtml(a) {
   const sev = SEV[a.severity] || SEV.slight;
   return (
     '<div class="acc-pop-sev"><span class="acc-pop-dot" style="background:' + sev.color + ';"></span>' + sev.label + (a.citizen ? ' · citizen' : '') + '</div>' +
-    '<div class="acc-pop-row">' + a.area + '</div>' +
-    '<div class="acc-pop-row" style="color:var(--accent); font-weight:600;">' + a.vehicle + ' · ' + a.cause + '</div>'
+    '<div class="acc-pop-row">' + esc(a.area) + '</div>' +
+    '<div class="acc-pop-row" style="color:var(--accent); font-weight:600;">' + esc(a.vehicle) + ' · ' + esc(a.cause) + '</div>'
   );
 }
 
@@ -413,10 +417,10 @@ function popupHtml(a) {
     '<div class="acc-pop-sev"><span class="acc-pop-dot" style="background:' + sev.color + '"></span>' +
       sev.label + '</div>' +
     (a.citizen ? '<div class="acc-pop-row" style="color:var(--accent); font-weight:600;">◎ Citizen report</div>' : '') +
-    '<div class="acc-pop-row">' + a.datetime + '</div>' +
-    '<div class="acc-pop-row">' + a.vehicle + ' · ' + a.cause + '</div>' +
-    '<div class="acc-pop-row">Weather · ' + a.weather + '</div>' +
-    '<div class="acc-pop-area">' + a.area + '</div>'
+    '<div class="acc-pop-row">' + esc(a.datetime) + '</div>' +
+    '<div class="acc-pop-row">' + esc(a.vehicle) + ' · ' + esc(a.cause) + '</div>' +
+    '<div class="acc-pop-row">Weather · ' + esc(a.weather) + '</div>' +
+    '<div class="acc-pop-area">' + esc(a.area) + '</div>'
   );
 }
 
@@ -646,7 +650,7 @@ function renderRail() {
     btn.innerHTML =
       '<span style="font:500 13px \'IBM Plex Mono\',monospace; color:' + rankColor + '; padding-top:1px; font-variant-numeric:tabular-nums;">' + String(h.rank).padStart(2, '0') + '</span>' +
       '<span style="min-width:0;">' +
-        '<span style="display:block; font:500 13px \'Roboto\',sans-serif; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + (rising ? '<span style="color:var(--accent); font-size:10px;" title="Emerging — recent incident rate rising">▲ </span>' : '') + h.area + '</span>' +
+        '<span style="display:block; font:500 13px \'Roboto\',sans-serif; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + (rising ? '<span style="color:var(--accent); font-size:10px;" title="Emerging — recent incident rate rising">▲ </span>' : '') + esc(h.area) + '</span>' +
         '<span style="display:block; font:400 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:0.02em;">' + h.lat.toFixed(4) + '°N · ' + h.lng.toFixed(4) + '°E</span>' +
       '</span>' +
       '<span style="text-align:right;">' +
@@ -699,7 +703,7 @@ function hotspotTipHtml(h) {
   if (h.serious) parts.push(h.serious + ' serious');
   if (h.slight) parts.push(h.slight + ' slight');
   return (
-    '<div class="acc-pop-sev"><span class="acc-pop-dot" style="background:' + sev.color + ';"></span>' + (h.area || 'Junction') + '</div>' +
+    '<div class="acc-pop-sev"><span class="acc-pop-dot" style="background:' + sev.color + ';"></span>' + esc(h.area || 'Junction') + '</div>' +
     '<div class="acc-pop-row">Rank ' + h.rank + ' · risk ' + h.score + ' · ' + fmt(h.count) + ' incidents</div>' +
     '<div class="acc-pop-row" style="color:var(--accent); font-weight:600;">' + (parts.join(' · ') || fmt(h.count) + ' recorded') + '</div>'
   );
@@ -1000,13 +1004,13 @@ function hospitalPopupHtml(h) {
   if (sel) {
     const km = haversineKm(sel.lat, sel.lng, h.dlat, h.dlng);
     dist = '<div class="acc-pop-row" style="color:var(--accent); font-weight:600;">' +
-      km.toFixed(1) + ' km from ' + (sel.area || 'the selected zone') + ' · straight-line</div>';
+      km.toFixed(1) + ' km from ' + esc(sel.area || 'the selected zone') + ' · straight-line</div>';
   } else {
     dist = '<div class="acc-pop-row" style="color:var(--text-3);">Select an accident zone to measure distance</div>';
   }
   return (
-    '<div class="acc-pop-sev"><span class="hosp-pop-dot"></span>' + h.name + '</div>' +
-    '<div class="acc-pop-row">' + h.type + ' hospital · ' + h.area + '</div>' +
+    '<div class="acc-pop-sev"><span class="hosp-pop-dot"></span>' + esc(h.name) + '</div>' +
+    '<div class="acc-pop-row">' + esc(h.type) + ' hospital · ' + esc(h.area) + '</div>' +
     dist
   );
 }
@@ -1064,7 +1068,7 @@ function renderMarkedDistance() {
   el.innerHTML =
     '<div style="display:flex; align-items:center; gap:8px; margin-top:9px;">' +
       '<span class="hosp-line-swatch marked"></span>' +
-      '<span style="font:400 12px \'Roboto\',sans-serif; color:var(--text); line-height:1.4;">Distance from this zone to <b style="font-weight:600;">' + m.name + '</b>: <span class="hosp-km">' + km.toFixed(1) + ' km</span></span>' +
+      '<span style="font:400 12px \'Roboto\',sans-serif; color:var(--text); line-height:1.4;">Distance from this zone to <b style="font-weight:600;">' + esc(m.name) + '</b>: <span class="hosp-km">' + km.toFixed(1) + ' km</span></span>' +
     '</div>';
 }
 
@@ -1123,7 +1127,7 @@ function rankedBars(recs, field, topN, color) {
   return sorted.map(([label, n]) =>
     '<div style="padding:5px 18px;">' +
       '<div style="display:flex; justify-content:space-between; gap:10px; align-items:baseline;">' +
-        '<span style="font:400 11.5px \'Roboto\',sans-serif; color:var(--text); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + label + '</span>' +
+        '<span style="font:400 11.5px \'Roboto\',sans-serif; color:var(--text); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(label) + '</span>' +
         '<span style="flex:none; font:500 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); font-variant-numeric:tabular-nums;">' + fmt(n) + ' · ' + Math.round((n / total) * 100) + '%</span>' +
       '</div>' +
       '<div style="margin-top:4px; height:4px; background:var(--track); border-radius:2px; overflow:hidden;">' +
@@ -1206,10 +1210,10 @@ function renderStrategy() {
   const queueRows = queue.map((r, i) =>
     '<button data-pq="' + r.id + '" type="button" style="display:block; width:100%; text-align:left; border:none; border-bottom:1px solid var(--border-soft); background:transparent; cursor:pointer; padding:11px 18px 13px; color:var(--text); font-family:\'Roboto\',sans-serif;">' +
       '<div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px;">' +
-        '<span style="font:500 13px \'Newsreader\',sans-serif; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><span style="color:var(--text-2); font:500 11px \'IBM Plex Mono\',monospace;">' + pad2(i + 1) + '</span> ' + r.area + '</span>' +
+        '<span style="font:500 13px \'Newsreader\',sans-serif; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><span style="color:var(--text-2); font:500 11px \'IBM Plex Mono\',monospace;">' + pad2(i + 1) + '</span> ' + esc(r.area) + '</span>' +
         '<span style="flex:none; font:600 13px \'Newsreader\',sans-serif; color:var(--accent); font-variant-numeric:tabular-nums;">≈ ' + fmt(r.prevent) + '</span>' +
       '</div>' +
-      '<div style="font:400 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + r.domCause + ' → ' + r.iv.fix + '</div>' +
+      '<div style="font:400 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(r.domCause) + ' → ' + esc(r.iv.fix) + '</div>' +
       '<div style="display:flex; align-items:center; gap:7px; margin-top:7px;">' +
         '<span style="font:500 8.5px \'IBM Plex Mono\',monospace; letter-spacing:0.08em; color:var(--text-3); text-transform:uppercase;">Cost</span>' + costMeter(r.iv.cost) +
         '<span style="font:400 9.5px \'IBM Plex Mono\',monospace; color:var(--text-2);">' + r.iv.cost + '</span>' +
@@ -1302,7 +1306,7 @@ function renderEmerging() {
         '<button data-emerge="' + e.id + '" type="button" style="display:block; width:100%; text-align:left; border:none; border-bottom:1px solid var(--border-soft); background:transparent; cursor:pointer; padding:14px 18px 16px; color:var(--text); font-family:\'Roboto\',sans-serif;">' +
           '<div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px;">' +
             '<span style="font:500 14.5px \'Newsreader\',sans-serif; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' +
-              '<span style="color:var(--text-2); font:500 12px \'IBM Plex Mono\',monospace;">' + pad2(i + 1) + '</span> ' + e.area +
+              '<span style="color:var(--text-2); font:500 12px \'IBM Plex Mono\',monospace;">' + pad2(i + 1) + '</span> ' + esc(e.area) +
             '</span>' +
             '<span style="flex:none; font:600 12.5px \'IBM Plex Mono\',monospace; color:var(--accent); font-variant-numeric:tabular-nums;">▲ ' + e.pctIncrease + '%</span>' +
           '</div>' +
@@ -1351,11 +1355,11 @@ function dossierHeaderHtml(h) {
         '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><line x1="1" y1="1" x2="9" y2="9" style="stroke:currentColor; stroke-width:1.3;"></line><line x1="9" y1="1" x2="1" y2="9" style="stroke:currentColor; stroke-width:1.3;"></line></svg>' +
       '</button>' +
     '</div>' +
-    '<div style="font:500 19px \'Newsreader\',sans-serif; line-height:1.2; margin-top:4px;">' + h.area + '</div>' +
+    '<div style="font:500 19px \'Newsreader\',sans-serif; line-height:1.2; margin-top:4px;">' + esc(h.area) + '</div>' +
     '<div style="font:400 11.5px \'Roboto\',sans-serif; color:var(--text-2); margin-top:3px;">' + SEV[h.dominant].label + '-dominant risk cell · 250 m</div>' +
     '<div style="font:400 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:7px; letter-spacing:0.04em;">' + h.lat.toFixed(4) + '° N · ' + h.lng.toFixed(4) + '° E</div>' +
     '<div style="display:flex; align-items:center; gap:16px; margin-top:11px; flex-wrap:wrap;">' +
-      '<a href="./compare.html?a=' + encodeURIComponent(h.area) + '" title="Compare ' + h.area + ' with another area" style="display:inline-flex; align-items:center; gap:6px; font:500 10.5px \'IBM Plex Mono\',monospace; letter-spacing:0.04em; color:var(--accent); text-decoration:none;">' +
+      '<a href="./compare.html?a=' + encodeURIComponent(h.area) + '" title="Compare ' + esc(h.area) + ' with another area" style="display:inline-flex; align-items:center; gap:6px; font:500 10.5px \'IBM Plex Mono\',monospace; letter-spacing:0.04em; color:var(--accent); text-decoration:none;">' +
         '<svg width="12" height="12" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 6h9l-2.5-2.5M14 12H5l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
         'Compare this area</a>' +
       '<button data-zonepdf type="button" title="Download this zone as a PDF report" style="display:inline-flex; align-items:center; gap:6px; background:transparent; border:none; padding:0; cursor:pointer; font:500 10.5px \'IBM Plex Mono\',monospace; letter-spacing:0.04em; color:var(--accent);">' +
@@ -1552,7 +1556,7 @@ function renderDossier() {
   const nh = nearestHospitalTo(h.lat, h.lng);
   const hospList = app.hospitals || placeHospitals(app.raw);
   const hospOptions = hospList.map((hp, i) =>
-    '<option value="' + i + '"' + (app.markedHospital && app.markedHospital.name === hp.name ? ' selected' : '') + '>' + hp.name + '</option>'
+    '<option value="' + i + '"' + (app.markedHospital && app.markedHospital.name === hp.name ? ' selected' : '') + '>' + esc(hp.name) + '</option>'
   ).join('');
   const hospitalBlock = nh ?
     '<div style="margin-top:14px; border-top:1px solid var(--track); padding:14px 18px 0;">' +

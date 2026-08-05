@@ -34,6 +34,9 @@
   let MONTHS = 0, LASTM = 0, MIN_YM = 0;
 
   const fmt = CU.fmt, sortedEntries = CU.sortedEntries;
+  /* HTML-escape — mandatory on record-derived values reaching innerHTML.
+     Chart.js labels and tooltips render to canvas and do not need it. */
+  const esc = CU.escapeHtml;
   function ymLabel(monthIndex) { const ym = MIN_YM + monthIndex; return MON[ym % 12] + " '" + String(Math.floor(ym / 12)).slice(2); }
   // Calendar-complete months only: drop a trailing partial month (e.g. the current
   // month, which live citizen reports can add) so the monthly charts don't cliff to ~0.
@@ -389,8 +392,8 @@
       cards.innerHTML = A.queue.map((r, i) =>
         '<div class="pqcard">' +
           '<div class="rank">PRIORITY ' + String(i + 1).padStart(2, '0') + '</div>' +
-          '<div class="area">' + r.area + '</div>' +
-          '<div class="fix">' + r.dom + ' → ' + r.iv.fix + '.</div>' +
+          '<div class="area">' + esc(r.area) + '</div>' +
+          '<div class="fix">' + esc(r.dom) + ' → ' + esc(r.iv.fix) + '.</div>' +
           '<div class="row">' +
             '<span class="prevent">≈ ' + fmt(r.prevent) + ' <small>severe preventable</small></span>' +
           '</div>' +

@@ -35,6 +35,10 @@
   var CE = window.CE;
   if (!CE) throw new Error('CRASH_ENGINE not loaded — load shared/engine.js first');
   const fmt = CU.fmt, sortedEntries = CU.sortedEntries;
+  /* HTML-escape — mandatory on record-derived values reaching innerHTML.
+     Chart.js labels/tooltips render to canvas and do not need it; neither does
+     anything assigned via textContent. */
+  const esc = CU.escapeHtml;
   /* compare-only number formats — not in CU (CU.pct takes value/total, a different shape) */
   const pct0 = (x) => Math.round(x) + '%';
   const pct1 = (x) => (Math.round(x * 10) / 10) + '%';
@@ -265,7 +269,7 @@
     const hi = A.normScore >= B.normScore ? A : B, lo = A.normScore >= B.normScore ? B : A;
     const hiC = hi === A ? 'var(--cmpA)' : 'var(--cmpB)', loC = lo === A ? 'var(--cmpA)' : 'var(--cmpB)';
     const ratio = lo.normScore > 0 ? hi.normScore / lo.normScore : 1;
-    const name = (s, c) => '<b style="color:' + c + '">' + s.area + '</b>';
+    const name = (s, c) => '<b style="color:' + c + '">' + esc(s.area) + '</b>';
     if (ratio < 1.1) {
       head.innerHTML = name(A, 'var(--cmpA)') + ' and ' + name(B, 'var(--cmpB)') + ' carry <b>comparable</b> overall risk (index ' + A.normScore + ' vs ' + B.normScore + ').';
     } else {
@@ -282,9 +286,9 @@
   function renderInterventions(A, B) {
     const card = (s, cls) =>
       '<div class="ivcard ' + cls + '">' +
-        '<div class="an">' + s.area + '</div>' +
-        '<div class="cause">Dominant cause · ' + s.domCause + '</div>' +
-        '<div class="fix">' + s.iv.fix + '.</div>' +
+        '<div class="an">' + esc(s.area) + '</div>' +
+        '<div class="cause">Dominant cause · ' + esc(s.domCause) + '</div>' +
+        '<div class="fix">' + esc(s.iv.fix) + '.</div>' +
         '<div class="row"><span class="prevent">≈ ' + fmt(s.preventable) + ' <small>severe preventable · 24 mo</small></span></div>' +
         '<div class="row" style="justify-content:space-between;">' +
           '<span style="display:flex; align-items:center; gap:6px;"><span class="tag2">Cost</span>' + costMeter(s.iv.cost) + '<span class="tag2" style="color:var(--text);">' + s.iv.cost + '</span></span>' +
@@ -305,11 +309,11 @@
     function draw(filter) {
       const q = (filter || '').trim().toLowerCase();
       opts = ORDER.filter((n) => n.toLowerCase().includes(q));
-      if (!opts.length) { list.innerHTML = '<div class="combo-empty">No area matches “' + filter + '”.</div>'; return; }
+      if (!opts.length) { list.innerHTML = '<div class="combo-empty">No area matches “' + esc(filter) + '”.</div>'; return; }
       const cur = state[side];
       list.innerHTML = opts.map((n, i) =>
         '<div class="combo-opt' + (n === cur ? ' chosen' : '') + (i === active ? ' active' : '') + '" data-i="' + i + '">' +
-          '<span>' + n + '</span><span class="cnt">' + fmt(STATS[n].total) + ' · #' + STATS[n].rank + '</span>' +
+          '<span>' + esc(n) + '</span><span class="cnt">' + fmt(STATS[n].total) + ' · #' + STATS[n].rank + '</span>' +
         '</div>'
       ).join('');
       list.querySelectorAll('.combo-opt').forEach((el) => {
