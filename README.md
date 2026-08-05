@@ -47,7 +47,7 @@ AI data assistant.
 |---|---|
 | Server | FastAPI + Uvicorn (Python 3.12.7) |
 | Database | MongoDB Atlas (citizen reports only) |
-| AI | Anthropic API (Claude Sonnet 4) |
+| AI | Anthropic API (`claude-sonnet-4-6`) |
 | Validation | Pydantic |
 | Excel export | Standard library only (zipfile, xml.sax.saxutils) |
 
@@ -84,9 +84,9 @@ the top 10. No server dependency for the core map path.
 
 ### Prerequisites
 - Python 3.12+
-- MongoDB Atlas URI (optional — app runs without it; citizen reports and
-  AI features require it)
-- Anthropic API key (optional — required for C.R.A.S.H Bot)
+- MongoDB Atlas URI (optional — app runs without it; required only for
+  citizen reports)
+- Anthropic API key (optional — required only for C.R.A.S.H Bot)
 
 ### Setup
 
