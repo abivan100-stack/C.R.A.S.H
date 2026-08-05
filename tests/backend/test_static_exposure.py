@@ -112,6 +112,11 @@ def test_directory_listings_are_not_served(client):
         "/vendor/chart.umd.js", "/vendor/leaflet-heat.js",
         "/vendor/jspdf.umd.min.js", "/vendor/jspdf.plugin.autotable.min.js",
         "/data/accidents.json", "/data/citizen_seed.json",
+        # Vendored Leaflet ships its own nested asset tree. This caught a real
+        # bug: the allowlist originally permitted only depth-2 paths, so
+        # vendoring Leaflet would have 404'd and shipped a broken map.
+        "/vendor/leaflet/leaflet.js", "/vendor/leaflet/leaflet.css",
+        "/vendor/leaflet/images/marker-icon.png", "/vendor/leaflet/images/layers.png",
     ],
 )
 def test_every_asset_the_site_actually_loads_is_still_served(client, path):
@@ -137,6 +142,31 @@ def test_api_routes_still_win_over_the_catch_all(client):
     assert client.get("/health").status_code == 503          # reached the API, not a 404 file miss
     assert client.post("/report", json={}).status_code == 422
     assert client.post("/ask", json={"question": ""}).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/vendor/../backend/.env.example",
+        "/vendor/leaflet/../../backend/main.py",
+        "/shared/../.git/config",
+        "/vendor/.hidden/secret.js",
+        "/vendor/leaflet/../../../etc/passwd",
+        "/shared/deep/nested/secret.py",
+        "/vendor/x.py",
+        "/vendor/leaflet/images/../../../backend/main.py",
+    ],
+)
+def test_nesting_inside_asset_directories_cannot_be_used_to_escape(client, path):
+    """Allowing nested paths under vendor/ must not weaken the traversal guards."""
+    assert client.get(path).status_code == 404
+
+
+def test_no_page_loads_leaflet_from_a_cdn(client):
+    """A CDN or venue-wifi hiccup must not be able to kill every map (F027)."""
+    for page in ("/index.html", "/landing.html", "/dashboard.html"):
+        body = client.get(page).text
+        assert "unpkg.com" not in body, f"{page} still loads Leaflet from unpkg"
 
 
 def test_unknown_paths_404_cleanly(client):

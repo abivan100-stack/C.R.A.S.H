@@ -875,9 +875,12 @@ def home():
 SITE_ROOT = Path(FRONTEND_DIR).resolve()
 
 # Sub-directories the site may serve from, and what is allowed inside each.
+# Nesting is permitted WITHIN these directories (vendor/leaflet/images/*.png),
+# because a vendored library ships its own asset tree. The extension allowlist
+# and the dotfile/traversal rules below still apply at every level.
 SITE_DIRS = {
     "shared": {".js"},
-    "vendor": {".js", ".css", ".map"},
+    "vendor": {".js", ".css", ".map", ".png", ".svg", ".gif", ".webp"},
 }
 # data/ is listed by exact filename: the *.backup.json files next to these are
 # pre-snap working copies that nothing fetches and that need not be public.
@@ -912,8 +915,11 @@ def _resolve_site_file(rel_path: str) -> Path | None:
     elif len(parts) == 2 and parts[0] == "data":
         if parts[1] not in DATA_FILES:
             return None
-    elif len(parts) == 2 and parts[0] in SITE_DIRS:
-        if Path(parts[1]).suffix.lower() not in SITE_DIRS[parts[0]]:
+    elif parts[0] in SITE_DIRS:
+        # Any depth inside shared/ or vendor/, provided the final component has an
+        # allowed extension — a vendored library ships its own asset tree
+        # (vendor/leaflet/images/marker-icon.png).
+        if Path(parts[-1]).suffix.lower() not in SITE_DIRS[parts[0]]:
             return None
     else:
         return None
