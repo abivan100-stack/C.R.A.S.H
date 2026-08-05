@@ -14,7 +14,9 @@
     across the 24 months shifts — so the volume-ranked top-10 is unaffected.
   * Deterministic (seeded).
 """
-import json, math, random
+import json
+import math
+import random
 from datetime import date, timedelta
 
 random.seed(131313)
@@ -191,6 +193,7 @@ with open("accidents.json", "w") as fp:
 
 # ---- verification: totals + emerging (recent 6 mo vs prior 18 mo) ----
 from collections import Counter, defaultdict
+
 print("total:", len(records), "| areas:", len(AREAS), "| COUNT_SCALE:", COUNT_SCALE)
 print("causes:", len(set(r["cause"] for r in records)), "min:", Counter(r["cause"] for r in records).most_common()[-1])
 print("top cause:", Counter(r["cause"] for r in records).most_common(1)[0], "| top vehicle:", Counter(r["vehicle"] for r in records).most_common(1)[0])

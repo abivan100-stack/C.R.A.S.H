@@ -21,9 +21,13 @@ Design (deterministic + idempotent):
 
 Run:  python snap_to_roads.py   (network needed only on the first run, to fetch the graph)
 """
-import json, os, shutil, statistics
+import json
+import os
+import shutil
+import statistics
+
 try:
-    import truststore                       # verify HTTPS via the OS trust store (Galent TLS proxy)
+    import truststore  # verify HTTPS via the OS trust store (Galent TLS proxy)
     truststore.inject_into_ssl()
 except Exception:
     pass
@@ -80,11 +84,11 @@ def load_original(name):
         shutil.copyfile(src, bak); print(f"  backed up {name} -> {os.path.basename(bak)}")
     else:
         print(f"  backup exists for {name} (snapping from it)")
-    with open(bak, "r", encoding="utf-8") as f:
+    with open(bak, encoding="utf-8") as f:
         return json.load(f)
 
 def is_compact(name):
-    with open(backup_path(name), "r", encoding="utf-8") as f:
+    with open(backup_path(name), encoding="utf-8") as f:
         return "\n" not in f.read(60)
 
 def load_graph(bbox):
@@ -161,7 +165,7 @@ def main():
 
     print("\nfarthest-moved (top 5, all files):")
     for d, name, _id, tr in sorted(examples, reverse=True)[:5]:
-        print(f"  {name:<18} id {str(_id):>5}  {d:7.1f} m  -> {tr}")
+        print(f"  {name:<18} id {_id!s:>5}  {d:7.1f} m  -> {tr}")
     print("==============================================")
     print("Wrote in place:", ", ".join(FILES))
 

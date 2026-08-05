@@ -17,7 +17,6 @@ import logging
 
 import pytest
 
-
 SECRET_URI = "mongodb://reportuser:sup3rs3cret@crash-prod.ab12cd3.mongodb.net:27017/?directConnection=true"
 
 

@@ -262,7 +262,12 @@ def _get_client():
         # A short server-selection timeout means the report routes fail fast
         # instead of hanging a worker for the driver's 30s default.
         _client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000, appname="crash-reports")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — deliberately broad; see below
+        # Broad on purpose. The entire point of this block is that NOTHING the
+        # driver raises while parsing a user-supplied URI may reach the import
+        # and take the whole site down (finding F008). Narrowing to PyMongoError
+        # would let a ValueError or TypeError from a malformed URI escape and
+        # reinstate exactly the bug this fixes.
         # Never log the URI itself — it carries the password.
         _client_error = exc
         log.error("MONGODB_URI could not be parsed; citizen reports are disabled: %s",
@@ -724,7 +729,7 @@ def _canon(value, valid_list):
 def _normalize_filters(raw):
     """Coerce the model's filter object into the safe 6-key shape (unknown values -> None)."""
     if not isinstance(raw, dict):
-        return {k: None for k in ("area", "severity", "timeOfDay", "weather", "cause", "vehicle")}
+        return dict.fromkeys(("area", "severity", "timeOfDay", "weather", "cause", "vehicle"))
 
     def _low(v):
         return v.strip().lower() if isinstance(v, str) else None
@@ -748,15 +753,19 @@ def _parse_ask_json(text):
         s = s.strip("`").strip()
         if s[:4].lower() == "json":
             s = s[4:].strip()
+    # Narrow, not blind: the only expected failure here is "the model did not
+    # return clean JSON", which is exactly what the fallback below handles. A
+    # blind catch would also have hidden a real bug in this function.
     try:
         return json.loads(s)
-    except Exception:
-        pass
+    except (json.JSONDecodeError, TypeError):
+        log.debug("model reply was not valid JSON; trying the outermost braces")
     start, end = s.find("{"), s.rfind("}")   # last-ditch: grab the outermost {...}
     if start != -1 and end > start:
         try:
             return json.loads(s[start:end + 1])
-        except Exception:
+        except (json.JSONDecodeError, TypeError):
+            log.debug("model reply could not be parsed as JSON at all")
             return None
     return None
 
@@ -784,17 +793,20 @@ def _get_anthropic():
     http_client = None
     try:
         import ssl
+
         import httpx
         import truststore
         ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         # An explicit transport timeout as well: without one httpx would wait
         # indefinitely to connect, holding a worker thread the whole time.
         http_client = httpx.Client(verify=ctx, timeout=httpx.Timeout(ASK_TIMEOUT_SECONDS, connect=10.0))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — optional transport, must never be fatal
         # truststore absent (e.g. prod with standard CAs) — fall back to the SDK
-        # default. Deliberate and safe, but logged: previously this swallowed the
-        # error silently, so a genuine TLS misconfiguration looked identical to
-        # "truststore simply isn't installed".
+        # default. Broad on purpose: this is an optional convenience for
+        # TLS-inspecting corporate proxies, and no failure to build it should
+        # stop the bot working. Deliberate and safe, but logged: previously this
+        # swallowed the error silently, so a genuine TLS misconfiguration looked
+        # identical to "truststore simply isn't installed".
         log.info("truststore transport unavailable, using the SDK default: %s", exc)
         http_client = None
     # An explicit timeout and retry budget. The SDK's default timeout is 10

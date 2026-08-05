@@ -12,7 +12,6 @@ import zipfile
 
 import pytest
 
-
 # --- Routing and the single-origin static host -------------------------------
 
 def test_home_serves_the_landing_page(client):
