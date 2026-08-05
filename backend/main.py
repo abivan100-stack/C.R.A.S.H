@@ -12,11 +12,14 @@ Security:
   * For local dev, python-dotenv loads a gitignored .env (see .env.example).
   * In production (Render) MONGODB_URI is set in the service's env settings.
 """
+import contextvars
 import datetime as _dt
 import io
 import json
+import logging
 import math
 import os
+import uuid
 import zipfile
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
@@ -74,6 +77,96 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))     # …/project/backend
 FRONTEND_DIR = os.path.dirname(BASE_DIR)                  # …/project (the site root)
 
 app = FastAPI(title="CRASH Citizen Reports API")
+
+# --- Logging and request correlation ------------------------------------------
+# The backend previously had NO logging at all, so every 500 was undiagnosable:
+# the only evidence was whatever text had been pasted into the HTTP response,
+# which is exactly the text that must NOT be sent to clients. Now the detail goes
+# to the log with a request ID, and the client gets that ID plus a generic
+# message — enough to correlate a user report with a log line, and nothing more.
+logging.basicConfig(
+    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)-8s [%(name)s] [req=%(request_id)s] %(message)s",
+)
+log = logging.getLogger("crash")
+
+_request_id: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
+
+
+class _RequestIdFilter(logging.Filter):
+    """Stamp every record with the current request's ID (or '-' outside a request)."""
+
+    def filter(self, record):
+        # Always overwrite. A conditional `if not hasattr(...)` let a stale filter
+        # left over from a previous module load win and write "-" forever.
+        record.request_id = _request_id.get()
+        return True
+
+
+def _install_request_id_filter(target):
+    """Attach the filter, replacing any instance left by an earlier module load.
+
+    `logging.getLogger("crash")` returns the SAME object every time this module is
+    imported, so filters accumulate. That matters in production, not just in
+    tests: `npm start` runs uvicorn with --reload, which re-imports on every save.
+    Each stale filter closes over the ContextVar from ITS load, so the old one
+    would run first and stamp "-", breaking log correlation after one edit.
+    """
+    target.filters = [f for f in target.filters if type(f).__name__ != "_RequestIdFilter"]
+    target.addFilter(_RequestIdFilter())
+
+
+# Attached to the LOGGER, not just a handler: a logger filter stamps the record
+# once, at creation, so every downstream handler sees the request ID — including
+# handlers added later (an aggregator sidecar, or pytest's capture handler).
+_install_request_id_filter(log)
+# The root formatter references %(request_id)s, so records logged by libraries
+# through the root logger need the attribute too.
+for _handler in logging.getLogger().handlers:
+    _install_request_id_filter(_handler)
+
+
+# NEVER log or return these. The Mongo URI embeds credentials and the API key is
+# a bearer secret; either one in a log line is a leak that outlives the process.
+def _safe_config_summary():
+    return {
+        "mongodb_configured": bool(MONGODB_URI),
+        "anthropic_configured": bool(os.environ.get("ANTHROPIC_API_KEY")),
+    }
+
+
+@app.middleware("http")
+async def request_context(request, call_next):
+    """Assign a request ID, echo it back, and log failures with it."""
+    incoming = request.headers.get("X-Request-ID", "")
+    # Only accept a caller-supplied ID if it looks like one — it lands in logs.
+    request_id = incoming if (incoming.isalnum() and len(incoming) <= 64) else uuid.uuid4().hex[:12]
+    token = _request_id.set(request_id)
+    try:
+        response = await call_next(request)
+    except Exception:
+        # Log the traceback here, where the request ID is still bound, then let
+        # the framework turn it into a 500.
+        log.exception("unhandled error on %s %s", request.method, request.url.path)
+        raise
+    finally:
+        _request_id.reset(token)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+def _fail(status_code, message, exc, context):
+    """Log the real cause, return a generic message plus the request ID.
+
+    Raw exception text used to be interpolated straight into `detail`. Verified:
+    GET /health on a misconfigured server returned the full Atlas hostname and a
+    ServerDescription topology dump to any anonymous caller.
+    """
+    log.error("%s: %s", context, exc, exc_info=True)
+    return HTTPException(
+        status_code=status_code,
+        detail=f"{message} (request {_request_id.get()})",
+    )
 
 # --- CORS ---------------------------------------------------------------------
 # STEP 1: allow any origin for local testing. In STEP 4 this is tightened to the
@@ -240,7 +333,7 @@ def health():
     try:
         _client.admin.command("ping")
     except Exception as exc:  # pymongo raises on unreachable / bad-credential URIs
-        raise HTTPException(status_code=503, detail=f"MongoDB unreachable: {exc}")
+        raise _fail(503, "Database is unreachable.", exc, "mongodb ping failed") from exc
     return {"status": "ok"}
 
 
@@ -251,7 +344,7 @@ def create_report(report: Report):
     try:
         result = collection.insert_one(report.model_dump())
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Insert failed: {exc}")
+        raise _fail(500, "Could not save the report.", exc, "report insert failed") from exc
     return {"status": "ok", "id": str(result.inserted_id)}
 
 
@@ -266,7 +359,7 @@ def list_reports():
     try:
         documents = list(collection.find())
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Query failed: {exc}")
+        raise _fail(500, "Could not load reports.", exc, "reports query failed") from exc
     for doc in documents:
         doc["_id"] = str(doc["_id"])
     return documents
@@ -442,7 +535,7 @@ def export_reports_xlsx():
     try:
         documents = list(collection.find())
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Query failed: {exc}")
+        raise _fail(500, "Could not load reports for export.", exc, "export query failed") from exc
 
     body, count = _build_xlsx(documents)
     return Response(
@@ -572,7 +665,7 @@ def _get_anthropic():
     try:
         from anthropic import Anthropic
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"anthropic SDK is not installed: {exc}")
+        raise _fail(503, "The AI assistant is unavailable.", exc, "anthropic SDK import failed") from exc
     # On a corporate TLS-inspecting proxy, Python's default certifi bundle can't verify
     # the re-signed certificate (CERTIFICATE_VERIFY_FAILED), so the AI call fails. Give
     # THIS client an httpx transport that verifies against the OS trust store (which
@@ -585,8 +678,13 @@ def _get_anthropic():
         import truststore
         ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         http_client = httpx.Client(verify=ctx)
-    except Exception:
-        http_client = None   # truststore absent (e.g. prod with standard CAs) — use SDK default
+    except Exception as exc:
+        # truststore absent (e.g. prod with standard CAs) — fall back to the SDK
+        # default. Deliberate and safe, but logged: previously this swallowed the
+        # error silently, so a genuine TLS misconfiguration looked identical to
+        # "truststore simply isn't installed".
+        log.info("truststore transport unavailable, using the SDK default: %s", exc)
+        http_client = None
     _anthropic_client = (
         Anthropic(api_key=ANTHROPIC_API_KEY, http_client=http_client)
         if http_client is not None else Anthropic(api_key=ANTHROPIC_API_KEY)
@@ -617,7 +715,7 @@ def ask(req: AskRequest):
         )
         text = "".join(getattr(b, "text", "") for b in msg.content if getattr(b, "type", None) == "text")
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"AI request failed: {exc}")
+        raise _fail(502, "The AI assistant could not answer that right now.", exc, "anthropic request failed") from exc
     parsed = _parse_ask_json(text)
     if isinstance(parsed, dict) and isinstance(parsed.get("answer"), str) and parsed["answer"].strip():
         return {"answer": parsed["answer"].strip(), "filters": _normalize_filters(parsed.get("filters"))}
