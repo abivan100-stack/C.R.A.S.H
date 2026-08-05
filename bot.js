@@ -21,6 +21,7 @@
 
   var botMap = null, botPointLayer = null, botTiles = null, botBounds = null, chatInited = false, busy = false;
   var botPointRenderer = null;   // one reused canvas renderer — see renderPoints
+  var botMapPending = false;     // a crash:ready retry is already queued
   var botBloomLayer = null, botEmergeLayer = null, botHospLayer = null, botHospOn = false;
 
   function app() { return window.CRASH_APP || null; }
@@ -235,7 +236,21 @@
   function initBotMap() {
     if (botMap) { botMap.invalidateSize(); return; }
     var el = document.getElementById('botMap');
-    if (!el || typeof L === 'undefined' || !app()) return;
+    // app() is the CRASH_APP bridge, published by app.js only once boot() has
+    // finished loading the dataset. Opening the Bot tab before then used to
+    // return here and NEVER retry, leaving the map permanently blank for the
+    // rest of the session. Wait for the ready event and build then.
+    if (!el || typeof L === 'undefined' || !app()) {
+      if (el && !botMapPending) {
+        botMapPending = true;
+        document.addEventListener('crash:ready', function onReady() {
+          document.removeEventListener('crash:ready', onReady);
+          botMapPending = false;
+          initBotMap();
+        });
+      }
+      return;
+    }
     var bb = (app().bbox && app().bbox()) || { latMin: 12.80, latMax: 13.22, lngMin: 80.03, lngMax: 80.32 };
     botBounds = L.latLngBounds([[bb.latMin, bb.lngMin], [bb.latMax, bb.lngMax]]);
     // hard limit to Chennai: the map can never pan or zoom out to the world

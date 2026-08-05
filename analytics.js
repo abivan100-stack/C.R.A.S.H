@@ -454,7 +454,14 @@
 
     let seed = [];
     try { const sres = await fetch('./data/citizen_seed.json?v=9'); if (sres.ok) seed = await sres.json(); } catch (e) { /* optional */ }
-    DATA = data.concat(loadSeed(seed)).concat(loadCitizen());   // base + shipped seed + this browser's reports
+
+    /* Shared citizen reports from the backend. Analytics used to read ONLY
+       localStorage, so its citizen totals disagreed with the Map tab on every
+       fresh load — the same dataset, two different numbers on two tabs of the
+       same app. Optional and time-boxed: if the backend is unreachable this
+       falls back to local reports exactly as before. */
+    const shared = await fetchSharedReports();
+    DATA = data.concat(loadSeed(seed)).concat(mergeReports(shared, loadCitizen()));
     precompute();
     AGG = computeAgg();
     buildAll();
@@ -489,6 +496,44 @@
     } catch (e) { return []; }
   }
   function loadSeed(arr) { return Array.isArray(arr) ? arr.filter(validReport) : []; }
+
+  /* Shared citizen reports from the backend, so this page counts the same
+     records the Map tab does. Returns [] on ANY failure — bad status, non-array,
+     network, timeout — so analytics never depends on the backend being up. */
+  async function fetchSharedReports() {
+    if (typeof fetch !== 'function') return [];
+    const API = (typeof window !== 'undefined' && window.API_BASE) || '';
+    const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : 0;
+    try {
+      const res = await fetch(API + '/reports', ctrl ? { signal: ctrl.signal } : undefined);
+      if (!res.ok) return [];
+      const arr = await res.json();
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(validReport).map((r) => ({
+        lat: r.lat, lng: r.lng, severity: r.severity, datetime: r.datetime,
+        weather: r.weather, cause: r.cause, vehicle: r.vehicle, area: r.area,
+        citizen: true, shared: true,
+      }));
+    } catch (e) {
+      return [];
+    } finally {
+      // Cleared here, after the body is read — see the F004 fetch-timeout fix.
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  /* De-duplicate shared against local by content signature, matching app.js's
+     mergeCitizenReports so both tabs count a given report exactly once. */
+  function mergeReports(shared, local) {
+    const seen = Object.create(null), out = [];
+    const sig = (r) => [Number(r.lat).toFixed(5), Number(r.lng).toFixed(5), r.severity,
+      r.datetime, r.weather, r.cause, r.vehicle, r.area].join('|');
+    const add = (r) => { const s = sig(r); if (!seen[s]) { seen[s] = true; out.push(r); } };
+    (shared || []).forEach(add);
+    (local || []).forEach(add);
+    return out;
+  }
 
   /* the shell calls this after a new citizen report is added, with the live
      dataset (app.raw), so the heatmap + KPI stats update immediately */
