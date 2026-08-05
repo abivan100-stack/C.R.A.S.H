@@ -18,6 +18,7 @@ import json
 import math
 import os
 import zipfile
+from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
 from dotenv import load_dotenv
@@ -25,7 +26,6 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pymongo import MongoClient
 
@@ -596,21 +596,88 @@ def ask(req: AskRequest):
 # one URL (http://localhost:8000/) — no separate frontend port, no cross-origin hop.
 # The API routes above are matched first; every other path falls through to a file.
 
-# Safety: never expose the backend folder (it holds .env) over HTTP. This 404s any
-# request under /backend/ and is registered before the catch-all mount below.
-@app.get("/backend/{rest:path}", include_in_schema=False)
-def _block_backend(rest: str):
-    raise HTTPException(status_code=404, detail="Not Found")
-
-
-# The site HOME ("/") is the marketing landing page. Registered BEFORE the static
-# mount so it wins over StaticFiles' html=True (which would otherwise serve
-# index.html at "/"). index.html — the live app — stays reachable at /index.html.
+# The site HOME ("/") is the marketing landing page. index.html — the live app —
+# stays reachable at /index.html.
 @app.get("/", include_in_schema=False)
 def home():
     """Serve the editorial landing page as the site home."""
     return FileResponse(os.path.join(FRONTEND_DIR, "landing.html"))
 
 
-# Mounted LAST so it can't shadow the API routes. html=True serves index.html at "/".
-app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+# --- Static frontend: an explicit allowlist, not the whole repo ----------------
+# This used to be `app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True))`,
+# which served the ENTIRE repository root. Verified reachable over HTTP:
+# /.git/config, /.git/HEAD and /.venv/pyvenv.cfg all returned 200. The
+# `/backend/{rest:path}` block that was supposed to protect the secrets directory
+# was itself incomplete — FastAPI's APIRoute does not add HEAD the way Starlette's
+# Route does, so `HEAD /backend/.env.example` returned 200, and `GET
+# /%2e/backend/.env.example` slipped past the literal prefix match entirely.
+#
+# Allowlisting is the fix: a request is served only if it names a file this site
+# actually publishes. Anything else — dotfiles, source, secrets, VCS metadata, new
+# directories added later — 404s by default rather than by remembering to block it.
+SITE_ROOT = Path(FRONTEND_DIR).resolve()
+
+# Sub-directories the site may serve from, and what is allowed inside each.
+SITE_DIRS = {
+    "shared": {".js"},
+    "vendor": {".js", ".css", ".map"},
+}
+# data/ is listed by exact filename: the *.backup.json files next to these are
+# pre-snap working copies that nothing fetches and that need not be public.
+DATA_FILES = frozenset({"accidents.json", "citizen_seed.json"})
+# Files served from the site root. Extension-based, so adding a page needs no
+# code change, while source and config still cannot leak.
+ROOT_EXTENSIONS = frozenset({".html", ".js", ".css", ".ico", ".png", ".jpg", ".jpeg",
+                             ".svg", ".webp", ".woff", ".woff2"})
+
+
+def _resolve_site_file(rel_path: str) -> Path | None:
+    """Map a URL path to a file this site publishes, or None.
+
+    Deliberately conservative: it rejects anything it does not positively
+    recognise, and confirms the resolved path is still inside SITE_ROOT so no
+    encoding trick, symlink or traversal sequence can escape.
+    """
+    if not rel_path or rel_path.endswith("/"):
+        return None
+
+    parts = [p for p in rel_path.split("/") if p]
+    # No traversal, no absolute paths, no hidden files or directories anywhere.
+    if any(p in {".", ".."} or p.startswith(".") for p in parts):
+        return None
+    # No Windows drive letters, alternate data streams, or NUL bytes.
+    if any("\\" in p or ":" in p or "\x00" in p for p in parts):
+        return None
+
+    if len(parts) == 1:
+        if Path(parts[0]).suffix.lower() not in ROOT_EXTENSIONS:
+            return None
+    elif len(parts) == 2 and parts[0] == "data":
+        if parts[1] not in DATA_FILES:
+            return None
+    elif len(parts) == 2 and parts[0] in SITE_DIRS:
+        if Path(parts[1]).suffix.lower() not in SITE_DIRS[parts[0]]:
+            return None
+    else:
+        return None
+
+    candidate = (SITE_ROOT / Path(*parts)).resolve()
+    # Belt and braces: the resolved path must still live under the site root and
+    # must be a real file (not a directory, device or dangling symlink).
+    if not candidate.is_file():
+        return None
+    if candidate != SITE_ROOT and SITE_ROOT not in candidate.parents:
+        return None
+    return candidate
+
+
+# Registered LAST so it can never shadow an API route, and for GET *and* HEAD so
+# there is no method that reaches a different code path.
+@app.api_route("/{site_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
+def serve_site_file(site_path: str):
+    """Serve one allowlisted frontend file, or 404."""
+    resolved = _resolve_site_file(site_path)
+    if resolved is None:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return FileResponse(resolved)
