@@ -19,9 +19,20 @@ services:
     # main.py resolves the frontend dir from its own path, so starting the app from
     # the repo root serves the site correctly regardless of the working directory.
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health          # 200 only when MongoDB is actually reachable
+    # NOTE: /health returns 200 only when MongoDB is actually reachable, so an
+    # Atlas outage or a free-tier database pause marks this service unhealthy and
+    # takes the WHOLE site down — including the map, analytics and simulation,
+    # none of which need the database (audit finding F006). This coupling was
+    # reviewed and deliberately kept; see audit/03-deferred.md. If a demo ever
+    # goes dark while Atlas is down, this line is the reason.
+    healthCheckPath: /health
     envVars:
       - key: MONGODB_URI
+        sync: false                   # set in Render → Environment (secret). NEVER commit it.
+      # Required by the C.R.A.S.H Bot (/ask). main.py reads this, but the
+      # blueprint never declared it, so a service provisioned from this file had
+      # a silently dead bot with no error anywhere (audit finding F026).
+      - key: ANTHROPIC_API_KEY
         sync: false                   # set in Render → Environment (secret). NEVER commit it.
       - key: PYTHON_VERSION
         value: "3.12.7"

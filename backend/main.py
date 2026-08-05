@@ -177,16 +177,27 @@ def _fail(status_code, message, exc, context):
     )
 
 # --- CORS ---------------------------------------------------------------------
-# STEP 1: allow any origin for local testing. In STEP 4 this is tightened to the
-# deployed frontend domain only. Credentials are OFF, which is required when the
-# allowed origin is the "*" wildcard.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# This app is deliberately SINGLE-ORIGIN: one FastAPI service serves both the
+# static site and the API, so the browser never makes a cross-origin request and
+# needs no CORS grant at all. `allow_origins=["*"]` was left over from an early
+# two-service layout and did nothing for the app while letting any website on the
+# internet read /reports and /export/xlsx and POST to /report and /ask from a
+# visitor's browser.
+#
+# Extra origins can be granted explicitly via CORS_ALLOW_ORIGINS (comma-separated)
+# for a genuinely separate frontend; empty means same-origin only. Credentials
+# stay off — this API has no cookies or sessions, so there is nothing to send.
+_cors_origins = [o.strip() for o in os.environ.get("CORS_ALLOW_ORIGINS", "").split(",") if o.strip()]
+if _cors_origins:
+    log.info("CORS enabled for %d configured origin(s)", len(_cors_origins))
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "X-Request-ID"],
+        max_age=600,
+    )
 
 
 # --- Always revalidate the HTML shell -----------------------------------------

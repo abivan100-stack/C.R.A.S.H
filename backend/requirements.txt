@@ -1,13 +1,36 @@
-fastapi
-uvicorn
+# CRASH backend dependencies — PINNED.
+#
+# These are exact versions, not floors. Every one is the version the test suite
+# actually runs against, so a Render build installs the same stack that was
+# verified rather than whatever happens to be newest on the day of the deploy.
+#
+# This is not theoretical. Installing from the previous unpinned version of this
+# file, during this audit, resolved starlette 1.4.0 — which deprecates the
+# TestClient this project uses. That is a breaking change that would have landed
+# silently on the next deploy, with no code change to blame it on.
+#
+# To upgrade deliberately:
+#     pip install -U <package> && python -m pytest && npm run test:js
+# then update the pin here, in its own commit.
+
+fastapi==0.141.1
+uvicorn==0.52.1
+# Transitive, but pinned on purpose: fastapi and uvicorn allow a wide range, and
+# these two are where an upstream breaking change actually reaches this code.
+starlette==1.4.0
+pydantic==2.13.4
+
 # pymongo's old "[srv]" extra was removed upstream (it now warns and is a no-op).
 # dnspython is what actually enables MongoDB Atlas "mongodb+srv://" URIs.
-pymongo
-dnspython
-python-dotenv
+pymongo==4.17.0
+dnspython==2.8.0
+
+python-dotenv==1.2.2
+
 # C.R.A.S.H Bot: official Anthropic SDK for the /ask endpoint (question -> filters).
 # The API key is read from ANTHROPIC_API_KEY (env), never hardcoded.
-anthropic
+anthropic==0.120.2
+
 # Lets Python verify HTTPS via the OS trust store, so the AI call works behind a
 # corporate TLS-inspecting proxy (avoids CERTIFICATE_VERIFY_FAILED). Harmless in prod.
-truststore
+truststore==0.10.4
