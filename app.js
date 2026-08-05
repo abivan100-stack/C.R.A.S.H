@@ -387,7 +387,13 @@ function pointTipHtml(a) {
 /* Plot every accident as a small, low-opacity circle coloured by severity */
 function renderPoints() {
   if (app.pointLayer) app.pointLayer.remove();
-  const canvas = L.canvas({ padding: 0.5 });
+  // Reuse ONE canvas renderer. A new L.canvas() per call was added to the map by
+  // Leaflet and never removed when the layer group went away, so every filter
+  // click and theme toggle left another repainting canvas behind — the map got
+  // slower the longer the demo ran. simulate.js:669 already memoised correctly;
+  // this matches it.
+  if (!app.pointRenderer) app.pointRenderer = L.canvas({ padding: 0.5 });
+  const canvas = app.pointRenderer;
   app.pointLayer = L.layerGroup();
 
   currentRecords().forEach((a) => {
@@ -500,8 +506,13 @@ function computeHotspots(records) {
   const finalize = (c) => {
     const fShare = c.fatal / c.count;
     const sShare = c.serious / c.count;
-    const dom = fShare >= gFatalShare ? 'fatal'
-              : sShare >= gSeriousShare ? 'serious' : 'slight';
+    // A cell is "fatal-dominant" only if it actually HAS fatalities and is at or
+    // above the city baseline. Without the first clause, filtering to a subset
+    // with zero fatalities city-wide made gFatalShare 0, so `0 >= 0` was true for
+    // every cell — every zone was labelled Fatal-dominant and painted fatal-red
+    // while its own dossier showed 0 fatalities. Same for serious.
+    const dom = (c.fatal > 0 && fShare >= gFatalShare) ? 'fatal'
+              : (c.serious > 0 && sShare >= gSeriousShare) ? 'serious' : 'slight';
     const area = Object.entries(c.areas).sort((a, b) => b[1] - a[1])[0][0];
     return {
       id: c.key, ci: c.ci, cj: c.cj,
@@ -1785,7 +1796,7 @@ function prepRecord(a) {
 }
 /* (re)derive the month span across the whole dataset and each record's _month */
 function recomputeMonths() {
-  var m = CE.precompute(app.raw);
+  var m = CE.precompute(app.raw, C.MAX_WINDOW_MONTHS);
   app.monthCount = m.monthCount;
   app.lastMonth = m.lastMonth;
 }

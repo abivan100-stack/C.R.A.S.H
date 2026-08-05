@@ -46,7 +46,7 @@
 
   /* =========================== compute =========================== */
   function precompute() {
-    var m = CE.precompute(DATA);
+    var m = CE.precompute(DATA, C.MAX_WINDOW_MONTHS);
     MIN_YM = m.minYM; MONTHS = m.monthCount; LASTM = m.lastMonth;
   }
 

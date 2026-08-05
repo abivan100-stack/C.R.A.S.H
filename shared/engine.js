@@ -32,8 +32,17 @@
   }
 
   /* ---- Augment records with fast-filter fields ---- */
-  /* Mutates records in-place. Returns { minYM, monthCount, lastMonth }. */
-  function precompute(records) {
+  /* Mutates records in-place. Returns { minYM, monthCount, lastMonth }.
+
+     The window is anchored to the NEWEST record and clamped to maxMonths. It used
+     to run from the OLDEST record, so a single citizen report with an old date
+     stretched it without limit: one report dated 2015 took monthCount from 24 to
+     138. Everything downstream is divided by that number, so the "avg per month"
+     KPI read 74 instead of 424 — a 5.7x understatement — the month axis label
+     read "138 mo", and the sparkline tried to draw 138 bars in a 32px strip.
+     Anchoring to the newest record keeps a stray date from moving any of it. */
+  function precompute(records, maxMonths) {
+    var cap = (typeof maxMonths === 'number' && maxMonths > 0) ? maxMonths : Infinity;
     var minYM = Infinity, maxYM = -Infinity;
     for (var i = 0; i < records.length; i++) {
       var a = records[i];
@@ -45,7 +54,10 @@
       if (a._ym < minYM) minYM = a._ym;
       if (a._ym > maxYM) maxYM = a._ym;
     }
-    var monthCount = maxYM - minYM + 1;
+    if (!records.length) return { minYM: 0, monthCount: 1, lastMonth: 0 };
+    var span = maxYM - minYM + 1;
+    var monthCount = Math.min(span, cap);
+    minYM = maxYM - monthCount + 1;   // anchor on the NEWEST record, not the oldest
     var lastMonth = monthCount - 1;
     for (var j = 0; j < records.length; j++) {
       records[j]._month = records[j]._ym - minYM;
@@ -165,7 +177,13 @@
       });
     }
     cand.sort(function (a, b) { return b.priority - a.priority; });
-    return nmsFilter(cand, EMERGE_TOP_N, SUPPRESS);
+    var picked = nmsFilter(cand, EMERGE_TOP_N, SUPPRESS);
+    // How many cells actually QUALIFY, before the display cap. Callers that show
+    // a count must use this: `emerging.length` is the length of a list truncated
+    // to EMERGE_TOP_N (6), so a KPI built from it was structurally incapable of
+    // exceeding 6 while 25 cells genuinely qualified.
+    picked.qualifyingCount = nmsFilter(cand, Infinity, SUPPRESS).length;
+    return picked;
   }
 
   var E = {

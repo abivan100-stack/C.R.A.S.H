@@ -44,7 +44,7 @@
 
   /* =========================== compute =========================== */
   function precompute() {
-    var m = CE.precompute(DATA);
+    var m = CE.precompute(DATA, C.MAX_WINDOW_MONTHS);
     MIN_YM = m.minYM; MONTHS = m.monthCount; LASTM = m.lastMonth;
   }
   /* sevOf, not SEV[s]: an unknown severity used to throw here and blank the
@@ -165,7 +165,10 @@
     document.getElementById('kpiFatal').textContent = fmt(A.sev.fatal);
     document.getElementById('kpiSevere').textContent = fmt(A.sev.fatal + A.sev.serious);
     document.getElementById('kpiZones').textContent = fmt(A.highRisk);
-    document.getElementById('kpiEmerging').textContent = fmt(A.emerging.length);
+    // qualifyingCount, not .length: the list is capped at EMERGE_TOP_N for display,
+    // so .length pinned this KPI at 6 no matter how many zones were surging.
+    document.getElementById('kpiEmerging').textContent =
+      fmt(A.emerging.qualifyingCount != null ? A.emerging.qualifyingCount : A.emerging.length);
     document.getElementById('kpiAvg').textContent = fmt(Math.round(total / MONTHS));
   }
 

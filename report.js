@@ -70,7 +70,7 @@
     }).sort((a, b) => b.prevent - a.prevent);
   }
   function cityData(records) {
-    CE.precompute(records);
+    CE.precompute(records, (window.CRASH_CONSTANTS && window.CRASH_CONSTANTS.MAX_WINDOW_MONTHS));
     const mm = monthMeta(records);
     const sev = { fatal: 0, serious: 0, slight: 0 }, cause = {}, veh = {};
     for (const a of records) { sev[a.severity]++; cause[a.cause] = (cause[a.cause] || 0) + 1; veh[a.vehicle] = (veh[a.vehicle] || 0) + 1; }
@@ -197,7 +197,8 @@
     let y = header(doc, 'Chennai Road Accident Safety Hub', 'City-wide safety report · Greater Chennai', [ymRange(d.mm), 'Generated ' + today()]);
     y = kpiRow(doc, y, [
       { v: fmt(d.total), l: 'Incidents' }, { v: fmt(d.sev.fatal), l: 'Fatalities' }, { v: fmt(d.sev.fatal + d.sev.serious), l: 'Severe' },
-      { v: fmt(d.highRisk), l: 'Risk zones' }, { v: fmt(d.emerging.length), l: 'Emerging' }, { v: fmt(Math.round(d.total / d.mm.count)), l: 'Per month' },
+      // qualifyingCount, not .length — the list is capped at EMERGE_TOP_N for display.
+      { v: fmt(d.highRisk), l: 'Risk zones' }, { v: fmt(d.emerging.qualifyingCount != null ? d.emerging.qualifyingCount : d.emerging.length), l: 'Emerging' }, { v: fmt(Math.round(d.total / d.mm.count)), l: 'Per month' },
     ]);
     y = callout(doc, y, d.leveragePct + '%', 'of the city’s severe crashes occur in the top ' + d.top.length + ' junction cells (' + fmt(d.sevTop) + ' of ' + fmt(d.sevCity) + ' fatal + serious).');
     y = sectionTitle(doc, y, 'Top 10 ranked junctions');

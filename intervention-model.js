@@ -43,10 +43,33 @@
   }
 
   /* Estimated preventable SEVERE incidents for a zone over the record window.
-     Weights fatalities above serious injuries (3:1, matching the risk score)
-     then scales by the fix's effectiveness. */
+
+     This counts INCIDENTS, so it must not be severity-weighted. The previous
+     formula was `(fatal * 3 + serious) * eff`, which mixed a severity-weighted
+     risk score into a figure the UI labels "≈ N severe preventable" — an
+     incident count. That produced numbers that cannot be true:
+
+       * 10 fatal, 0 serious, eff 0.35  ->  round(30 * 0.35) = 11 preventable
+         out of 10 actual crashes.
+       * Across the top 10 it claimed 566 of 1,391 actual severe crashes (40.7%)
+         from fixes whose best modelled effectiveness is 35%.
+       * Maduravoyal claimed 51% of its severe crashes prevented by a fix rated
+         0.35.
+
+     Its own comment also claimed the 3:1 weighting matched the risk score, which
+     weights serious at 2, not 1 — so it matched nothing.
+
+     A fix that is `eff` effective prevents that share of the severe incidents it
+     applies to. Clamped so the estimate can never exceed the incidents that
+     actually happened, whatever a future effectiveness value says.
+
+     Rounded DOWN, not to nearest: this figure is presented to authorities as
+     harm a spend would avert, so it must never overstate. Rounding to nearest
+     let 150 severe crashes at 35% report 53 — 35.3%, above the fix's own rating. */
   function preventable(fatal, serious, eff) {
-    return Math.round((fatal * 3 + serious) * eff);
+    var severe = (fatal || 0) + (serious || 0);
+    var rate = Math.max(0, Math.min(1, eff || 0));
+    return Math.min(severe, Math.floor(severe * rate));
   }
 
   root.CRASH_INTERVENTIONS = {

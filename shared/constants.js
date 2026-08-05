@@ -71,6 +71,11 @@
 
     // Emerging-hotspot engine
     RECENT_MONTHS: 6,
+
+    // Longest analysis window, in months. The shipped dataset spans exactly 24
+    // (Jul 2024 - Jun 2026). Clamping here stops one citizen report with a stray
+    // date from stretching the window and corrupting every per-month figure.
+    MAX_WINDOW_MONTHS: 24,
     EMERGE_LIFT: 1.5,
     EMERGE_MIN_RECENT: 8,
     EMERGE_TOP_N: 6,

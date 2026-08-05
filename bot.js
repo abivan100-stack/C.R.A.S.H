@@ -20,6 +20,7 @@
   var BOT_UNAVAILABLE = 'C.R.A.S.H Bot is unavailable right now — try the example questions or the filters.';
 
   var botMap = null, botPointLayer = null, botTiles = null, botBounds = null, chatInited = false, busy = false;
+  var botPointRenderer = null;   // one reused canvas renderer — see renderPoints
   var botBloomLayer = null, botEmergeLayer = null, botHospLayer = null, botHospOn = false;
 
   function app() { return window.CRASH_APP || null; }
@@ -135,7 +136,10 @@
     botLastRecs = recs;
     if (!botMap) return;
     if (botPointLayer) { botPointLayer.remove(); botPointLayer = null; }
-    var canvas = L.canvas({ padding: 0.5 });
+    // One renderer, reused — a fresh L.canvas() per redraw was never removed from
+    // the map, so each bot answer leaked another repainting canvas.
+    if (!botPointRenderer) botPointRenderer = L.canvas({ padding: 0.5 });
+    var canvas = botPointRenderer;
     botPointLayer = L.layerGroup();
     var ap = app();
     recs.forEach(function (a) {
