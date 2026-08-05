@@ -1,29 +1,35 @@
-# local server / logs
-*.log
-server.log
-
-# python
-__pycache__/
-*.pyc
-
-# secrets + virtualenvs (never commit the MongoDB URI — it lives only in .env)
+# --- secrets ---------------------------------------------------------------
+# Never commit the MongoDB URI or the Anthropic API key — they live only in
+# backend/.env locally, and in Render's environment settings in production.
 .env
 .env.local
 .env.*.local
+
+# --- python ----------------------------------------------------------------
+__pycache__/
+*.pyc
 .venv/
 venv/
 
-# OS junk
+# --- tooling caches --------------------------------------------------------
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- node ------------------------------------------------------------------
+node_modules/
+
+# --- logs ------------------------------------------------------------------
+*.log
+server.log
+
+# --- OS junk ---------------------------------------------------------------
 .DS_Store
 Thumbs.db
 
-# road-snapping (offline gen) — large/derived caches, not committed (the snapped
-# accidents.json + citizen_seed.json ARE committed; the OSM graph + HTTP cache
-# are regenerable, so they stay out of git)
+# --- road-snapping (offline generation) ------------------------------------
+# The snapped accidents.json + citizen_seed.json ARE committed; the OSM graph
+# and the HTTP cache are large and regenerable, so they stay out of git.
 scripts/chennai_drive.graphml
 scripts/cache/
-venv/
-__pycache__/
-*.pyc
-.env
-node_modules/
