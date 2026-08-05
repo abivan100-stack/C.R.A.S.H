@@ -311,6 +311,36 @@
   var POLL_MS = 8000;        // background poll cadence
   var POLL_TIMEOUT = 6000;   // abort a slow request so a poll never stacks on the next
   var pollTimer = 0, pollStarted = false, pollInFlight = false;
+  /* Failure handling. The poll used to have a completely silent .catch and no
+     backoff: if the backend went down it kept firing every 8s forever, and the
+     user was never told that cross-device sync had stopped — the app looked
+     healthy while quietly showing stale data. Now consecutive failures back off
+     exponentially (8s -> 16s -> 32s ... capped at 2 min) and, once past a small
+     tolerance for a blip, the UI says sync is offline. */
+  var POLL_BACKOFF_MAX_MS = 120000;
+  var POLL_FAILURES_BEFORE_VISIBLE = 3;   // ride out a brief hiccup silently
+  var pollFailures = 0;
+  var pollOffline = false;
+
+  function pollDelay() {
+    if (!pollFailures) return POLL_MS;
+    return Math.min(POLL_MS * Math.pow(2, pollFailures), POLL_BACKOFF_MAX_MS);
+  }
+
+  /* Surface sync state on the bell, without touching the rest of the page. */
+  function setSyncOffline(off) {
+    if (off === pollOffline) return;
+    pollOffline = off;
+    var bell = document.getElementById('notifyBell');
+    if (!bell) return;
+    if (off) {
+      bell.classList.add('sync-offline');
+      bell.title = 'Live sync is offline — showing reports saved on this device. Retrying…';
+    } else {
+      bell.classList.remove('sync-offline');
+      bell.title = 'Notifications';
+    }
+  }
   // false until the FIRST successful poll has recorded everything already in the DB.
   // That baseline pass seeds knownSigs WITHOUT toasting, so pre-existing reports never
   // appear as "just now" on load — only reports first seen in LATER polls count as new.
@@ -361,21 +391,39 @@
         }
         baselineSeeded = true;                 // first successful poll defines "already existed" — nothing above toasts
         for (var j = 0; j < fresh.length; j++) notify(fromBackend(fresh[j]));
+        pollFailures = 0;                      // recovered
+        setSyncOffline(false);
       })
-      .catch(function () { /* silent — keep using local data */ })
+      .catch(function () {
+        // Keep using local data, but COUNT the failure so the next poll backs
+        // off and the user eventually sees that sync has stopped.
+        pollFailures++;
+        if (pollFailures >= POLL_FAILURES_BEFORE_VISIBLE) setSyncOffline(true);
+      })
       // Runs on BOTH paths, so the abort timer is always disarmed and the
       // in-flight latch is always released, even if the body handler throws.
       .then(function () { if (timer) clearTimeout(timer); pollInFlight = false; });
   }
 
+  /* Self-rescheduling timeout rather than a fixed setInterval, so the delay can
+     grow with consecutive failures. setInterval cannot back off, and would keep
+     hammering a dead backend every 8s for the life of the page. */
+  function scheduleNextPoll() {
+    if (!pollStarted) return;
+    if (pollTimer) clearTimeout(pollTimer);
+    pollTimer = setTimeout(function () {
+      pollBackend().then(scheduleNextPoll, scheduleNextPoll);
+    }, pollDelay());
+  }
+
   function startPolling() {
     if (pollStarted || !POLL_ENABLED) return;
     pollStarted = true;
-    if (pollTimer) clearInterval(pollTimer);   // never stack intervals
-    pollBackend();                             // immediate pass baselines what already exists (no toasts), fast
-    pollTimer = setInterval(pollBackend, POLL_MS);
+    if (pollTimer) clearTimeout(pollTimer);    // never stack timers
+    // immediate pass baselines what already exists (no toasts), fast
+    pollBackend().then(scheduleNextPoll, scheduleNextPoll);
   }
-  function stopPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = 0; pollStarted = false; }
+  function stopPolling() { if (pollTimer) clearTimeout(pollTimer); pollTimer = 0; pollStarted = false; }
 
   function initPanel() {
     var bell = document.getElementById('notifyBell');

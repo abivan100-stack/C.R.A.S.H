@@ -663,6 +663,17 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 /* ---- notifications bell + dropdown panel (STEP 2) ---- */
 .notify-wrap { position: relative; display: inline-flex; }
 .notify-bell { position: relative; }
+/* Live-sync failure indicator. The notification poll used to fail completely
+   silently, so a dead backend looked identical to "no new reports" and the map
+   quietly went stale. A muted dot — deliberately not alarming, since local
+   reports still work — plus the title text set in notifications.js. */
+.notify-bell.sync-offline { opacity: 0.72; }
+.notify-bell.sync-offline::after {
+  content: ""; position: absolute; right: 1px; bottom: 1px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text-3, #6E675A);
+  box-shadow: 0 0 0 2px var(--surface, #FCFAF4);
+}
 .notify-badge { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box;
   display: flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-ink);
   border-radius: var(--radius); border: 1.5px solid var(--bg); font: 600 10px var(--font-mono); font-variant-numeric: tabular-nums;
