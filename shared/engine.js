@@ -8,8 +8,16 @@
 (function (root) {
   'use strict';
 
+  /* The three real severities. Kept as a list, and every lookup below goes
+     through hasSeverity(), because `severity` arrives from POST /report and is
+     therefore attacker-controlled: a plain `OBJ[severity]` lookup also resolves
+     inherited Object.prototype members ("toString", "constructor", …), which
+     used to leak a *function* into the arithmetic and the cell accumulator. */
+  var SEVERITIES = ['fatal', 'serious', 'slight'];
+  function hasSeverity(s) { return SEVERITIES.indexOf(s) !== -1; }
+
   var DEFAULT_WEIGHT = { fatal: 3, serious: 2, slight: 1 };
-  function defWeight(s) { return DEFAULT_WEIGHT[s] || 1; }
+  function defWeight(s) { return hasSeverity(s) ? DEFAULT_WEIGHT[s] : 1; }
 
   /* ---- Non-max suppression helper (shared by topJunctions & computeEmerging) ---- */
   function nmsFilter(candidates, topN, suppress) {
@@ -82,8 +90,11 @@
       }
       c.count++;
       var w = weightFn(a.severity);
+      if (typeof w !== 'number' || !isFinite(w)) w = 1;   // a caller's weightFn must not poison the score
       c.score += w;
-      c[a.severity] = (c[a.severity] || 0) + 1;
+      // Only ever write one of the three known severity fields. Writing
+      // c[a.severity] blindly let a crafted report overwrite count/score/key/lat.
+      if (hasSeverity(a.severity)) c[a.severity]++;
       if (a._night) c.night++;
       c.areas[a.area] = (c.areas[a.area] || 0) + 1;
       c.cause[a.cause] = (c.cause[a.cause] || 0) + 1;

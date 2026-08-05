@@ -140,7 +140,7 @@
     var ap = app();
     recs.forEach(function (a) {
       if (!isFinite(a.lat) || !isFinite(a.lng)) return;
-      var color = (SEV[a.severity] || SEV.slight).color;
+      var color = C.sevOf(a.severity).color;
       var m = L.circleMarker([a.lat, a.lng], a.citizen
         ? { renderer: canvas, radius: 5, stroke: true, color: ACCENT, weight: 2, opacity: 0.95, fillColor: color, fillOpacity: 0.85, bubblingMouseEvents: false }
         : { renderer: canvas, radius: 3.2, stroke: false, fillColor: color, fillOpacity: 0.5, bubblingMouseEvents: false });

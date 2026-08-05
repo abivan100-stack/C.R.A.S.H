@@ -31,9 +31,22 @@
   SEV.slight.label = SEV_CANONICAL.slight.label;
   SEV.slight.weight = SEV_CANONICAL.slight.weight;
 
+  /* The three real severities, and the ONLY safe way to test one.
+     `severity` reaches the frontend from POST /report and is attacker-controlled,
+     so a bare `SEV[severity]` truthiness check is unsafe: it also resolves
+     inherited Object.prototype members, so severity:"toString" passes the guard
+     and then leaks a *function* into the arithmetic. Always use isSeverity(),
+     and use sevOf() when you need the descriptor with a safe fallback. */
+  const SEVERITIES = ['fatal', 'serious', 'slight'];
+  function isSeverity(s) { return SEVERITIES.indexOf(s) !== -1; }
+  function sevOf(s) { return isSeverity(s) ? SEV[s] : SEV.slight; }
+
   const CONSTANTS = {
     // Severity weights, colors, labels — used by map, charts, PDF, bot, simulate
     SEV,
+    SEVERITIES,
+    isSeverity,
+    sevOf,
 
     // Flat arrays for dropdowns / filters / legends
     CAUSES: [

@@ -9,6 +9,9 @@
 /* ---- Shared constants (loaded via shared/constants.js) ---- */
 const C = window.CRASH_CONSTANTS;
 const SEV = C.SEV;
+/* Safe severity helpers — `severity` is attacker-controlled via POST /report,
+   so never index SEV with it directly (see shared/constants.js). */
+const isSeverity = C.isSeverity, sevOf = C.sevOf;
 const CAUSES = C.CAUSES;
 const VEHICLES = C.VEHICLES;
 const BBOX = C.BBOX;
@@ -373,7 +376,7 @@ function enableMapClickSelect() {
 
 /* minimal hover card for a single accident dot — mirrors the hospital popup style */
 function pointTipHtml(a) {
-  const sev = SEV[a.severity] || SEV.slight;
+  const sev = sevOf(a.severity);
   return (
     '<div class="acc-pop-sev"><span class="acc-pop-dot" style="background:' + sev.color + ';"></span>' + sev.label + (a.citizen ? ' · citizen' : '') + '</div>' +
     '<div class="acc-pop-row">' + esc(a.area) + '</div>' +
@@ -388,7 +391,7 @@ function renderPoints() {
   app.pointLayer = L.layerGroup();
 
   currentRecords().forEach((a) => {
-    const sev = SEV[a.severity] || SEV.slight;
+    const sev = sevOf(a.severity);
     const m = a.citizen
       // citizen report — severity-coloured core inside a bright accent ring, so
       // community submissions stand out from the base incident points
@@ -412,7 +415,7 @@ function renderPoints() {
 }
 
 function popupHtml(a) {
-  const sev = SEV[a.severity] || SEV.slight;
+  const sev = sevOf(a.severity);
   return (
     '<div class="acc-pop-sev"><span class="acc-pop-dot" style="background:' + sev.color + '"></span>' +
       sev.label + '</div>' +
@@ -484,7 +487,7 @@ function computeHotspots(records) {
   const gFatalShare = gF / gN;
   const gSeriousShare = gS / gN;
 
-  const all = CE.gridCells(records, BBOX, CELL, 0, null, (s) => (SEV[s] || SEV.slight).weight);
+  const all = CE.gridCells(records, BBOX, CELL, 0, null, (s) => sevOf(s).weight);
   const highRiskZones = all.filter((c) => c.score >= HIGH_RISK_MIN).length;
 
   const picked = CE.topJunctions(all, TOP_N, SUPPRESS);
@@ -558,7 +561,7 @@ function computeEmerging(records) {
             months: new Array(app.monthCount).fill(0) };
       cells.set(key, c);
     }
-    const w = (SEV[a.severity] || SEV.slight).weight;
+    const w = sevOf(a.severity).weight;
     if (a._month > recentCut) {
       c.recent++;
       c.recentScore += w;
@@ -676,7 +679,7 @@ function renderRail() {
    Risk blooms (signature map markers for the top 10)
    ========================================================================== */
 function bloomIcon(h, selected) {
-  const color = SEV[h.dominant].color;
+  const color = sevOf(h.dominant).color;
   const d = 26 + Math.sqrt(h.score) * 5.4;           // glow diameter, scaled by risk score
   const ringD = d * 0.62 + 20;
   const delay = (0.05 * h.rank).toFixed(2);
@@ -697,7 +700,7 @@ function bloomIcon(h, selected) {
 /* minimal hover card for a hotspot bloom — mirrors the hospital popup style
    (severity dot + junction name, then rank/risk/incidents, then the severity split) */
 function hotspotTipHtml(h) {
-  const sev = SEV[h.dominant] || SEV.slight;
+  const sev = sevOf(h.dominant);
   const parts = [];
   if (h.fatal) parts.push(h.fatal + ' fatal');
   if (h.serious) parts.push(h.serious + ' serious');
@@ -1356,7 +1359,7 @@ function dossierHeaderHtml(h) {
       '</button>' +
     '</div>' +
     '<div style="font:500 19px \'Newsreader\',sans-serif; line-height:1.2; margin-top:4px;">' + esc(h.area) + '</div>' +
-    '<div style="font:400 11.5px \'Roboto\',sans-serif; color:var(--text-2); margin-top:3px;">' + SEV[h.dominant].label + '-dominant risk cell · 250 m</div>' +
+    '<div style="font:400 11.5px \'Roboto\',sans-serif; color:var(--text-2); margin-top:3px;">' + sevOf(h.dominant).label + '-dominant risk cell · 250 m</div>' +
     '<div style="font:400 10.5px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:7px; letter-spacing:0.04em;">' + h.lat.toFixed(4) + '° N · ' + h.lng.toFixed(4) + '° E</div>' +
     '<div style="display:flex; align-items:center; gap:16px; margin-top:11px; flex-wrap:wrap;">' +
       '<a href="./compare.html?a=' + encodeURIComponent(h.area) + '" title="Compare ' + esc(h.area) + ' with another area" style="display:inline-flex; align-items:center; gap:6px; font:500 10.5px \'IBM Plex Mono\',monospace; letter-spacing:0.04em; color:var(--accent); text-decoration:none;">' +
@@ -1792,7 +1795,7 @@ function isValidReport(r) {
   return r && typeof r === 'object' &&
     typeof r.lat === 'number' && isFinite(r.lat) &&
     typeof r.lng === 'number' && isFinite(r.lng) &&
-    SEV[r.severity] &&
+    isSeverity(r.severity) &&
     typeof r.datetime === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d/.test(r.datetime) &&
     typeof r.cause === 'string' && typeof r.vehicle === 'string' && typeof r.area === 'string';
 }

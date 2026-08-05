@@ -61,7 +61,11 @@
         CAUSES.forEach((c) => { s.cause[c] = 0; }); VEHICLES.forEach((v) => { s.vehicle[v] = 0; });
         areas[a.area] = s;
       }
-      s.total++; s[a.severity]++; s.score += SEV[a.severity].w;
+      // Guarded: writing s[a.severity] blindly let a crafted report overwrite
+      // total/score/night and poison the head-to-head comparison.
+      s.total++;
+      if (C.isSeverity(a.severity)) s[a.severity]++;
+      s.score += C.sevOf(a.severity).w;
       if (a._night) s.night++;
       s.hour[a._h]++; s.dow[a._dow]++;
       s.cause[a.cause] = (s.cause[a.cause] || 0) + 1;

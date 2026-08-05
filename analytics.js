@@ -47,7 +47,9 @@
     var m = CE.precompute(DATA);
     MIN_YM = m.minYM; MONTHS = m.monthCount; LASTM = m.lastMonth;
   }
-  function gridCells() { return CE.gridCells(DATA, BBOX, CELL, RECENT_MONTHS, MONTHS, function (s) { return SEV[s].w; }); }
+  /* sevOf, not SEV[s]: an unknown severity used to throw here and blank the
+     whole analytics page, and "toString" resolved to a function. */
+  function gridCells() { return CE.gridCells(DATA, BBOX, CELL, RECENT_MONTHS, MONTHS, function (s) { return C.sevOf(s).w; }); }
   function computeEmerging(cells) { return CE.computeEmerging(cells, RECENT_MONTHS, MONTHS, EMERGE_MIN_RECENT, EMERGE_LIFT, EMERGE_TOP_N, SUPPRESS); }
 
   function computeAgg() {
@@ -470,7 +472,7 @@
   /* citizen reports saved by the Reports-section form (same localStorage key as
      app.js). Kept self-sufficient so analytics.html works standalone too. */
   function validReport(r) {
-    return r && typeof r.lat === 'number' && typeof r.lng === 'number' && SEV[r.severity] &&
+    return r && typeof r.lat === 'number' && typeof r.lng === 'number' && C.isSeverity(r.severity) &&
       typeof r.datetime === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d/.test(r.datetime) &&
       typeof r.cause === 'string' && typeof r.vehicle === 'string' && typeof r.area === 'string';
   }
