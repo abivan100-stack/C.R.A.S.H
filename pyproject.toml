@@ -1,0 +1,57 @@
+# Tooling configuration for the CRASH backend.
+#
+# This project deliberately has NO build step — the frontend is vanilla JS served
+# as-is. This file therefore configures only the two gates that do apply to the
+# Python side: pytest and ruff. It declares no build backend and no packaging
+# metadata, because `backend/` is run directly by uvicorn, not installed.
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+# Only the Python suite. The JS suite runs separately under `node --test tests/js`.
+testpaths = ["tests/backend"]
+# Import backend.main as a package from the repo root, exactly as uvicorn does.
+pythonpath = ["."]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]
+filterwarnings = [
+    "error",
+    # starlette 1.4 deprecates the httpx-backed TestClient; we still depend on it.
+    "ignore::DeprecationWarning",
+    "ignore:.*StarletteDeprecationWarning.*",
+    "default::UserWarning",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 110
+# Offline data-generation scripts are excluded from the strict gate: they are
+# one-shot research tooling, not deployed code. They are still linted with the
+# default rules via `ruff check .`, just not held to the backend's bar.
+extend-exclude = [".venv", "vendor"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # import sorting
+    "B",         # bugbear
+    "C4",        # comprehensions
+    "UP",        # pyupgrade
+    "S",         # bandit security rules
+    "BLE",       # blind except
+    "RUF",       # ruff-specific
+]
+ignore = [
+    "E501",      # line length is handled by the formatter, not the linter
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests legitimately use assert, bind to localhost, and construct hostile input.
+"tests/**" = ["S101", "S105", "S106", "S311"]
+# The offline generators use the stdlib `random` module for reproducible synthetic
+# data (seeded), which is not a cryptographic use.
+"data/_generate_final.py" = ["S311"]
+"scripts/snap_to_roads.py" = ["S311"]

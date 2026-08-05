@@ -25,6 +25,12 @@
   },
   "scripts": {
     "start": "python -m uvicorn backend.main:app --reload",
-    "start:prod": "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000"
+    "start:prod": "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000",
+    "test": "npm run test:js && npm run test:py",
+    "test:js": "node --test \"tests/js/**/*.test.js\"",
+    "test:py": "python -m pytest",
+    "lint": "npm run lint:js && npm run lint:py",
+    "lint:js": "node --check app.js && node --check analytics.js && node --check bot.js && node --check compare.js && node --check intervention-model.js && node --check maptiler.js && node --check notifications.js && node --check report.js && node --check simulate.js && node --check shared/constants.js && node --check shared/utils.js && node --check shared/engine.js",
+    "lint:py": "python -m ruff check ."
   }
 }
