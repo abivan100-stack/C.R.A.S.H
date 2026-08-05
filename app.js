@@ -1701,39 +1701,70 @@ async function boot() {
     return;
   }
 
-  // shipped seed of scattered citizen reports (optional file) + any this browser
-  // has saved. Both feed every engine exactly like the base data; the seed is
-  // never written back to localStorage (see persistCitizenReports).
-  let seed = [];
-  try { const sres = await fetch('./data/citizen_seed.json?v=9'); if (sres.ok) seed = await sres.json(); }
-  catch (e) { /* seed is optional */ }
-  // STEP 3 — merge SHARED citizen reports from the backend (so reports filed on
-  // OTHER devices show up here) with this browser's LOCAL ones, de-duplicated by
-  // content. If the backend is unreachable, fall back silently to the local ones.
-  const localReports = loadCitizenReports();
-  const sharedReports = await fetchSharedReports();
-  app.raw = data.concat(loadSeedReports(seed)).concat(mergeCitizenReports(sharedReports, localReports));
-  // precompute time fields once (hour, night flag, weekday 0=Mon, month index)
-  // for fast filtering + the emerging-trend analysis
-  app.raw.forEach(prepRecord);
-  recomputeMonths();                                        // monthCount, lastMonth, _month
+  /* Rebuild every engine and view from app.raw. Extracted so the map can paint
+     from the static dataset immediately and then fold in the optional citizen
+     data when (or if) it arrives. `frame` is true only on the first pass — a
+     later refresh must not yank the user's view back to the city bounds. */
+  function applyRecords(records, frame) {
+    app.raw = records;
+    // precompute time fields once (hour, night flag, weekday 0=Mon, month index)
+    // for fast filtering + the emerging-trend analysis
+    app.raw.forEach(prepRecord);
+    recomputeMonths();                                      // monthCount, lastMonth, _month
 
-  runHotspotEngine();
-  app.cellByIdFull = app.cellById;   // snapshot full-data cells (survives filtering)
-  app.hotspotsFull = app.hotspots.slice();   // Phase 3: fixed top-10 for the strategy view
-  runEmergingEngine();               // Phase 2: predictive emerging watch list (over full data)
-  frameToChennai();      // tight Chennai view, locked so you can't pan out to all of TN
-  renderPoints();
-  renderBlooms();
-  renderEmergeMarkers();  // pulsing markers on the surging junctions
-  renderRail();
-  renderDossier();
-  renderHeader();
-  updateCitizenControls();  // initial "N citizen reports" count (incl. any merged from localStorage)
-  // tell the notifications system about every citizen report loaded on startup
-  // (localStorage + backend), so the bell panel survives a page refresh (STEP 4)
-  try { document.dispatchEvent(new CustomEvent('crash:reports-loaded', { detail: app.raw.filter(function (a) { return a.citizen && !a.seed; }) })); } catch (e) {}
+    runHotspotEngine();
+    app.cellByIdFull = app.cellById;   // snapshot full-data cells (survives filtering)
+    app.hotspotsFull = app.hotspots.slice();   // Phase 3: fixed top-10 for the strategy view
+    runEmergingEngine();               // Phase 2: predictive emerging watch list (over full data)
+    if (frame) frameToChennai();       // tight Chennai view, locked so you can't pan out to all of TN
+    renderPoints();
+    renderBlooms();
+    renderEmergeMarkers();  // pulsing markers on the surging junctions
+    renderRail();
+    renderDossier();
+    renderHeader();
+    updateCitizenControls();  // "N citizen reports" count
+    // tell the notifications system about every citizen report loaded on startup
+    // (localStorage + backend), so the bell panel survives a page refresh (STEP 4)
+    try { document.dispatchEvent(new CustomEvent('crash:reports-loaded', { detail: app.raw.filter(function (a) { return a.citizen && !a.seed; }) })); } catch (e) {}
+  }
+
+  /* PAINT FIRST, from the static dataset plus this browser's own reports —
+     localStorage is synchronous, so this costs nothing.
+
+     boot() used to await the optional citizen_seed.json (no timeout at all) and
+     then GET /reports (6s) BEFORE assigning app.raw, so nothing rendered until
+     both settled. On a cold Render free instance that is seconds of blank map,
+     and it contradicted the design claim in CLAUDE.md that the core map path has
+     no runtime server dependency. Neither call can affect whether the base map
+     is correct, so neither belongs on the critical path. */
+  const localReports = loadCitizenReports();
+  applyRecords(data.concat(mergeCitizenReports([], localReports)), true);
   enableMapClickSelect(); // click anywhere on the map to inspect that cell
+
+  /* THEN fold in the optional extras in the background: the shipped seed file
+     and the shared reports from other devices. Both are additive; if either
+     fails the map already on screen is unchanged and still correct. */
+  (async () => {
+    let seed = [];
+    try {
+      const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : 0;
+      try {
+        const sres = await fetch('./data/citizen_seed.json?v=9', ctrl ? { signal: ctrl.signal } : undefined);
+        if (sres.ok) seed = await sres.json();
+      } finally {
+        if (timer) clearTimeout(timer);   // cleared AFTER the body, not on headers
+      }
+    } catch (e) { /* seed is optional */ }
+
+    const sharedReports = await fetchSharedReports();
+    if (!seed.length && !sharedReports.length) return;   // nothing to add, nothing to redraw
+    applyRecords(
+      data.concat(loadSeedReports(seed)).concat(mergeCitizenReports(sharedReports, localReports)),
+      false,
+    );
+  })();
 
   // fade the "calibrating basemap" overlay once everything is mounted
   const overlay = document.getElementById('loadOverlay');
