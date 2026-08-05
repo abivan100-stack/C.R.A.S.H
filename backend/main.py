@@ -19,6 +19,7 @@ import json
 import logging
 import math
 import os
+import time as _time
 import uuid
 import zipfile
 from pathlib import Path
@@ -633,9 +634,69 @@ ASK_SYSTEM_PROMPT = (
 )
 
 
+# --- /ask cost and abuse controls ---------------------------------------------
+# /ask is public, unauthenticated, and spends the project owner's Anthropic
+# credit on every call. The client also supplies `digest`, which is concatenated
+# into the system prompt — so without caps this endpoint is a free LLM proxy that
+# anyone can point at any prompt, billed to this key.
+ASK_TIMEOUT_SECONDS = float(os.environ.get("ASK_TIMEOUT_SECONDS", "25"))
+ASK_MAX_QUESTION_CHARS = 1000
+ASK_MAX_DIGEST_CHARS = 20000
+ASK_RATE_LIMIT = int(os.environ.get("ASK_RATE_LIMIT", "20"))          # requests...
+ASK_RATE_WINDOW_SECONDS = int(os.environ.get("ASK_RATE_WINDOW_SECONDS", "60"))   # ...per window, per IP
+
+# In-process fixed-window counter. Deliberately simple: Render free runs a single
+# instance, and the goal is to blunt runaway cost, not to be a shared quota
+# service. It resets on restart and is per-process — documented, not hidden.
+_ask_hits: dict[str, list[float]] = {}
+
+
+def _client_ip(request: Request) -> str:
+    """Best-effort client identity for rate limiting.
+
+    Render terminates TLS and forwards the real address in X-Forwarded-For, so the
+    left-most entry is used when present. This is spoofable, which is acceptable
+    here: the limiter exists to cap accidental and casual abuse, and a determined
+    attacker rotating the header is a problem for a real WAF, not this counter.
+    """
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()[:64]
+    return request.client.host if request.client else "unknown"
+
+
+def _check_ask_rate_limit(request: Request) -> None:
+    now = _time.monotonic()
+    cutoff = now - ASK_RATE_WINDOW_SECONDS
+    key = _client_ip(request)
+
+    hits = [t for t in _ask_hits.get(key, []) if t > cutoff]
+    if len(hits) >= ASK_RATE_LIMIT:
+        _ask_hits[key] = hits
+        log.warning("ask rate limit hit for %s", key)
+        raise HTTPException(
+            status_code=429,
+            detail="Too many questions in a short time. Please wait a moment and try again.",
+            headers={"Retry-After": str(ASK_RATE_WINDOW_SECONDS)},
+        )
+    hits.append(now)
+    _ask_hits[key] = hits
+
+    # Opportunistic sweep so an unbounded number of distinct IPs cannot grow the
+    # dict forever — this is the endpoint most exposed to a flood.
+    if len(_ask_hits) > 2048:
+        for stale_key in [k for k, v in _ask_hits.items() if not any(t > cutoff for t in v)]:
+            _ask_hits.pop(stale_key, None)
+
+
 class AskRequest(BaseModel):
-    question: str
-    digest: str = ""     # frontend-computed statistical summary of the full dataset
+    model_config = ConfigDict(extra="forbid")
+
+    # Capped at the model level so an oversized body is rejected during parsing,
+    # before any of it is copied into a prompt.
+    question: str = Field(max_length=ASK_MAX_QUESTION_CHARS)
+    # frontend-computed statistical summary of the full dataset
+    digest: str = Field(default="", max_length=ASK_MAX_DIGEST_CHARS)
 
 
 def _canon(value, valid_list):
@@ -715,7 +776,9 @@ def _get_anthropic():
         import httpx
         import truststore
         ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        http_client = httpx.Client(verify=ctx)
+        # An explicit transport timeout as well: without one httpx would wait
+        # indefinitely to connect, holding a worker thread the whole time.
+        http_client = httpx.Client(verify=ctx, timeout=httpx.Timeout(ASK_TIMEOUT_SECONDS, connect=10.0))
     except Exception as exc:
         # truststore absent (e.g. prod with standard CAs) — fall back to the SDK
         # default. Deliberate and safe, but logged: previously this swallowed the
@@ -723,25 +786,37 @@ def _get_anthropic():
         # "truststore simply isn't installed".
         log.info("truststore transport unavailable, using the SDK default: %s", exc)
         http_client = None
-    _anthropic_client = (
-        Anthropic(api_key=ANTHROPIC_API_KEY, http_client=http_client)
-        if http_client is not None else Anthropic(api_key=ANTHROPIC_API_KEY)
-    )
+    # An explicit timeout and retry budget. The SDK's default timeout is 10
+    # MINUTES: a slow upstream would pin a worker for that long, and with the
+    # frontend giving up after 30s the work was wasted anyway. max_retries is
+    # capped so one bad request cannot silently cost three upstream calls.
+    options = {
+        "api_key": ANTHROPIC_API_KEY,
+        "timeout": ASK_TIMEOUT_SECONDS,
+        "max_retries": 1,
+    }
+    if http_client is not None:
+        options["http_client"] = http_client
+    _anthropic_client = Anthropic(**options)
     return _anthropic_client
 
 
 @app.post("/ask")
-def ask(req: AskRequest):
+def ask(req: AskRequest, request: Request):
     """Answer a question about the Chennai accident data using the frontend-supplied digest.
 
     Returns {"answer": <natural-language text>, "filters": <subset for the map, or null>}.
-    Missing key/SDK -> 503; a failed AI call -> 502 (the frontend shows 'bot unavailable').
-    Non-JSON model output degrades to showing the raw text so an answer is never lost.
+    Missing key/SDK -> 503; a failed AI call -> 502 (the frontend shows 'bot unavailable');
+    too many requests -> 429. Non-JSON model output degrades to showing the raw text so
+    an answer is never lost.
     """
     question = (req.question or "").strip()
     if not question:
+        # Answered locally — costs nothing, so it is deliberately not rate limited.
         return {"answer": "Ask me anything about the Chennai road-accident data — e.g. “which area has the most fatal accidents?”", "filters": None}
-    digest = (req.digest or "")[:20000]   # cap the payload; it's our own computed summary
+    # Checked only once we know the request would actually reach Anthropic.
+    _check_ask_rate_limit(request)
+    digest = (req.digest or "")[:ASK_MAX_DIGEST_CHARS]   # belt-and-braces; the model field also caps it
     client = _get_anthropic()             # clean 503 if key/SDK missing
     system = ASK_SYSTEM_PROMPT + "\n\nDATA SUMMARY:\n" + (digest or "(no data summary was provided)")
     try:
@@ -749,7 +824,7 @@ def ask(req: AskRequest):
             model=ANTHROPIC_MODEL,
             max_tokens=700,
             system=system,
-            messages=[{"role": "user", "content": question[:1000]}],
+            messages=[{"role": "user", "content": question[:ASK_MAX_QUESTION_CHARS]}],
         )
         text = "".join(getattr(b, "text", "") for b in msg.content if getattr(b, "type", None) == "text")
     except Exception as exc:
