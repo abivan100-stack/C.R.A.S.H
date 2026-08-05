@@ -31,6 +31,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
 # Local dev: load variables from a .env file if present. In production the real
 # environment variables are already set, so this is a harmless no-op.
@@ -163,6 +164,12 @@ def _fail(status_code, message, exc, context):
     ServerDescription topology dump to any anonymous caller.
     """
     log.error("%s: %s", context, exc, exc_info=True)
+    # An unreachable database is "service unavailable", not "server error": the
+    # request was valid and retrying later may work. It also tells the frontend
+    # to fall back to localStorage rather than report a bug.
+    if isinstance(exc, (ServerSelectionTimeoutError, ConnectionFailure)):
+        status_code = 503
+        message = "The reports database is temporarily unreachable."
     return HTTPException(
         status_code=status_code,
         detail=f"{message} (request {_request_id.get()})",
@@ -218,30 +225,54 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
 
 
 # --- MongoDB ------------------------------------------------------------------
-# MongoClient is lazy (it doesn't dial out until the first operation), so building
-# it at import time is safe even with a bad/missing URI — the error then surfaces
-# on the first DB call, where we translate it into a clean HTTP error. A short
-# server-selection timeout means /health and /reports fail fast instead of hanging.
-_client = (
-    MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000, appname="crash-reports")
-    if MONGODB_URI
-    else None
-)
+# The client is built on FIRST USE, not at import.
+#
+# The old comment here claimed constructing MongoClient was safe with a bad URI
+# because the driver is lazy. That is true for *connecting*, but NOT for parsing:
+# verified by execution, MONGODB_URI="mongodb+srv://u:p@bad host/db" raises
+# ConfigurationError inside the constructor — at import time, before uvicorn can
+# bind. A single typo in a Render environment variable therefore took the WHOLE
+# site down, including the map, analytics and simulation, none of which touch the
+# database at all. Deferring construction keeps a config mistake contained to the
+# report endpoints, which already degrade gracefully.
+_client = None                 # tests monkeypatch this directly
+_client_error = None           # remembered so a broken URI isn't re-parsed per request
+
+
+def _get_client():
+    """Return the MongoClient, building it once, or None if it cannot be built."""
+    global _client, _client_error
+    if _client is not None:
+        return _client
+    if not MONGODB_URI or _client_error is not None:
+        return None
+    try:
+        # A short server-selection timeout means the report routes fail fast
+        # instead of hanging a worker for the driver's 30s default.
+        _client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000, appname="crash-reports")
+    except Exception as exc:
+        # Never log the URI itself — it carries the password.
+        _client_error = exc
+        log.error("MONGODB_URI could not be parsed; citizen reports are disabled: %s",
+                  type(exc).__name__)
+        return None
+    return _client
 
 
 def get_collection():
-    """Return the citizen_reports collection, or a clear 503 if unconfigured.
+    """Return the citizen_reports collection, or a clear 503 if unavailable.
 
     503, not 500: the request itself was fine, the server just isn't ready. This
     also lets the frontend distinguish "backend not configured" from "your report
     was rejected" and fall back to local storage without reporting a bug.
     """
-    if _client is None:
+    client = _get_client()
+    if client is None:
         raise HTTPException(
             status_code=503,
             detail="Citizen reports are unavailable: the server has no database configured.",
         )
-    return _client[DB_NAME][COLLECTION_NAME]
+    return client[DB_NAME][COLLECTION_NAME]
 
 
 # --- Schema -------------------------------------------------------------------
@@ -327,11 +358,18 @@ class Report(BaseModel):
 # frontend file name.
 @app.get("/health")
 def health():
-    """Quick connectivity check — pings MongoDB so a 200 means the DB is reachable."""
-    if _client is None:
+    """Quick connectivity check — pings MongoDB so a 200 means the DB is reachable.
+
+    NOTE: deliberately unchanged. This endpoint is render.yaml's healthCheckPath,
+    so a 503 here marks the whole service unhealthy even though the map, analytics
+    and simulation need no database (finding F006). That coupling was reviewed and
+    kept as-is by explicit decision; it is recorded in audit/03-deferred.md.
+    """
+    client = _get_client()
+    if client is None:
         raise HTTPException(status_code=503, detail="MONGODB_URI is not configured.")
     try:
-        _client.admin.command("ping")
+        client.admin.command("ping")
     except Exception as exc:  # pymongo raises on unreachable / bad-credential URIs
         raise _fail(503, "Database is unreachable.", exc, "mongodb ping failed") from exc
     return {"status": "ok"}
