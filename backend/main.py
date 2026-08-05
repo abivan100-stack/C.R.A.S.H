@@ -341,6 +341,40 @@ def _is_number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
+# XML 1.0 permits only these characters:
+#   #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
+# xml_escape() only rewrites & < >, so a control character such as \x00 passed
+# straight through into the sheet. The result was a structurally valid ZIP whose
+# worksheet XML would not parse — Excel reports "unreadable content" and the
+# frontend's PK-magic-bytes fallback check cannot detect it, so the export failed
+# silently. Reports reach this from MongoDB, including any stored before the
+# /report validator was tightened.
+def _xml_safe(text):
+    """Drop characters XML 1.0 cannot represent, keeping tab/newline/return."""
+    return "".join(
+        ch for ch in text
+        if ch in "\t\n\r"
+        or "\x20" <= ch <= "퟿"
+        or "" <= ch <= "�"
+        or ch >= "\U00010000"
+    )
+
+
+def _column_ref(index):
+    """0-based column index -> spreadsheet letters (0 -> A, 25 -> Z, 26 -> AA).
+
+    The previous `chr(65 + i)` was correct for today's 9 columns but silently
+    emitted punctuation past column Z, which would corrupt the workbook rather
+    than fail loudly if EXPORT_COLUMNS ever grew.
+    """
+    letters = ""
+    index += 1
+    while index:
+        index, remainder = divmod(index - 1, 26)
+        letters = chr(65 + remainder) + letters
+    return letters
+
+
 def _worksheet_xml(rows):
     """Build the sheet: a <cols> block (auto-fit widths) + the header row + one row
     per report. lat/lng become numeric cells; every other value is an inline string
@@ -354,18 +388,18 @@ def _worksheet_xml(rows):
     def cell(ref, key, value):
         if key in NUMERIC_COLUMNS and _is_number(value):
             return f'<c r="{ref}"><v>{value}</v></c>'
-        text = xml_escape("" if value is None else str(value))
+        text = xml_escape(_xml_safe("" if value is None else str(value)))
         return f'<c r="{ref}" t="inlineStr"><is><t xml:space="preserve">{text}</t></is></c>'
 
     body = [
         '<row r="1">'
-        + "".join(cell(f"{chr(65 + i)}1", key, key) for i, key in enumerate(EXPORT_COLUMNS))
+        + "".join(cell(f"{_column_ref(i)}1", key, key) for i, key in enumerate(EXPORT_COLUMNS))
         + "</row>"
     ]
     for r_index, row in enumerate(rows, start=2):
         body.append(
             f'<row r="{r_index}">'
-            + "".join(cell(f"{chr(65 + i)}{r_index}", key, row.get(key, "")) for i, key in enumerate(EXPORT_COLUMNS))
+            + "".join(cell(f"{_column_ref(i)}{r_index}", key, row.get(key, "")) for i, key in enumerate(EXPORT_COLUMNS))
             + "</row>"
         )
 
