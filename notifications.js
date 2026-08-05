@@ -335,12 +335,18 @@
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, POLL_TIMEOUT) : 0;
     return fetch(API + '/reports', { signal: ctrl ? ctrl.signal : undefined, cache: 'no-store' })
       .then(function (resp) {
-        if (timer) clearTimeout(timer);
+        // The abort timer is cleared in the trailing .then() below, NOT here:
+        // fetch() settles on response HEADERS while the body is still streaming.
+        // Clearing it at this point meant a server stalling mid-body was never
+        // aborted, this promise never settled, and pollInFlight latched true —
+        // silently killing cross-device sync for the rest of the session.
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         return resp.json();
       })
       .then(function (data) {
-        pollInFlight = false;
+        // pollInFlight is NOT released here — the trailing .then() below owns it,
+        // so it is released on the failure path too. Releasing it early also let a
+        // second poll start while this one was still merging results.
         if (!Array.isArray(data)) return;
         // genuinely-new reports (by content signature), kept in backend order (oldest
         // first) so the newest lands on top of the list after each unshift
@@ -356,7 +362,10 @@
         baselineSeeded = true;                 // first successful poll defines "already existed" — nothing above toasts
         for (var j = 0; j < fresh.length; j++) notify(fromBackend(fresh[j]));
       })
-      .catch(function () { if (timer) clearTimeout(timer); pollInFlight = false; /* silent — keep using local data */ });
+      .catch(function () { /* silent — keep using local data */ })
+      // Runs on BOTH paths, so the abort timer is always disarmed and the
+      // in-flight latch is always released, even if the body handler throws.
+      .then(function () { if (timer) clearTimeout(timer); pollInFlight = false; });
   }
 
   function startPolling() {

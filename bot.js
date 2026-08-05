@@ -329,10 +329,13 @@
       body: JSON.stringify({ question: question, digest: buildDigest() }),
       signal: ctrl ? ctrl.signal : undefined, cache: 'no-store',
     })
-      .then(function (r) { if (timer) clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      // The abort timer is cleared in the trailing .then(), NOT on headers:
+      // fetch() settles before the body arrives, so clearing it here left a
+      // stalled body un-abortable and the chat stuck on "typing…" forever.
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (data) { typingOff(); respond(data); })
-      .catch(function () { if (timer) clearTimeout(timer); typingOff(); addMsg('bot', BOT_UNAVAILABLE); })
-      .then(function () { busy = false; if (send) send.disabled = false; });
+      .catch(function () { typingOff(); addMsg('bot', BOT_UNAVAILABLE); })
+      .then(function () { if (timer) clearTimeout(timer); busy = false; if (send) send.disabled = false; });
   }
 
   function initBotChat() {

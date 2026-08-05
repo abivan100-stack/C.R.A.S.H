@@ -2007,15 +2007,20 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reportPayload(rec)),
       signal: ctrl ? ctrl.signal : undefined,
+    // The abort timer is cleared in the trailing .then(), NOT on headers:
+    // fetch() settles as soon as the response headers arrive while the body is
+    // still streaming, so clearing it here left a stalled body un-abortable and
+    // the Submit button stuck on "Saving…" forever.
     }).then(function (resp) {
-      if (timer) clearTimeout(timer);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       return resp.json();
     }).then(function (data) {
       return { ok: true, id: data && data.id };
     }).catch(function (e) {
-      if (timer) clearTimeout(timer);
       return { ok: false, error: (e && e.message) || String(e) };
+    }).then(function (result) {
+      if (timer) clearTimeout(timer);
+      return result;
     });
   }
 
@@ -2284,8 +2289,10 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 6000) : 0;
 
       fetch(API + '/export/xlsx', ctrl ? { signal: ctrl.signal, cache: 'no-store' } : { cache: 'no-store' })
+        // The abort timer is cleared in the trailing .then(), NOT on headers:
+        // an .xlsx body is the largest response this app fetches, so a stall
+        // part-way through the download is the most likely place to hang.
         .then(function (resp) {
-          if (timer) clearTimeout(timer);
           if (!resp.ok) throw new Error('HTTP ' + resp.status);
           var count = (resp.headers && resp.headers.get) ? resp.headers.get('X-Report-Count') : null;
           return resp.arrayBuffer().then(function (buf) { return { buf: buf, count: count }; });
@@ -2302,11 +2309,10 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
           else setMsg('Exported all reports from the shared database.', false);
         })
         .catch(function () {
-          if (timer) clearTimeout(timer);
           // backend down / blocked / timed out → build the workbook from local reports
           exportLocal('Database unreachable');
         })
-        .then(function () { btn.disabled = false; });
+        .then(function () { if (timer) clearTimeout(timer); btn.disabled = false; });
     });
   })();
 })();

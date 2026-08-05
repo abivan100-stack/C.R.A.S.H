@@ -1846,7 +1846,10 @@ async function fetchSharedReports() {
   const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : 0;
   try {
     const res = await fetch(API + '/reports', ctrl ? { signal: ctrl.signal } : undefined);
-    if (timer) clearTimeout(timer);
+    // NOTE: the abort timer is cleared in `finally`, NOT here. fetch() resolves as
+    // soon as the response HEADERS arrive; the body is still streaming. Disarming
+    // the timer at this point left a server that stalls mid-body un-abortable, and
+    // the promise below never settled.
     if (!res.ok) return [];
     const arr = await res.json();
     if (!Array.isArray(arr)) return [];
@@ -1856,7 +1859,11 @@ async function fetchSharedReports() {
       citizen: true, shared: true,
       id: r._id ? ('m' + r._id) : ('c' + Math.random().toString(36).slice(2, 8)),
     }));
-  } catch (e) { if (timer) clearTimeout(timer); return []; }
+  } catch (e) {
+    return [];
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 /* merge SHARED (backend) + LOCAL (localStorage) citizen reports, de-duplicated by
