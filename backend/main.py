@@ -12,6 +12,7 @@ Security:
   * For local dev, python-dotenv loads a gitignored .env (see .env.example).
   * In production (Render) MONGODB_URI is set in the service's env settings.
 """
+import datetime as _dt
 import io
 import json
 import math
@@ -19,14 +20,14 @@ import os
 import zipfile
 from xml.sax.saxutils import escape as xml_escape
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from pymongo import MongoClient
-
 from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pymongo import MongoClient
 
 # Local dev: load variables from a .env file if present. In production the real
 # environment variables are already set, so this is a harmless no-op.
@@ -35,6 +36,37 @@ load_dotenv()
 MONGODB_URI = os.environ.get("MONGODB_URI")   # NEVER hardcode — env var only
 DB_NAME = "accidents_db"
 COLLECTION_NAME = "citizen_reports"
+
+# --- Domain vocabularies ------------------------------------------------------
+# The single source of truth for every controlled field, used BOTH to validate an
+# incoming citizen report and to constrain the AI's filter output. These must stay
+# equal to the values actually present in data/accidents.json — a test asserts it.
+AREAS = [
+    "Adyar", "Ambattur", "Anna Nagar", "Avadi", "Chromepet", "Egmore", "Guindy",
+    "Kattankulathur", "Koyambedu", "Maduravoyal", "Medavakkam", "Mylapore", "Nandanam",
+    "Nungambakkam", "Padi", "Pallavaram", "Perambur", "Perungudi", "Poonamallee",
+    "Porur", "Saidapet", "Sholinganallur", "T. Nagar", "Tambaram", "Teynampet",
+    "Thiruvanmiyur", "Thoraipakkam", "Vadapalani", "Vandalur", "Velachery",
+]
+CAUSES = [
+    "Over-speeding", "Wrong-side driving", "Signal jumping", "Drunken driving",
+    "Mobile phone use", "Hit and run", "Pothole / bad road", "Pedestrian crossing error",
+    "Improper overtaking", "Vehicle defect", "Poor visibility",
+]
+VEHICLES = [
+    "Two-wheeler", "Car", "Auto-rickshaw", "Bus (MTC/Private)", "Lorry / Truck",
+    "LCV / Van", "Bicycle", "Unknown (fled)",
+]
+SEVERITIES = frozenset({"fatal", "serious", "slight"})
+WEATHERS = frozenset({"clear", "rain", "fog"})
+
+# Greater Chennai bounding box, matching BBOX in shared/constants.js with a small
+# margin. A report outside it is not a Chennai road accident.
+LAT_MIN, LAT_MAX = 12.60, 13.40
+LNG_MIN, LNG_MAX = 79.90, 80.45
+
+# "YYYY-MM-DD HH:MM", the exact shape the frontend sends and the engines parse.
+DATETIME_RE = r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$"
 
 # The static frontend lives one level up (…/project). Resolved from THIS file's
 # path (not the CWD) so it works no matter where uvicorn is started from.
@@ -71,6 +103,27 @@ async def revalidate_html(request, call_next):
     return response
 
 
+# --- Validation errors --------------------------------------------------------
+# FastAPI's default 422 body echoes the rejected value back under "input". That is
+# a problem twice over:
+#   1. It CRASHES on exactly the input we most want to reject. A body of
+#      {"lat": NaN} is parsed fine by the stdlib, correctly refused by the model —
+#      and then the error response itself raises "Out of range float values are not
+#      JSON compliant", turning a clean 422 into a 500.
+#   2. It reflects attacker-supplied content straight back to the client.
+# So report which field failed and why, and never the submitted value.
+@app.exception_handler(RequestValidationError)
+async def _handle_validation_error(request: Request, exc: RequestValidationError):
+    errors = []
+    for err in exc.errors():
+        location = [str(part) for part in err.get("loc", ()) if part != "body"]
+        errors.append({
+            "field": ".".join(location) or "body",
+            "message": str(err.get("msg", "invalid value")),
+        })
+    return JSONResponse(status_code=422, content={"detail": "Validation failed", "errors": errors})
+
+
 # --- MongoDB ------------------------------------------------------------------
 # MongoClient is lazy (it doesn't dial out until the first operation), so building
 # it at import time is safe even with a bad/missing URI — the error then surfaces
@@ -84,26 +137,95 @@ _client = (
 
 
 def get_collection():
-    """Return the citizen_reports collection, or a clear 500 if unconfigured."""
+    """Return the citizen_reports collection, or a clear 503 if unconfigured.
+
+    503, not 500: the request itself was fine, the server just isn't ready. This
+    also lets the frontend distinguish "backend not configured" from "your report
+    was rejected" and fall back to local storage without reporting a bug.
+    """
     if _client is None:
         raise HTTPException(
-            status_code=500,
-            detail="MONGODB_URI is not configured on the server.",
+            status_code=503,
+            detail="Citizen reports are unavailable: the server has no database configured.",
         )
     return _client[DB_NAME][COLLECTION_NAME]
 
 
 # --- Schema -------------------------------------------------------------------
 class Report(BaseModel):
-    """A citizen accident report — the same 8-field schema as the frontend."""
-    lat: float
-    lng: float
+    """A citizen accident report — the same 8-field schema as the frontend.
+
+    Every field is constrained here, at the trust boundary. /report is public and
+    unauthenticated, so anything this model accepts is stored and then rendered on
+    every visitor's map. Type-only validation previously let through NaN
+    coordinates (which permanently 500'd GET /reports), 100 kB strings, XML control
+    characters, and HTML/script payloads.
+    """
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    # allow_inf_nan=False rejects NaN and ±Infinity, which the stdlib JSON parser
+    # accepts but Starlette's serialiser then refuses to write.
+    lat: float = Field(ge=LAT_MIN, le=LAT_MAX, allow_inf_nan=False)
+    lng: float = Field(ge=LNG_MIN, le=LNG_MAX, allow_inf_nan=False)
     severity: str
-    datetime: str
+    datetime: str = Field(pattern=DATETIME_RE)
     weather: str
     cause: str
     vehicle: str
     area: str
+
+    @field_validator("severity")
+    @classmethod
+    def _check_severity(cls, v: str) -> str:
+        if v not in SEVERITIES:
+            raise ValueError(f"severity must be one of {sorted(SEVERITIES)}")
+        return v
+
+    @field_validator("weather")
+    @classmethod
+    def _check_weather(cls, v: str) -> str:
+        if v not in WEATHERS:
+            raise ValueError(f"weather must be one of {sorted(WEATHERS)}")
+        return v
+
+    @field_validator("cause")
+    @classmethod
+    def _check_cause(cls, v: str) -> str:
+        if v not in CAUSES:
+            raise ValueError("cause is not a recognised accident cause")
+        return v
+
+    @field_validator("vehicle")
+    @classmethod
+    def _check_vehicle(cls, v: str) -> str:
+        if v not in VEHICLES:
+            raise ValueError("vehicle is not a recognised vehicle type")
+        return v
+
+    @field_validator("area")
+    @classmethod
+    def _check_area(cls, v: str) -> str:
+        # The frontend always derives `area` from nearestArea() over this same
+        # list, so a value outside it did not come from the report form.
+        if v not in AREAS:
+            raise ValueError("area is not a recognised Chennai area")
+        return v
+
+    @field_validator("datetime")
+    @classmethod
+    def _check_datetime_is_real(cls, v: str) -> str:
+        try:
+            parsed = _dt.datetime.strptime(v, "%Y-%m-%d %H:%M")
+        except ValueError as exc:
+            raise ValueError("datetime must be 'YYYY-MM-DD HH:MM'") from exc
+        # A far-future date silently stretches the frontend's analysis window and
+        # corrupts the per-month KPIs, so reject it here rather than downstream.
+        if parsed > _dt.datetime.now() + _dt.timedelta(minutes=5):
+            raise ValueError("datetime cannot be in the future")
+        if parsed < _dt.datetime(2000, 1, 1):
+            raise ValueError("datetime is implausibly old")
+        return v
 
 
 # --- API routes ---------------------------------------------------------------
@@ -310,25 +432,14 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")   # env only, NEVER hard
 
 # Valid filter vocabularies — MUST match the frontend dataset so the AI's output lines
 # up exactly with the map's own filtering. Areas are the 30 real dataset areas.
-BOT_AREAS = [
-    "Adyar", "Ambattur", "Anna Nagar", "Avadi", "Chromepet", "Egmore", "Guindy",
-    "Kattankulathur", "Koyambedu", "Maduravoyal", "Medavakkam", "Mylapore", "Nandanam",
-    "Nungambakkam", "Padi", "Pallavaram", "Perambur", "Perungudi", "Poonamallee",
-    "Porur", "Saidapet", "Sholinganallur", "T. Nagar", "Tambaram", "Teynampet",
-    "Thiruvanmiyur", "Thoraipakkam", "Vadapalani", "Vandalur", "Velachery",
-]
-BOT_CAUSES = [
-    "Over-speeding", "Wrong-side driving", "Signal jumping", "Drunken driving",
-    "Mobile phone use", "Hit and run", "Pothole / bad road", "Pedestrian crossing error",
-    "Improper overtaking", "Vehicle defect", "Poor visibility",
-]
-BOT_VEHICLES = [
-    "Two-wheeler", "Car", "Auto-rickshaw", "Bus (MTC/Private)", "Lorry / Truck",
-    "LCV / Van", "Bicycle", "Unknown (fled)",
-]
-BOT_SEVERITY = {"fatal", "serious", "slight"}
-BOT_TIME = {"day", "night"}
-BOT_WEATHER = {"clear", "rain", "fog"}
+# Aliases onto the single vocabulary defined at the top of this module, so the
+# AI's allowed filter values and the /report validator can never drift apart.
+BOT_AREAS = AREAS
+BOT_CAUSES = CAUSES
+BOT_VEHICLES = VEHICLES
+BOT_SEVERITY = SEVERITIES
+BOT_TIME = frozenset({"day", "night"})
+BOT_WEATHER = WEATHERS
 BOT_INTENT = {"count", "summary", "help", "out_of_scope"}
 
 ASK_SYSTEM_PROMPT = (
