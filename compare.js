@@ -35,6 +35,10 @@
   var CE = window.CE;
   if (!CE) throw new Error('CRASH_ENGINE not loaded — load shared/engine.js first');
   const fmt = CU.fmt, sortedEntries = CU.sortedEntries;
+  /* compare-only number formats — not in CU (CU.pct takes value/total, a different shape) */
+  const pct0 = (x) => Math.round(x) + '%';
+  const pct1 = (x) => (Math.round(x * 10) / 10) + '%';
+  const mult = (x) => (Math.round(x * 10) / 10) + '×';
 
   /* =========================== compute =========================== */
   function precompute() {
