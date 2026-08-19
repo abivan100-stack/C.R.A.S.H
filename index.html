@@ -747,7 +747,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     </div>
     <div class="notify-wrap">
       <button class="icon-btn notify-bell" id="notifyBell" type="button" aria-label="Notifications" aria-haspopup="dialog" aria-expanded="false">
-        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.7a3.5 3.5 0 0 0-3.5 3.5c0 3.3-1.3 4.3-1.3 4.3h9.6s-1.3-1-1.3-4.3A3.5 3.5 0 0 0 8 1.7Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6.6 12.1a1.5 1.5 0 0 0 2.8 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <svg class="ic" width="16" height="16" aria-hidden="true"><use href="./vendor/icons.svg#i-bell"/></svg>
         <span class="notify-badge" id="notifyBadge" hidden>0</span>
       </button>
       <div class="notify-panel" id="notifyPanel" role="dialog" aria-label="Recent reports" hidden>
@@ -757,7 +757,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     </div>
     <button class="icon-btn" id="themeToggle" type="button" aria-label="Toggle theme"></button>
     <button class="icon-btn nav-toggle" id="navToggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="navPills">
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <svg class="ic" width="16" height="16" aria-hidden="true"><use href="./vendor/icons.svg#i-menu"/></svg>
     </button>
   </nav>
 </header>
@@ -788,7 +788,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
         <div style="position: absolute; top: 12px; left: 14px; z-index: 20; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; pointer-events: none;">
           <div id="mapSearchWrap" style="pointer-events: auto; position: relative; width: min(258px, 62vw);">
             <div class="mapsearch-box">
-              <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <svg class="ic" width="13" height="13" aria-hidden="true"><use href="./vendor/icons.svg#i-search"/></svg>
               <input id="mapSearchInput" type="text" placeholder="Search a place / area…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="mapSearchResults" aria-label="Search places on the map">
               <button id="mapSearchClear" type="button" aria-label="Clear search" hidden>&#10005;</button>
             </div>
@@ -796,17 +796,17 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
           </div>
           <div style="pointer-events: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <button id="filtersBtn" type="button" aria-expanded="false" aria-controls="filterPanel">
-              <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <svg class="ic" width="12" height="12" aria-hidden="true"><use href="./vendor/icons.svg#i-list-filter"/></svg>
               Filters
               <span id="filterCount">0</span>
-              <svg class="chev" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5l3-3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <svg class="chev ic" width="10" height="10" aria-hidden="true"><use href="./vendor/icons.svg#i-chevron-down"/></svg>
             </button>
             <button id="strategyBtn" type="button" title="City strategy — leverage &amp; intervention priority">
-              <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2m0 1h8l-1.8 2.4L12 8H4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>
+              <svg class="ic" width="13" height="13" aria-hidden="true"><use href="./vendor/icons.svg#i-flag"/></svg>
               Strategy
             </button>
             <button id="hospitalsBtn" type="button" aria-pressed="false" title="Show real Chennai hospitals on the map">
-              <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 2h3v4.5H14v3H9.5V14h-3V9.5H2v-3h4.5z" fill="currentColor"/></svg>
+              <svg class="ic" width="13" height="13" aria-hidden="true"><use href="./vendor/icons.svg#i-plus"/></svg>
               Hospitals
             </button>
           </div>
@@ -870,13 +870,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
         <div id="dossierEmerging" style="flex: 1; display: none; flex-direction: column; min-height: 0;"></div>
         <div id="dossierZone" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
           <div id="dossierEmpty" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 32px; text-align: center;">
-            <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
-              <circle cx="15" cy="15" r="10" style="fill: none; stroke: var(--text-4); stroke-width: 1.2;"></circle>
-              <line x1="15" y1="1" x2="15" y2="8" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
-              <line x1="15" y1="22" x2="15" y2="29" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
-              <line x1="1" y1="15" x2="8" y2="15" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
-              <line x1="22" y1="15" x2="29" y2="15" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
-            </svg>
+            <svg class="ic" width="30" height="30" aria-hidden="true"><use href="./vendor/icons.svg#i-crosshair"/></svg>
             <div style="font: 500 15px var(--font-display);">Select a zone</div>
             <div style="font: 400 12.5px var(--font-body); line-height: 1.55; color: var(--text-2); max-width: 220px;">Choose a junction from the ranked index, or a bloom on the map, to open its dossier.</div>
           </div>
@@ -1019,7 +1013,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
                 <span class="af-geo-label">Use my current location</span>
               </button>
               <button id="openPickerBtn" class="af-pick-btn" type="button">
-                <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.6" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+                <svg class="ic" width="15" height="15" aria-hidden="true"><use href="./vendor/icons.svg#i-map-pin"/></svg>
                 Pick location on map
               </button>
               <div class="af-hint">Click the map to drop a pin, or pick an area below — either one sets the location. Drag the pin to fine-tune. For a bigger, precise map, use “Pick location on map”.</div>
@@ -1070,7 +1064,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
               <div class="af-err" id="afErr"></div>
               <div class="af-actions">
                 <button class="rc-btn" id="afSubmit" type="button">
-                  <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.5 6.5 13 14 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <svg class="ic" width="14" height="14" aria-hidden="true"><use href="./vendor/icons.svg#i-check"/></svg>
                   Submit report
                 </button>
                 <button class="rc-btn ghost" id="afReset" type="button">Reset</button>
@@ -1081,7 +1075,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 
         <div class="af-confirm" id="afConfirm" hidden>
           <div class="af-confirm-icon">
-            <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.5 6.5 13 14 3.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="ic" width="18" height="18" aria-hidden="true"><use href="./vendor/icons.svg#i-check"/></svg>
           </div>
           <div class="af-confirm-body">
             <div class="af-confirm-title" id="afConfirmTitle">Report saved</div>
@@ -1103,26 +1097,26 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
         <div class="grid g2" style="margin-top:28px; align-items:stretch;">
           <div class="report-card">
             <div class="rc-badge">
-              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V5a1 1 0 0 1 1-1h9l6 6v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 4v6h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 13h8M8 16.5h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              <svg class="ic" width="20" height="20" aria-hidden="true"><use href="./vendor/icons.svg#i-file-text"/></svg>
             </div>
             <div class="rc-title">City-wide report</div>
             <div class="rc-desc">The full safety report: headline KPIs, the leverage stat, the top-10 ranked junctions, cause &amp; vehicle breakdowns, emerging hotspots, and the intervention priority queue.</div>
             <button class="rc-btn" id="reportCityBtn" type="button">
-              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <svg class="ic" width="14" height="14" aria-hidden="true"><use href="./vendor/icons.svg#i-download"/></svg>
               Download city report
             </button>
           </div>
 
           <div class="report-card">
             <div class="rc-badge">
-              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+              <svg class="ic" width="20" height="20" aria-hidden="true"><use href="./vendor/icons.svg#i-map-pin"/></svg>
             </div>
             <div class="rc-title">Single-area report</div>
             <div class="rc-desc">A focused report for one area: severity split, top causes, vehicles, timing, weather, and the recommended intervention with its cost tier and estimated preventable crashes.</div>
             <label class="rc-label" for="reportZoneSelect">Choose an area</label>
             <select class="rc-select" id="reportZoneSelect"><option value="">Loading areas…</option></select>
             <button class="rc-btn" id="reportZoneBtn" type="button">
-              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <svg class="ic" width="14" height="14" aria-hidden="true"><use href="./vendor/icons.svg#i-download"/></svg>
               Download area report
             </button>
           </div>
@@ -1131,12 +1125,12 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
         <!-- ---- Export all citizen reports as an Excel (.xlsx) file ---- -->
         <div class="report-card" style="margin-top:18px;">
           <div class="rc-badge">
-            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="7" ry="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 5v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 11v6c0 1.4 3.1 2.6 7 2.6 1.5 0 2.9-.18 4-.48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M18 15v6m0 0 2.4-2.4M18 21l-2.4-2.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="ic" width="20" height="20" aria-hidden="true"><use href="./vendor/icons.svg#i-database"/></svg>
           </div>
           <div class="rc-title">Export citizen reports</div>
           <div class="rc-desc">Download every citizen-submitted accident report as a single Excel file (.xlsx) &mdash; the full record (location, severity, date &amp; time, weather, cause, vehicle and area) for each report, generated on demand from the shared database with each column auto-sized to fit. Opens cleanly in Excel or Google Sheets. If the database is unreachable, the reports saved in this browser are exported instead.</div>
           <button class="rc-btn" id="exportReportsXlsxBtn" type="button">
-            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v7m0 0 3-3m-3 3L5 6M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="ic" width="14" height="14" aria-hidden="true"><use href="./vendor/icons.svg#i-download"/></svg>
             Export all reports (Excel)
           </button>
           <div class="af-hint" id="exportReportsXlsxMsg" role="status" aria-live="polite" style="margin-top:10px;" hidden></div>
@@ -1157,7 +1151,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
           <h1 class="sim-title">Projected risk under selected conditions</h1>
         </div>
         <div class="sim-disclaimer">
-          <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.1v4M8 4.7h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <svg class="ic" width="15" height="15" aria-hidden="true"><use href="./vendor/icons.svg#i-info"/></svg>
           <span>Simulation based on historical accident patterns — a probabilistic projection, not a prediction of actual events.</span>
         </div>
       </div>
@@ -1180,7 +1174,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
 
           <div class="sim-actions">
             <button class="rc-btn" id="simRun" type="button">
-              <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3l9 5-9 5z" fill="currentColor"/></svg>
+              <svg class="ic" width="13" height="13" aria-hidden="true"><use href="./vendor/icons.svg#i-play"/></svg>
               Run simulation
             </button>
             <button class="rc-btn ghost" id="simReset" type="button">Reset</button>
@@ -1248,7 +1242,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
               <div class="sim-total-note" id="simScenarioNote"></div>
             </div>
             <div class="sim-lowconf" id="simLowConf" hidden>
-              <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.6l6.4 11.1H1.6L8 1.6z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 6.4v3.1M8 11.4h.01" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              <svg class="ic" width="15" height="15" aria-hidden="true"><use href="./vendor/icons.svg#i-triangle-alert"/></svg>
               <span id="simLowConfText"></span>
             </div>
             <div class="sim-chart-label">Projected count by area</div>
@@ -1297,7 +1291,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
         <span class="picker-geo-label">My location</span>
       </button>
       <button id="pickerConfirm" class="picker-confirm" type="button" disabled>
-        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8.5 6.5 13 14 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="ic" width="14" height="14" aria-hidden="true"><use href="./vendor/icons.svg#i-check"/></svg>
         Confirm location
       </button>
       <button id="pickerCancel" class="picker-x" type="button" aria-label="Cancel">&#10005;</button>
@@ -1351,8 +1345,8 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
     var light = currentTheme() === 'light';
     b.title = light ? 'Switch to dark theme' : 'Switch to light theme';
     b.innerHTML = light
-      ? '<svg width="15" height="15" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="4" fill="none" stroke="currentColor" stroke-width="1.4"/><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><line x1="10" y1="1.5" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18.5"/><line x1="1.5" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18.5" y2="10"/><line x1="3.9" y1="3.9" x2="5.6" y2="5.6"/><line x1="14.4" y1="14.4" x2="16.1" y2="16.1"/><line x1="16.1" y1="3.9" x2="14.4" y2="5.6"/></g></svg>'
-      : '<svg width="15" height="15" viewBox="0 0 20 20" aria-hidden="true"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+      ? '<svg class="ic" width="15" height="15" aria-hidden="true"><use href="./vendor/icons.svg#i-sun"/></svg>'
+      : '<svg class="ic" width="15" height="15" aria-hidden="true"><use href="./vendor/icons.svg#i-moon"/></svg>';
   }
   function toggleTheme() {
     var n = currentTheme() === 'light' ? 'dark' : 'light';
@@ -1831,7 +1825,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       } else {
         results.innerHTML = shown.map(function (it, i) {
           return '<button type="button" class="mapsearch-item" role="option" data-i="' + i + '">' +
-            '<svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 15s5-4.5 5-9A5 5 0 1 0 3 6c0 4.5 5 9 5 9z" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="6" r="1.7" fill="currentColor"/></svg>' +
+            '<svg class="ic" width="12" height="12" aria-hidden="true"><use href="./vendor/icons.svg#i-map-pin"/></svg>' +
             '<span>' + CU.escapeHtml(it.label) + '</span></button>';
         }).join('');
       }
@@ -2087,7 +2081,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       action.innerHTML = auth
         ? '<div class="af-confirm-note">You can also file an official complaint about this ' + rec.cause.toLowerCase() + ' incident:</div>' +
           '<a class="af-confirm-link" href="' + auth.url + '" target="_blank" rel="noopener noreferrer">' +
-            '<svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.2h6.8V10M12.8 3.2 4 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            '<svg class="ic" width="13" height="13" aria-hidden="true"><use href="./vendor/icons.svg#i-external-link"/></svg>' +
             auth.name +
           '</a>'
         : '';

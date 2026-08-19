@@ -226,15 +226,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
       </div>
     </div>
     <button type="button" id="strategyBtn" title="City strategy — leverage &amp; intervention priority" style="display: inline-flex; align-items: center; gap: 7px; font: 500 12px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; cursor: pointer; white-space: nowrap;">
-      <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2m0 1h8l-1.8 2.4L12 8H4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <svg class="ic" width="13" height="13" aria-hidden="true"><use href="./vendor/icons.svg#i-flag"/></svg>
       Strategy
     </button>
     <a href="./compare.html" id="compareLink" title="Compare two areas side by side" style="display: inline-flex; align-items: center; gap: 7px; font: 500 12px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; text-decoration: none; white-space: nowrap;">
-      <svg width="14" height="14" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 6h9l-2.5-2.5M14 12H5l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="ic" width="14" height="14" aria-hidden="true"><use href="./vendor/icons.svg#i-arrow-left-right"/></svg>
       Compare
     </a>
     <a href="./analytics.html" id="analyticsLink" title="Open analytics &amp; charts" style="display: inline-flex; align-items: center; gap: 7px; font: 500 12px 'IBM Plex Mono', monospace; letter-spacing: 0.02em; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 7px 11px; text-decoration: none; white-space: nowrap;">
-      <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 13V1M1 13h12M4 10.5V7M7.5 10.5V4M11 10.5V8" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="ic" width="13" height="13" aria-hidden="true"><use href="./vendor/icons.svg#i-chart-column"/></svg>
       Analytics
     </a>
     <button id="themeToggle" type="button" aria-label="Toggle theme" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--text-2); padding: 0;"></button>
@@ -269,10 +269,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
       <div style="position: absolute; top: 12px; left: 14px; z-index: 20; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; pointer-events: none;">
         <div style="pointer-events: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
           <button id="filtersBtn" type="button" aria-expanded="false" aria-controls="filterPanel">
-            <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <svg class="ic" width="12" height="12" aria-hidden="true"><use href="./vendor/icons.svg#i-list-filter"/></svg>
             Filters
             <span id="filterCount">0</span>
-            <svg class="chev" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5l3-3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="chev ic" width="10" height="10" aria-hidden="true"><use href="./vendor/icons.svg#i-chevron-down"/></svg>
           </button>
         </div>
         <div id="filterPanel" role="group" aria-label="Filters" style="pointer-events: auto; display: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 13px 14px; width: min(300px, 64vw);">
@@ -342,13 +342,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
       <div id="dossierZone" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
       <!-- Empty state (default) -->
       <div id="dossierEmpty" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 32px; text-align: center;">
-        <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
-          <circle cx="15" cy="15" r="10" style="fill: none; stroke: var(--text-4); stroke-width: 1.2;"></circle>
-          <line x1="15" y1="1" x2="15" y2="8" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
-          <line x1="15" y1="22" x2="15" y2="29" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
-          <line x1="1" y1="15" x2="8" y2="15" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
-          <line x1="22" y1="15" x2="29" y2="15" style="stroke: var(--text-4); stroke-width: 1.2;"></line>
-        </svg>
+        <svg class="ic" width="30" height="30" aria-hidden="true"><use href="./vendor/icons.svg#i-crosshair"/></svg>
         <div style="font: 500 15px 'Newsreader', sans-serif;">Select a zone</div>
         <div style="font: 400 12.5px 'Roboto', sans-serif; line-height: 1.55; color: var(--text-2); max-width: 220px;">Choose a junction from the ranked index, or a bloom on the map, to open its dossier.</div>
       </div>
