@@ -81,15 +81,15 @@ def test_a_broken_uri_is_not_reparsed_on_every_request(app_with_uri):
 def test_the_uri_is_never_written_to_the_log(app_with_uri, caplog):
     import logging
 
-    secret = "mongodb+srv://reportuser:sup3rs3cret@bad host/db"
+    secret = "mongodb+srv://placeholderuser:placeholderpass@bad host/db"
     module = app_with_uri(secret)
     with caplog.at_level(logging.DEBUG):
         with TestClient(module.app) as client:
             client.get("/reports")
 
     combined = "\n".join(record.getMessage() for record in caplog.records)
-    assert "sup3rs3cret" not in combined
-    assert "reportuser" not in combined
+    assert "placeholderpass" not in combined
+    assert "placeholderuser" not in combined
 
 
 def test_an_absent_uri_is_still_handled(app_with_uri, monkeypatch):

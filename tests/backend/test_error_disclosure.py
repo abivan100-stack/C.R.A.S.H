@@ -17,7 +17,9 @@ import logging
 
 import pytest
 
-SECRET_URI = "mongodb://reportuser:sup3rs3cret@crash-prod.ab12cd3.mongodb.net:27017/?directConnection=true"
+# NOT a real credential shape on purpose: RFC 2606 reserved domain, so this can
+# never be mistaken for (or match a scanner's pattern for) a live Atlas URI.
+SECRET_URI = "mongodb://placeholderuser:placeholderpass@fixture-cluster.example:27017/?directConnection=true"
 
 
 @pytest.fixture
@@ -52,7 +54,7 @@ def test_error_bodies_do_not_leak_connection_details(broken_db, method, path):
 
     assert response.status_code >= 400
     body = response.text
-    for leak in ["sup3rs3cret", "reportuser", "mongodb.net", "crash-prod", "ab12cd3",
+    for leak in ["placeholderpass", "placeholderuser", "fixture-cluster.example",
                  "ServerDescription", "Topology", "Traceback", "connection refused"]:
         assert leak not in body, f"{path} leaked {leak!r}: {body[:300]}"
 
@@ -60,8 +62,8 @@ def test_error_bodies_do_not_leak_connection_details(broken_db, method, path):
 def test_report_insert_failure_does_not_leak(broken_db, valid_report):
     response = broken_db.post("/report", json=valid_report)
     assert response.status_code >= 400
-    assert "sup3rs3cret" not in response.text
-    assert "mongodb.net" not in response.text
+    assert "placeholderpass" not in response.text
+    assert "fixture-cluster.example" not in response.text
 
 
 def test_error_bodies_still_say_something_useful(broken_db):
