@@ -183,8 +183,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 22px 80px; }
     <span><span class="k">CRASH · Compare</span><span class="t">Area head-to-head</span></span>
   </a>
   <div style="display:flex; align-items:center; gap:10px;">
-    <a class="hbtn" href="./dashboard.html" title="Map dashboard"><svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 5.5 7 2l5 3.5V12H2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg> Dashboard</a>
-    <a class="hbtn" href="./analytics.html" title="Analytics &amp; charts"><svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 13V1M1 13h12M4 10.5V7M7.5 10.5V4M11 10.5V8" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> Analytics</a>
+    <a class="hbtn" href="./dashboard.html" title="Map dashboard"><svg class="ic" width="13" height="13" aria-hidden="true"><use href="./vendor/icons.svg#i-house"/></svg> Dashboard</a>
+    <a class="hbtn" href="./analytics.html" title="Analytics &amp; charts"><svg class="ic" width="13" height="13" aria-hidden="true"><use href="./vendor/icons.svg#i-chart-column"/></svg> Analytics</a>
     <button class="hbtn icon" id="themeToggle" type="button" aria-label="Toggle theme"></button>
   </div>
 </header>
@@ -202,13 +202,13 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 22px 80px; }
       <div class="meta" id="metaA">—</div>
       <div class="combo" id="comboA">
         <input class="combo-input" type="text" placeholder="Search area…" aria-label="Choose area A" autocomplete="off">
-        <svg class="combo-caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5l3-3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="combo-caret ic" width="10" height="10" aria-hidden="true"><use href="./vendor/icons.svg#i-chevron-down"/></svg>
         <div class="combo-list" role="listbox"></div>
       </div>
     </div>
     <div class="swap-wrap">
       <button class="swap" id="swapBtn" type="button" aria-label="Swap A and B" title="Swap">
-        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 6h9l-2.5-2.5M14 12H5l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="ic" width="18" height="18" aria-hidden="true"><use href="./vendor/icons.svg#i-arrow-left-right"/></svg>
       </button>
     </div>
     <div class="pick b">
@@ -217,7 +217,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 28px 22px 80px; }
       <div class="meta" id="metaB">—</div>
       <div class="combo" id="comboB">
         <input class="combo-input" type="text" placeholder="Search area…" aria-label="Choose area B" autocomplete="off">
-        <svg class="combo-caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5l3-3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="combo-caret ic" width="10" height="10" aria-hidden="true"><use href="./vendor/icons.svg#i-chevron-down"/></svg>
         <div class="combo-list" role="listbox"></div>
       </div>
     </div>
