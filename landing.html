@@ -117,17 +117,18 @@
     backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
     border-bottom: 1px solid var(--border);
   }
-  .nav-inner { display: flex; align-items: center; gap: 22px; height: 64px; }
-  .brand { display: flex; align-items: center; gap: 11px; color: var(--text); }
+  .nav-inner { display: flex; align-items: center; gap: 14px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 11px; color: var(--text); flex: none; }
+  .nav-divider { flex: none; width: 1px; height: 24px; background: var(--border); }
   .brand-mark {
     width: 34px; height: 34px; border-radius: var(--radius); border: 1px solid var(--accent-line);
     background: var(--accent-faint); color: var(--accent);
-    display: grid; place-items: center; font-family: var(--f-display); font-weight: 600; font-size: 20px;
-    line-height: 1;
+    display: grid; place-items: center; flex: none;
   }
+  .brand-mark svg { width: 18px; height: 18px; }
   .brand-word { font-family: var(--f-display); font-weight: 600; font-size: 19px; letter-spacing: 0.02em; line-height: 1; }
   .brand-sub { font-family: var(--f-mono); font-size: 9px; letter-spacing: 0.13em; color: var(--text-3); text-transform: uppercase; margin-top: 3px; display: block; }
-  .nav-links { display: flex; gap: 22px; margin-left: 12px; }
+  .nav-links { display: flex; gap: 17px; }
   .nav-links a {
     position: relative; font-family: var(--f-mono); font-size: 12.5px; color: var(--text-muted);
     letter-spacing: 0.01em; padding: 4px 0; transition: color .16s;
@@ -138,7 +139,7 @@
   }
   .nav-links a:hover { color: var(--text); }
   .nav-links a:hover::after { transform: scaleX(1); }
-  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .nav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: none; }
   .nav-drawer-cta { display: none; }
   .theme-toggle {
     width: 38px; height: 38px; border-radius: var(--radius); border: 1px solid var(--border);
@@ -375,16 +376,23 @@
     .aud { grid-template-columns: repeat(2, 1fr); }
     .foot-top { grid-template-columns: 1fr 1fr; }
   }
-  @media (max-width: 620px) {
+  /* the nav row's own content needs the container's full 1180px design width to
+     fit on one line (see --maxw) - below that, .wrap shrinks with the viewport
+     faster than the nav row's content does, so the drawer takes over earlier
+     than the other content breakpoints above. */
+  @media (max-width: 1179px) {
     .nav-links { display: none; }
     .nav-toggle { display: block; }
     .nav-right .btn-primary { display: none; }
+    .nav-divider { display: none; }
     .nav[data-open="true"] .nav-drawer-cta { display: block; color: var(--accent); font-weight: 600; }
     .nav[data-open="true"] .nav-links {
       display: flex; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; gap: 0;
       background: var(--surface); border-bottom: 1px solid var(--border); padding: 6px var(--gutter) 14px;
     }
     .nav[data-open="true"] .nav-links a { padding: 12px 0; border-bottom: 1px solid var(--border-soft); }
+  }
+  @media (max-width: 620px) {
     .stats { grid-template-columns: 1fr; }
     .argus, .caps, .steps, .aud, .foot-top { grid-template-columns: 1fr; }
     .btn { flex: 1; justify-content: center; }
@@ -397,12 +405,13 @@
 <header class="nav" id="nav" data-open="false">
   <div class="wrap nav-inner">
     <a class="brand" href="./landing.html" aria-label="CRASH home">
-      <span class="brand-mark">C</span>
+      <span class="brand-mark"><svg aria-hidden="true"><use href="./vendor/icons.svg#i-map-pin"/></svg></span>
       <span>
         <span class="brand-word">CRASH</span>
         <span class="brand-sub">Chennai Road Accident Safety Hub</span>
       </span>
     </a>
+    <span class="nav-divider" aria-hidden="true"></span>
     <nav class="nav-links" aria-label="Primary">
       <a href="#case">The case</a>
       <a href="#hub">The hub</a>
@@ -413,6 +422,7 @@
       <a class="nav-drawer-cta" href="./index.html">Open the live map →</a>
     </nav>
     <div class="nav-right">
+      <span class="nav-divider" aria-hidden="true"></span>
       <button class="theme-toggle" id="themeToggle" aria-label="Toggle light / dark theme">
         <svg class="i-sun" aria-hidden="true"><use href="./vendor/icons.svg#i-sun"/></svg>
         <svg class="i-moon" aria-hidden="true"><use href="./vendor/icons.svg#i-moon"/></svg>
@@ -742,7 +752,7 @@
     <div class="foot-top">
       <div>
         <a class="brand" href="./landing.html" aria-label="CRASH home">
-          <span class="brand-mark">C</span>
+          <span class="brand-mark"><svg aria-hidden="true"><use href="./vendor/icons.svg#i-map-pin"/></svg></span>
           <span><span class="brand-word">CRASH</span><span class="brand-sub">Chennai Road Accident Safety Hub</span></span>
         </a>
         <p class="desc">A road-safety intelligence hub that turns Greater Chennai's accident record into a ranked, actionable map of risk.</p>
