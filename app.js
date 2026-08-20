@@ -1832,14 +1832,30 @@ function recomputeMonths() {
   app.lastMonth = m.lastMonth;
 }
 
-/* a stored report must be well-formed before we trust it in the engines */
+/* A stored report must be well-formed before we trust it in the engines.
+
+   Every controlled field is checked against its VOCABULARY, not just its type.
+   This is the same bar POST /report applies, deliberately duplicated here because
+   this function also gates two sources the backend never saw: localStorage, and
+   documents written to Mongo before those validators existed. A type-only check
+   let those through, and these values do not stay inert — area/cause become
+   object KEYS in the grid and dossier accumulators, and weather indexes a fixed
+   {clear,rain,fog} map. Verified consequences of the old check:
+     * area:"__proto__"  -> Object.keys(cell.areas) is empty -> computeHotspots'
+       `Object.entries(...)[0][0]` throws and the whole ranking engine dies.
+     * weather:"hail" (or missing) -> analytics.js `wsev[a.weather][a.severity]++`
+       throws and the entire Analytics page renders blank.
+     * cause:"<img src=x onerror=...>" -> reaches the dossier's innerHTML.
+   Rejecting is correct rather than coercing: these figures are shown as counts,
+   so inventing a weather or an area would fabricate data. */
 function isValidReport(r) {
   return r && typeof r === 'object' &&
     typeof r.lat === 'number' && isFinite(r.lat) &&
     typeof r.lng === 'number' && isFinite(r.lng) &&
     isSeverity(r.severity) &&
     typeof r.datetime === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d/.test(r.datetime) &&
-    typeof r.cause === 'string' && typeof r.vehicle === 'string' && typeof r.area === 'string';
+    C.isCause(r.cause) && C.isVehicle(r.vehicle) &&
+    C.isArea(r.area) && C.isWeather(r.weather);
 }
 function loadCitizenReports() {
   try {

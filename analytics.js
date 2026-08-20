@@ -479,12 +479,24 @@
   // shell calls this once the section becomes visible so they size correctly
   window.__crashResizeAnalytics = function () { charts.forEach(function (c) { try { c.resize(); } catch (e) {} }); };
 
-  /* citizen reports saved by the Reports-section form (same localStorage key as
-     app.js). Kept self-sufficient so analytics.html works standalone too. */
+  /* Citizen reports saved by the Reports-section form (same localStorage key as
+     app.js). Kept self-sufficient so analytics.html works standalone too.
+
+     Vocabulary-checked, matching app.js's isValidReport and POST /report exactly.
+     This page is the one that actually crashed on a bad value: computeAgg does
+     `wsev[a.weather][a.severity]++` against a fixed {clear,rain,fog} map, so a
+     report whose weather was anything else — or absent, which the old check never
+     looked at at all — threw a TypeError inside the async boot(), buildAll() never
+     ran, and every chart on the page stayed blank with no error on screen.
+     isFinite is checked too: NaN passes `typeof === 'number'`. */
   function validReport(r) {
-    return r && typeof r.lat === 'number' && typeof r.lng === 'number' && C.isSeverity(r.severity) &&
+    return r && typeof r === 'object' &&
+      typeof r.lat === 'number' && isFinite(r.lat) &&
+      typeof r.lng === 'number' && isFinite(r.lng) &&
+      C.isSeverity(r.severity) &&
       typeof r.datetime === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d/.test(r.datetime) &&
-      typeof r.cause === 'string' && typeof r.vehicle === 'string' && typeof r.area === 'string';
+      C.isCause(r.cause) && C.isVehicle(r.vehicle) &&
+      C.isArea(r.area) && C.isWeather(r.weather);
   }
   function loadCitizen() {
     try {

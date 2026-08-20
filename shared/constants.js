@@ -41,6 +41,48 @@
   function isSeverity(s) { return SEVERITIES.indexOf(s) !== -1; }
   function sevOf(s) { return isSeverity(s) ? SEV[s] : SEV.slight; }
 
+  /* The four controlled vocabularies, mirroring backend/main.py's AREAS, CAUSES,
+     VEHICLES and WEATHERS exactly. tests/js/report-validation.test.js asserts they
+     stay equal to the values actually present in data/accidents.json, which
+     tests/backend/test_baseline_contract.py already pins to the backend — so the
+     two ends cannot drift apart without a test going red.
+
+     These exist so the FRONTEND can be as strict as the backend. POST /report
+     validates every one of these fields, but a report can also reach the engines
+     from localStorage or from a document written before those validators landed,
+     and the frontend validators only checked `typeof x === 'string'`. A value
+     outside the vocabulary is not a cosmetic problem here: it becomes an object
+     KEY in the grid/aggregate accumulators, and `area:"__proto__"` or an unknown
+     `weather` then crashes the ranking engine and the analytics page outright. */
+  const AREAS = [
+    'Adyar', 'Ambattur', 'Anna Nagar', 'Avadi',
+    'Chromepet', 'Egmore', 'Guindy', 'Kattankulathur',
+    'Koyambedu', 'Maduravoyal', 'Medavakkam', 'Mylapore',
+    'Nandanam', 'Nungambakkam', 'Padi', 'Pallavaram',
+    'Perambur', 'Perungudi', 'Poonamallee', 'Porur',
+    'Saidapet', 'Sholinganallur', 'T. Nagar', 'Tambaram',
+    'Teynampet', 'Thiruvanmiyur', 'Thoraipakkam', 'Vadapalani',
+    'Vandalur', 'Velachery',
+  ];
+  const CAUSES = [
+    'Over-speeding', 'Wrong-side driving', 'Signal jumping', 'Drunken driving',
+    'Mobile phone use', 'Hit and run', 'Pothole / bad road', 'Pedestrian crossing error',
+    'Improper overtaking', 'Vehicle defect', 'Poor visibility'
+  ];
+  const VEHICLES = [
+    'Two-wheeler', 'Car', 'Auto-rickshaw', 'Bus (MTC/Private)',
+    'Lorry / Truck', 'LCV / Van', 'Bicycle', 'Unknown (fled)'
+  ];
+  const WEATHERS = ['clear', 'rain', 'fog'];
+
+  /* indexOf, never `OBJ[value]` — same reason as isSeverity above: a bare lookup
+     also resolves inherited Object.prototype members, so "toString" and
+     "constructor" would pass a truthiness guard. */
+  function isArea(v) { return AREAS.indexOf(v) !== -1; }
+  function isCause(v) { return CAUSES.indexOf(v) !== -1; }
+  function isVehicle(v) { return VEHICLES.indexOf(v) !== -1; }
+  function isWeather(v) { return WEATHERS.indexOf(v) !== -1; }
+
   const CONSTANTS = {
     // Severity weights, colors, labels — used by map, charts, PDF, bot, simulate
     SEV,
@@ -49,15 +91,16 @@
     sevOf,
 
     // Flat arrays for dropdowns / filters / legends
-    CAUSES: [
-      'Over-speeding', 'Wrong-side driving', 'Signal jumping', 'Drunken driving',
-      'Mobile phone use', 'Hit and run', 'Pothole / bad road', 'Pedestrian crossing error',
-      'Improper overtaking', 'Vehicle defect', 'Poor visibility'
-    ],
-    VEHICLES: [
-      'Two-wheeler', 'Car', 'Auto-rickshaw', 'Bus (MTC/Private)',
-      'Lorry / Truck', 'LCV / Van', 'Bicycle', 'Unknown (fled)'
-    ],
+    AREAS,
+    CAUSES,
+    VEHICLES,
+    WEATHERS,
+
+    // Vocabulary membership tests — the trust boundary for a citizen report
+    isArea,
+    isCause,
+    isVehicle,
+    isWeather,
 
     // Chennai bounding box (~250 m grid)
     BBOX: { latMin: 12.80, latMax: 13.22, lngMin: 80.03, lngMax: 80.32 },
