@@ -1608,9 +1608,9 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       zoomSnap: 0.25, minZoom: 10, maxZoom: 19,
     });
     pickerTiles = addBaseLayer(pickerMap);
+    limitToChennai(pickerMap);   // Chennai only; a GPS fix outside the city is refused below
     document.addEventListener('crash:themechange', function () { refreshBaseLayer(pickerTiles); });
     pickerMap.on('click', function (e) { handlePickerClick(e.latlng.lat, e.latlng.lng); });
-    // no maxBounds: the picker must be able to pan to a current-location pin outside Chennai.
   }
 
   function pickerEscHandler(e) { if (e.key === 'Escape') { e.stopPropagation(); closePicker(); } }
@@ -1735,7 +1735,8 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       if (!supported) { fBtn.disabled = true; fBtn.title = 'Geolocation isn’t supported by this browser'; }
       else fBtn.addEventListener('click', function () {
         runGeolocation(fBtn, fLabel, function (lat, lng, acc) {
-          // accept the user's real GPS location even if it is outside Chennai (user request)
+          // the map is limited to Chennai, so a fix outside the city cannot be shown or reported
+          if (!inChennai(lat, lng)) { setErr('Your location is outside Chennai. Tap the map to place the pin inside the city.'); return; }
           setPin(lat, lng, false);   // same location-setter as a manual pick (draggable pin, writes af.lat/af.lng)
           if (afMap) afMap.setView([lat, lng], 16, { animate: true });
           af.area = (window.CRASH_APP && window.CRASH_APP.nearestArea) ? window.CRASH_APP.nearestArea(lat, lng) : af.area;
@@ -1751,7 +1752,12 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       if (!supported) { pBtn.disabled = true; pBtn.title = 'Geolocation isn’t supported by this browser'; }
       else pBtn.addEventListener('click', function () {
         runGeolocation(pBtn, pLabel, function (lat, lng, acc) {
-          // accept the user's real GPS location even if it is outside Chennai (user request)
+          // the map is limited to Chennai, so a fix outside the city cannot be shown or reported
+          if (!inChennai(lat, lng)) {
+            var ro = pk('pickerReadout');
+            if (ro) ro.textContent = 'Your location is outside Chennai. Tap the map to place the pin inside the city.';
+            return;
+          }
           if (pickerMap) pickerMap.setView([lat, lng], 16, { animate: true });
           commitPickerPoint(lat, lng);   // same valid-pick path as a manual click, minus the sea-check
           showAccuracyRing(pickerMap, true, lat, lng, acc);
@@ -1879,6 +1885,7 @@ html.picker-open, html.picker-open body { overflow: hidden !important; height: 1
       zoomSnap: 0.25, minZoom: 10, maxZoom: 18,
     });
     afTiles = addBaseLayer(afMap);
+    limitToChennai(afMap);
     document.addEventListener('crash:themechange', function () { refreshBaseLayer(afTiles); });
     afMap.on('click', function (e) {
       if (!isValidLandPoint(e.latlng.lat, e.latlng.lng)) {   // same sea-guard as the fullscreen picker

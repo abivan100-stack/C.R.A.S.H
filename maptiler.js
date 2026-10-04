@@ -21,11 +21,13 @@
 const MAPTILER_KEY = "aUQhU1ucLnL8szHxVGoB";
 function maptilerTileUrl() {
   const style = document.documentElement.getAttribute('data-theme') === 'dark' ? 'streets-v2-dark' : 'streets-v2';
-  return `https://api.maptiler.com/maps/${style}/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`;
+  // {r} becomes "@2x" on high-density screens: MapTiler then sends 1024px tiles for each
+  // 512px slot instead of upscaling 512px ones, which is what made the map look soft.
+  return `https://api.maptiler.com/maps/${style}/{z}/{x}/{y}{r}.png?key=${MAPTILER_KEY}`;
 }
 function addBaseLayer(map) {
   return L.tileLayer(maptilerTileUrl(), {
-    tileSize: 512, zoomOffset: -1, minZoom: 1, maxZoom: 20, crossOrigin: true,
+    tileSize: 512, zoomOffset: -1, minZoom: 1, maxZoom: 20, crossOrigin: true, keepBuffer: 4,
     // rel="noopener noreferrer" on both: target="_blank" without it hands the
     // opened page a window.opener handle back into this tab.
     attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank" rel="noopener noreferrer">© MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>'
@@ -34,4 +36,24 @@ function addBaseLayer(map) {
 /* re-point an existing base layer to the current theme's style (call on theme toggle) */
 function refreshBaseLayer(layer) {
   if (layer && layer.setUrl) layer.setUrl(maptilerTileUrl());
+}
+
+/* ---- Chennai-only view ---------------------------------------------------------
+   The data covers 12.82-13.13N, 80.04-80.28E. The limit is that box plus a ~3 km margin.
+   limitToChennai(map): the map cannot be panned out of the city, and cannot be zoomed out
+   further than the level at which the city fills the view, so nothing outside is visible.
+   The main, bot and simulate maps do their own framing; this is for the others. */
+function chennaiLimit() { return L.latLngBounds([12.77, 80.00], [13.25, 80.35]); }
+function inChennai(lat, lng) { return chennaiLimit().contains([lat, lng]); }
+function limitToChennai(map) {
+  const b = chennaiLimit();
+  map.setMaxBounds(b);
+  map.options.maxBoundsViscosity = 1.0;      // hard stop at the edge, no rubber-banding out
+  const fill = function () {
+    const s = map.getSize();
+    if (s.x > 0 && s.y > 0) map.setMinZoom(map.getBoundsZoom(b, true));   // true = the level where b fills the view
+  };
+  fill();
+  map.on('resize', fill);                    // fullscreen / rotate / window resize change that level
+  return map;
 }
