@@ -5,7 +5,7 @@
       "use": "@vercel/python",
       "config": {
         "maxDuration": 30,
-        "includeFiles": "{{backend,shared,vendor}/**,data/{accidents,citizen_seed}.json,*.{html,js,css,ico,png,svg}}"
+        "includeFiles": "{{backend,shared,vendor}/**,data/{accidents,citizen_seed}.json,*.{html,js,css,ico,png,svg,woff2}}"
       }
     }
   ],
