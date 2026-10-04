@@ -1,0 +1,13 @@
+{
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxDuration": 30,
+        "includeFiles": "{{backend,shared,vendor}/**,data/{accidents,citizen_seed}.json,*.{html,js,css,ico,png,svg}}"
+      }
+    }
+  ],
+  "routes": [{ "src": "/(.*)", "dest": "/api/index.py" }]
+}

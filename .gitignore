@@ -33,3 +33,4 @@ Thumbs.db
 # and the HTTP cache are large and regenerable, so they stay out of git.
 scripts/chennai_drive.graphml
 scripts/cache/
+.vercel

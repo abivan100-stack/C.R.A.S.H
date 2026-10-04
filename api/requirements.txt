@@ -1,0 +1,10 @@
+# Copy of backend/requirements.txt for Vercel (it can't follow '-r ../'). Keep in sync.
+fastapi==0.141.1
+uvicorn==0.52.1
+starlette==1.4.0
+pydantic==2.13.4
+pymongo==4.17.0
+dnspython==2.8.0
+python-dotenv==1.2.2
+anthropic==0.120.2
+truststore==0.10.4
