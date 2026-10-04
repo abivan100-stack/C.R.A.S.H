@@ -26,12 +26,27 @@ function maptilerTileUrl() {
   return `https://api.maptiler.com/maps/${style}/{z}/{x}/{y}{r}.png?key=${MAPTILER_KEY}`;
 }
 function addBaseLayer(map) {
-  return L.tileLayer(maptilerTileUrl(), {
+  const layer = L.tileLayer(maptilerTileUrl(), {
     tileSize: 512, zoomOffset: -1, minZoom: 1, maxZoom: 20, crossOrigin: true, keepBuffer: 4,
     // rel="noopener noreferrer" on both: target="_blank" without it hands the
     // opened page a window.opener handle back into this tab.
     attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank" rel="noopener noreferrer">© MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>'
   }).addTo(map);
+  /* Leaflet 1.9.4's TileLayer.redraw() (run by setUrl on a theme switch) sets the tile zoom to
+     the map's RAW zoom. Maps with fractional zoom (zoomSnap < 1: the landing hero, the report
+     maps, the bot map) then request tiles like z=9.8, which MapTiler answers with 404 - the
+     basemap goes blank after toggling light/dark. Same steps as Leaflet's own redraw(), but
+     with the zoom rounded the way _setView() rounds it. */
+  layer.redraw = function () {
+    if (this._map) {
+      this._removeAllTiles();
+      const z = this._clampZoom(Math.round(this._map.getZoom()));
+      if (z !== this._tileZoom) { this._tileZoom = z; this._updateLevels(); }
+      this._update();
+    }
+    return this;
+  };
+  return layer;
 }
 /* re-point an existing base layer to the current theme's style (call on theme toggle) */
 function refreshBaseLayer(layer) {
