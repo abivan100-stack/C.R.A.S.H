@@ -397,8 +397,50 @@
     .argus, .caps, .steps, .aud, .foot-top { grid-template-columns: 1fr; }
     .btn { flex: 1; justify-content: center; }
   }
+
+  /* ---------- polish pass (stays inside the editorial language: paper, serif, hairlines) ---------- */
+
+  /* Alignment. The .hero-inner padding shorthand above zeroes the side gutter, so the hero ran flush to
+     the screen edge on phones and sat left of the nav and every section on desktop. <figure> also
+     carries a 40px browser-default side margin. */
+  .hero-inner { padding-inline: var(--gutter); grid-template-columns: 1.12fr 0.88fr; }
+  .figure { margin: 0; }
+  /* with the gutter restored the text column is narrower: size the headline to it so "Chennai crashes —" holds one line */
+  .hero h1 { font-size: clamp(2.5rem, 4.3vw, 3.85rem); max-width: none; }
+
+  /* Legibility: the small mono labels (#857D6D on cream) were under 4.5:1. Same warm hue, darker. */
+  :root { --text-3: #6A6355; }
+
+  /* The map reads as a mounted print: a paper mat with the plate inset, caption beneath. */
+  .figure { background: var(--surface); padding: 10px 10px 0; box-shadow: 0 1px 0 var(--border-soft), var(--hero-shadow); }
+  .figure .fig-canvas-wrap { border: 1px solid var(--border); overflow: hidden; }
+  .fig-caption { border-top: 0; padding: 10px 2px 11px; }
+
+  /* Typography details. */
+  p { text-wrap: pretty; }
+  .stat .figure-n, .num { font-feature-settings: "tnum" 1, "lnum" 1; }
+
+  /* One staged entrance: the headline words already rise (JS); the rest follows in order. */
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes lead-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    .dateline { animation: lead-rise .7s cubic-bezier(.16,1,.3,1) both; }
+    .hero-sub { animation: lead-rise .8s cubic-bezier(.16,1,.3,1) .35s both; }
+    .hero-cta { animation: lead-rise .8s cubic-bezier(.16,1,.3,1) .5s both; }
+    .trust    { animation: lead-rise .8s cubic-bezier(.16,1,.3,1) .65s both; }
+    .btn:active { transform: translateY(1px); }
+  }
+
+  /* Below 960px the hero stacks (this block sits after the page's own breakpoint, so repeat it). */
+  @media (max-width: 960px) { .hero-inner { grid-template-columns: 1fr; } }
+
+  /* Phones: stacked full-width actions, and no stray separators where the lines wrap. */
+  @media (max-width: 620px) {
+    .dateline { gap: 4px 14px; }
+    .dateline .dot, .trust .rule { display: none; }
+    .trust { gap: 6px 16px; }
+    .hero-cta .btn { flex: 1 1 100%; }
+  }
 </style>
-<link rel="stylesheet" href="./crash.css">
 </head>
 <body>
 
@@ -840,15 +882,19 @@
     var h1 = document.querySelector('h1[data-split]');
     if (!h1) return;
     if (RM) { h1.classList.add('head-in'); return; }
-    var frag = document.createDocumentFragment(), i = 0;
+    var frag = document.createDocumentFragment(), i = 0, lastInner = null;
     function wrap(text, em) {
       text.split(/(\s+)/).forEach(function (tok) {
         if (/^\s+$/.test(tok)) { frag.appendChild(document.createTextNode(tok)); return; }
         if (!tok) return;
+        // a dash stays on the line of the word before it: fold it into that word instead of giving it its own box
+        if (tok === '—' && lastInner && frag.lastChild && frag.lastChild.nodeType === 3) {
+          frag.removeChild(frag.lastChild); lastInner.textContent += ' ' + tok; return;
+        }
         var w = document.createElement('span'); w.className = 'h-word';
         var inner = document.createElement(em ? 'em' : 'span');
         inner.textContent = tok; inner.style.transitionDelay = (i * 0.055).toFixed(3) + 's'; i++;
-        w.appendChild(inner); frag.appendChild(w);
+        w.appendChild(inner); frag.appendChild(w); lastInner = inner;
       });
     }
     Array.prototype.forEach.call(h1.childNodes, function (node) {
