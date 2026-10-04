@@ -18,7 +18,7 @@
    without that restriction. This repository is public, so the key has been
    readable in git history since it was committed.
    Rotate it here and it changes on every map in the app. */
-const MAPTILER_KEY = "UmXaLmDZXmANQ9fODGZU";
+const MAPTILER_KEY = "aUQhU1ucLnL8szHxVGoB";
 function maptilerTileUrl() {
   const style = document.documentElement.getAttribute('data-theme') === 'dark' ? 'streets-v2-dark' : 'streets-v2';
   return `https://api.maptiler.com/maps/${style}/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`;
