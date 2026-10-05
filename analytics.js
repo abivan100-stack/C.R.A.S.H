@@ -47,11 +47,6 @@
     var m = CE.precompute(DATA, C.MAX_WINDOW_MONTHS);
     MIN_YM = m.minYM; MONTHS = m.monthCount; LASTM = m.lastMonth;
   }
-  /* sevOf, not SEV[s]: an unknown severity used to throw here and blank the
-     whole analytics page, and "toString" resolved to a function. */
-  function gridCells() { return CE.gridCells(DATA, BBOX, CELL, RECENT_MONTHS, MONTHS, function (s) { return C.sevOf(s).w; }); }
-  function computeEmerging(cells) { return CE.computeEmerging(cells, RECENT_MONTHS, MONTHS, EMERGE_MIN_RECENT, EMERGE_LIFT, EMERGE_TOP_N, SUPPRESS); }
-
   function computeAgg() {
     const sev = { fatal: 0, serious: 0, slight: 0 };
     const cause = {}, veh = {}, weather = { clear: 0, rain: 0, fog: 0 };
@@ -74,16 +69,10 @@
       wsev[a.weather][a.severity]++;
     }
 
-    const cells = gridCells();
-    const byScore = cells.slice().sort((a, b) => b.score - a.score || b.count - a.count);
-    const top = [];
-    for (const c of byScore) {
-      if (top.length >= TOP_N) break;
-      if (top.some((p) => Math.abs(p.ci - c.ci) <= SUPPRESS && Math.abs(p.cj - c.cj) <= SUPPRESS)) continue;
-      top.push(c);
-    }
-    const topRaw = top.length ? top[0].score : 1;
-    top.forEach((c) => { c.norm = Math.max(1, Math.round(100 * Math.pow(c.score / topRaw, 0.6))); });
+    /* sevOf, not SEV[s]: an unknown severity used to throw here and blank the
+       whole analytics page, and "toString" resolved to a function. */
+    const cells = CE.gridCells(DATA, BBOX, CELL, RECENT_MONTHS, MONTHS, function (s) { return C.sevOf(s).w; });
+    const top = CE.topJunctions(cells, TOP_N, SUPPRESS);
 
     const sevCity = sev.fatal + sev.serious;
     let sevTop = 0; top.forEach((c) => { sevTop += c.fatal + c.serious; });
@@ -92,7 +81,7 @@
       .filter((c) => c.severe > 0).sort((a, b) => b.severe - a.severe);
 
     const highRisk = cells.filter((c) => c.score >= HIGH_RISK_MIN).length;
-    const emerging = computeEmerging(cells);
+    const emerging = CE.computeEmerging(cells, RECENT_MONTHS, MONTHS, EMERGE_MIN_RECENT, EMERGE_LIFT, EMERGE_TOP_N, SUPPRESS);
 
     const M = window.CRASH_INTERVENTIONS;
     const queue = top.map((c) => {

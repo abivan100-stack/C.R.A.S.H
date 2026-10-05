@@ -622,7 +622,6 @@ BOT_VEHICLES = VEHICLES
 BOT_SEVERITY = SEVERITIES
 BOT_TIME = frozenset({"day", "night"})
 BOT_WEATHER = WEATHERS
-BOT_INTENT = {"count", "summary", "help", "out_of_scope"}
 
 ASK_SYSTEM_PROMPT = (
     "You are C.R.A.S.H Bot, a helpful assistant for a Chennai road-accident dashboard.\n"

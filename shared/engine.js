@@ -96,6 +96,7 @@
               fatal: 0, serious: 0, slight: 0, night: 0,
               areas: {}, cause: {},
               recent: 0, baseline: 0, recentScore: 0,
+              rF: 0, rS: 0, rL: 0,
               sumLat: 0, sumLng: 0, months: null };
         if (hasMonths) c.months = new Array(monthCount).fill(0);
         map.set(k, c);
@@ -114,6 +115,7 @@
       if (hasMonths && a._month > recentCut) {
         c.recent++;
         c.recentScore += w;
+        if (a.severity === 'fatal') c.rF++; else if (a.severity === 'serious') c.rS++; else c.rL++;
       } else if (hasMonths) {
         c.baseline++;
       }
@@ -167,13 +169,19 @@
         var top = Object.keys(c.areas).sort(function (a, b) { return c.areas[b] - c.areas[a]; });
         area = top[0] || '';
       }
+      var n = (c.recent + c.baseline) || c.count || 1;
       cand.push({
-        area: area, ci: c.ci, cj: c.cj,
+        id: c.key, area: area, ci: c.ci, cj: c.cj,
+        lat: (c.lat != null ? c.lat : (c.sumLat || 0) / n),
+        lng: (c.lng != null ? c.lng : (c.sumLng || 0) / n),
+        months: c.months || [],
         recent: c.recent, baseline: c.baseline,
         recentRate: rr, baseRate: br,
         lift: lift,
         pct: Math.round((lift - 1) * 100),
+        pctIncrease: Math.round((lift - 1) * 100),
         priority: c.recentScore * (lift - 1),
+        rF: c.rF || 0, rS: c.rS || 0, rL: c.rL || 0,
       });
     }
     cand.sort(function (a, b) { return b.priority - a.priority; });

@@ -6,30 +6,18 @@
 (function (root) {
   'use strict';
 
-  // Canonical severity object with full property names
-  const SEV_CANONICAL = {
-    fatal:   { color: '#BE2F2A', label: 'Fatal',   weight: 3 },
-    serious: { color: '#CE8A2E', label: 'Serious', weight: 2 },
-    slight:  { color: '#E7C64B', label: 'Slight',  weight: 1 },
-  };
-
-  // Backward-compat aliases for analytics.js, compare.js, etc. (use .c, .l, .w)
+  // One object per severity carrying both the canonical names (color/label/
+  // weight, used by new code) and the short aliases (c/l/w, used by the
+  // charts). Nested objects are frozen too — Object.freeze is shallow, so
+  // freezing only the outer object still let any script rewrite the weights.
+  function sev(color, label, weight) {
+    return Object.freeze({ color: color, label: label, weight: weight, c: color, l: label, w: weight });
+  }
   const SEV = Object.freeze({
-    fatal:   Object.assign({}, SEV_CANONICAL.fatal,   { c: SEV_CANONICAL.fatal.color,   l: SEV_CANONICAL.fatal.label,   w: SEV_CANONICAL.fatal.weight }),
-    serious: Object.assign({}, SEV_CANONICAL.serious, { c: SEV_CANONICAL.serious.color, l: SEV_CANONICAL.serious.label, w: SEV_CANONICAL.serious.weight }),
-    slight:  Object.assign({}, SEV_CANONICAL.slight,  { c: SEV_CANONICAL.slight.color,  l: SEV_CANONICAL.slight.label,  w: SEV_CANONICAL.slight.weight }),
+    fatal:   sev('#BE2F2A', 'Fatal',   3),
+    serious: sev('#CE8A2E', 'Serious', 2),
+    slight:  sev('#E7C64B', 'Slight',  1),
   });
-
-  // Also expose canonical names for new code
-  SEV.fatal.color = SEV_CANONICAL.fatal.color;
-  SEV.fatal.label = SEV_CANONICAL.fatal.label;
-  SEV.fatal.weight = SEV_CANONICAL.fatal.weight;
-  SEV.serious.color = SEV_CANONICAL.serious.color;
-  SEV.serious.label = SEV_CANONICAL.serious.label;
-  SEV.serious.weight = SEV_CANONICAL.serious.weight;
-  SEV.slight.color = SEV_CANONICAL.slight.color;
-  SEV.slight.label = SEV_CANONICAL.slight.label;
-  SEV.slight.weight = SEV_CANONICAL.slight.weight;
 
   /* The three real severities, and the ONLY safe way to test one.
      `severity` reaches the frontend from POST /report and is attacker-controlled,

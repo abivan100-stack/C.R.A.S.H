@@ -245,7 +245,6 @@
   function baseRecords() {
     return (bridge().records() || []).filter(function (a) { return !a.citizen; });
   }
-  function severityWeightOf(sev) { return sev === 'fatal' ? 3 : sev === 'serious' ? 2 : 1; }
 
   function buildModel() {
     var grid = bridge().grid();
@@ -267,11 +266,10 @@
       }
       c.count++;
       c.sumLat += a.lat; c.sumLng += a.lng;
-      c.severityWeight += severityWeightOf(a.severity);
+      c.severityWeight += C.sevOf(a.severity).weight;
       if (a.severity === 'fatal') c.fatal++; else if (a.severity === 'serious') c.serious++; else c.slight++;
 
-      var hh = parseInt(a.datetime.slice(11, 13), 10);        // "YYYY-MM-DD HH:MM"
-      var isNight = hh < 6 || hh >= 18;                       // night = 18:00–06:00 (matches app)
+      var isNight = CU.isNight(a.datetime);             // night = 18:00–06:00 (matches app)
       if (isNight) c.night++; else c.day++;
       var wKey = a.weather === 'rain' ? 'rain' : a.weather === 'fog' ? 'fog' : 'clear';
       c[wKey]++;
@@ -725,8 +723,6 @@
   /* =========================================================================
      STEP 5 — results sidebar: projected total, ranked hotspots, chart
      ======================================================================== */
-  function fmtInt(n) { return CU.fmt(n); }
-
   function renderResults(pts, hs, scenario, cellMap, meta) {
     var empty = document.getElementById('simEmpty');
     var body = document.getElementById('simResultsBody');
@@ -734,7 +730,7 @@
     if (body) body.hidden = false;
 
     var totalEl = document.getElementById('simTotal');
-    if (totalEl) totalEl.textContent = fmtInt(pts.length);
+    if (totalEl) totalEl.textContent = CU.fmt(pts.length);
     var horizonEl = document.getElementById('simTotalHorizon');
     if (horizonEl) { var hm = scenario.horizonMonths; horizonEl.textContent = 'next ' + hm + (hm === 1 ? ' month' : ' months'); }
     var noteEl = document.getElementById('simScenarioNote');
@@ -749,7 +745,7 @@
       var pct = (meta.prevalence || 0) * 100;
       var pctStr = pct >= 1 ? Math.round(pct) + '%' : pct.toFixed(1) + '%';
       lct.textContent = 'Rare scenario — only about ' + pctStr + ' of past accidents match these conditions, so this ' +
-        fmtInt(pts.length) + '-incident projection is low-confidence. Widen a filter for a steadier estimate.';
+        CU.fmt(pts.length) + '-incident projection is low-confidence. Widen a filter for a steadier estimate.';
     }
 
     renderList(hs);
@@ -772,7 +768,7 @@
             '<span style="width:' + l.toFixed(1) + '%;background:#E7C64B"></span>' +
           '</span>' +
         '</span>' +
-        '<span class="sim-row-count">' + fmtInt(h.count) + '</span>' +
+        '<span class="sim-row-count">' + CU.fmt(h.count) + '</span>' +
       '</button>';
     }).join('');
     Array.prototype.forEach.call(list.querySelectorAll('.sim-row'), function (row) {
@@ -805,7 +801,7 @@
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: function (ctx) { return fmtInt(ctx.parsed.y) + ' projected'; } } },
+          tooltip: { callbacks: { label: function (ctx) { return CU.fmt(ctx.parsed.y) + ' projected'; } } },
         },
         scales: {
           x: { ticks: { color: text2, font: { family: 'IBM Plex Mono', size: 9 }, maxRotation: 55, minRotation: 45, autoSkip: false }, grid: { display: false } },

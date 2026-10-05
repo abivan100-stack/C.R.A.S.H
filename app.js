@@ -557,71 +557,12 @@ function runHotspotEngine() {
    time-based read of where risk is trending up, independent of the map filters.
    ========================================================================== */
 function computeEmerging(records) {
-  const recentCut = app.lastMonth - RECENT_MONTHS;   // months strictly after this are "recent"
-  const baseMonths = Math.max(1, app.monthCount - RECENT_MONTHS);
-  const cells = new Map();
-
-  for (const a of records) {
-    const ci = Math.floor((a.lat - BBOX.latMin) / CELL);
-    const cj = Math.floor((a.lng - BBOX.lngMin) / CELL);
-    const key = ci + '_' + cj;
-    let c = cells.get(key);
-    if (!c) {
-      c = { key, ci, cj, recent: 0, baseline: 0, recentScore: 0,
-            rF: 0, rS: 0, rL: 0, sumLat: 0, sumLng: 0, areas: {},
-            months: new Array(app.monthCount).fill(0) };
-      cells.set(key, c);
-    }
-    const w = sevOf(a.severity).weight;
-    if (a._month > recentCut) {
-      c.recent++;
-      c.recentScore += w;
-      if (a.severity === 'fatal') c.rF++; else if (a.severity === 'serious') c.rS++; else c.rL++;
-    } else {
-      c.baseline++;
-    }
-    if (a._month >= 0 && a._month < app.monthCount) c.months[a._month]++;
-    c.sumLat += a.lat; c.sumLng += a.lng;
-    c.areas[a.area] = (c.areas[a.area] || 0) + 1;
-  }
-
-  const candidates = [];
-  for (const c of cells.values()) {
-    if (c.recent < EMERGE_MIN_RECENT) continue;
-    const recentRate = c.recent / RECENT_MONTHS;
-    const baseRate = c.baseline / baseMonths;
-    // a cell rising from (near-)zero is genuinely emerging; cap its lift so it
-    // doesn't dominate purely on a tiny denominator
-    const lift = baseRate > 0 ? recentRate / baseRate : 3;
-    if (lift < EMERGE_LIFT) continue;
-    c.lift = lift;
-    c.priority = c.recentScore * (lift - 1);   // heavy AND steeply rising ranks highest
-    candidates.push(c);
-  }
-  candidates.sort((a, b) => b.priority - a.priority);
-
-  // non-max suppression → distinct junctions (same radius as the main index)
-  const picked = [];
-  for (const c of candidates) {
-    if (picked.length >= EMERGE_TOP_N) break;
-    const clash = picked.some((p) =>
-      Math.abs(p.ci - c.ci) <= SUPPRESS && Math.abs(p.cj - c.cj) <= SUPPRESS);
-    if (!clash) picked.push(c);
-  }
-
-  return picked.map((c) => {
-    const n = c.recent + c.baseline;
-    return {
-      id: c.key, ci: c.ci, cj: c.cj,
-      area: Object.entries(c.areas).sort((a, b) => b[1] - a[1])[0][0],
-      lat: c.sumLat / n, lng: c.sumLng / n,
-      recent: c.recent, baseline: c.baseline,
-      lift: c.lift,
-      pctIncrease: Math.round((c.lift - 1) * 100),
-      months: c.months,
-      rF: c.rF, rS: c.rS, rL: c.rL,
-    };
-  });
+  // Single implementation in shared/engine.js — the map's watch list is the
+  // same computation analytics.js and report.js use, by construction.
+  // app.lastMonth is always monthCount - 1 (CE.precompute), so the engine's
+  // recent/baseline split matches the window derived in recomputeMonths().
+  const cells = CE.gridCells(records, BBOX, CELL, RECENT_MONTHS, app.monthCount, (s) => sevOf(s).weight);
+  return CE.computeEmerging(cells, RECENT_MONTHS, app.monthCount, EMERGE_MIN_RECENT, EMERGE_LIFT, EMERGE_TOP_N, SUPPRESS);
 }
 
 function runEmergingEngine() {

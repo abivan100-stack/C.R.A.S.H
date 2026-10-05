@@ -56,10 +56,6 @@
   }
 
   /* ---------------- compute ---------------- */
-  function monthMeta(records) { return CE.monthMeta(records); }
-  function gridCells(records, mm) { return CE.gridCells(records, BBOX, CELL, RECENT_MONTHS, mm.count, function (s) { return W[s]; }); }
-  function topJunctions(cells) { return CE.topJunctions(cells, TOP_N, SUPPRESS); }
-  function emergingCells(cells, mm) { return CE.computeEmerging(cells, RECENT_MONTHS, mm.count, EMERGE_MIN_RECENT, EMERGE_LIFT, EMERGE_TOP_N, SUPPRESS); }
   function priorityQueue(top) {
     const M = root.CRASH_INTERVENTIONS;
     return top.map((c) => {
@@ -71,14 +67,14 @@
   }
   function cityData(records) {
     CE.precompute(records, (window.CRASH_CONSTANTS && window.CRASH_CONSTANTS.MAX_WINDOW_MONTHS));
-    const mm = monthMeta(records);
+    const mm = CE.monthMeta(records);
     const sev = { fatal: 0, serious: 0, slight: 0 }, cause = {}, veh = {};
     for (const a of records) { sev[a.severity]++; cause[a.cause] = (cause[a.cause] || 0) + 1; veh[a.vehicle] = (veh[a.vehicle] || 0) + 1; }
-    const cells = gridCells(records, mm);
-    const top = topJunctions(cells);
+    const cells = CE.gridCells(records, BBOX, CELL, RECENT_MONTHS, mm.count, function (s) { return W[s]; });
+    const top = CE.topJunctions(cells, TOP_N, SUPPRESS);
     const sevCity = sev.fatal + sev.serious; let sevTop = 0; top.forEach((c) => { sevTop += c.fatal + c.serious; });
     return { mm, total: records.length, sev, cause, veh, top, highRisk: cells.filter((c) => c.score >= HIGH_RISK_MIN).length,
-      sevCity, sevTop, leveragePct: sevCity ? Math.round(100 * sevTop / sevCity) : 0, emerging: emergingCells(cells, mm), queue: priorityQueue(top) };
+      sevCity, sevTop, leveragePct: sevCity ? Math.round(100 * sevTop / sevCity) : 0, emerging: CE.computeEmerging(cells, RECENT_MONTHS, mm.count, EMERGE_MIN_RECENT, EMERGE_LIFT, EMERGE_TOP_N, SUPPRESS), queue: priorityQueue(top) };
   }
   function zoneData(records) {
     const sev = { fatal: 0, serious: 0, slight: 0 }, cause = {}, veh = {}, weather = { clear: 0, rain: 0, fog: 0 };
