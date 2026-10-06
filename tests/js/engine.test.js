@@ -214,6 +214,26 @@ test('computeEmerging reports lift as the recent-vs-baseline monthly rate ratio'
   assert.equal(hit.pct, 300, 'pct is the percentage increase, not the ratio');
 });
 
+test('computeEmerging includes the map marker, sparkline and recent severity fields', () => {
+  const records = [];
+  for (let i = 0; i < 6; i++) records.push(rec('slight', 13.0, 80.2, { _month: i }));
+  for (const severity of ['fatal', 'fatal', 'serious', 'serious', 'slight', 'slight', 'slight', 'slight']) {
+    records.push(rec(severity, 13.0, 80.2, { _month: 20 }));
+  }
+  const [cell] = CE.gridCells(records, BBOX, CELL, RECENT_MONTHS, 24,
+    (severity) => C.sevOf(severity).weight);
+  const [hit] = CE.computeEmerging([cell], RECENT_MONTHS, 24,
+    EMERGE_MIN_RECENT, EMERGE_LIFT, EMERGE_TOP_N, SUPPRESS);
+
+  assert.equal(hit.id, cell.key);
+  assert.equal(hit.lat, 13.0);
+  assert.ok(Math.abs(hit.lng - 80.2) < 1e-9);
+  assert.equal(hit.pctIncrease, 300);
+  assert.equal(hit.months.length, 24);
+  assert.equal(hit.months[20], 8);
+  assert.deepEqual([hit.rF, hit.rS, hit.rL], [2, 2, 4]);
+});
+
 test('computeEmerging is capped at EMERGE_TOP_N — callers must not treat its length as a total', () => {
   const cells = [];
   for (let i = 0; i < 30; i++) cells.push(emergingCell('c' + i, i * 10, 24 + i, 18));
