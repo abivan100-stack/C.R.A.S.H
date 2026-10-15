@@ -208,8 +208,8 @@ See `audit/` — `00-baseline.md`, `01-findings.md`, `02-plan.md`,
 `03-deferred.md`, `04-summary.md`.
 
 **Follow-up bug-check pass.** A second full-repo review (four parallel reviewers,
-every finding reproduced before it was fixed) closed 21 further defects: the
-timezone date rejection above, import-time env crashes, the spoofable `/ask`
+every finding reproduced before it was fixed) closed 21 further defects, including
+the timezone date rejection above, import-time env crashes, the spoofable `/ask`
 rate-limit key, the sync `/ask` threadpool starvation, HEAD 404s, the city-PDF
 month window, the Emerging qualify count, unescaped report sinks, the compare-page
 data-parity gap, and the notification baseline. The `audit/` files still describe

@@ -93,8 +93,8 @@ def _log_level(raw):
     `logging.basicConfig(level=...)` raises ValueError on an unrecognised level, and
     that happens at import time — before uvicorn can bind — so a typo such as
     LOG_LEVEL=verbose took the WHOLE site down, static map and analytics included.
-    Same failure class as the MONGODB_URI one hardened further below. Fall back and
-    warn instead of crashing.
+    Same failure class as the MONGODB_URI one hardened further below. Fall back to
+    INFO instead of crashing.
     """
     level = getattr(logging, str(raw).upper(), None)
     return level if isinstance(level, int) else logging.INFO
