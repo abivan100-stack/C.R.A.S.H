@@ -261,9 +261,9 @@
     ];
     document.getElementById('facts').innerHTML = rows.map((r, i) =>
       (i ? '<div class="row-sep"></div>' : '') +
-      '<div class="fa" style="color:var(--cmpA)">' + r[0] + '</div>' +
+      '<div class="fa" style="color:var(--cmpA)">' + esc(String(r[0])) + '</div>' +
       '<div class="fm">' + r[1] + '</div>' +
-      '<div class="fb" style="color:var(--cmpB)">' + r[2] + '</div>'
+      '<div class="fb" style="color:var(--cmpB)">' + esc(String(r[2])) + '</div>'
     ).join('');
   }
 

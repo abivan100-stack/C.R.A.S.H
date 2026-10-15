@@ -1498,7 +1498,7 @@ function renderDossier() {
   ).join('');
 
   const recBlock =
-    '<div style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:2px; letter-spacing:0.02em;">Dominant cause · ' + domCause + ' · ' + domPct + '%</div>' +
+    '<div style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:2px; letter-spacing:0.02em;">Dominant cause · ' + esc(domCause) + ' · ' + domPct + '%</div>' +
     '<div style="font:400 12.5px \'Roboto\',sans-serif; line-height:1.6; color:var(--text); margin-top:7px;">' + intervention.fix + '.</div>' +
     '<div style="display:flex; align-items:center; gap:8px; margin-top:11px; font:500 10px \'IBM Plex Mono\',monospace; letter-spacing:0.08em; color:var(--text-2); text-transform:uppercase;">' +
       '<span>Capital cost</span>' + costMeter(intervention.cost) + '<span style="color:var(--text); letter-spacing:0.02em;">' + intervention.cost + '</span>' +
