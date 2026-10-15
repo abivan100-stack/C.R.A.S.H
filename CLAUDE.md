@@ -241,3 +241,17 @@ If a demo goes dark, check Atlas first. See `audit/03-deferred.md`.
 **Keep this file up to date** — when something durable changes (a
 feature ships, a rule changes), edit this file and commit it. A stale
 `CLAUDE.md` is worse than none, since future sessions will trust it.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five canonical labels as-is (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
