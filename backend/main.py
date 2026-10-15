@@ -19,6 +19,7 @@ import json
 import logging
 import math
 import os
+import threading
 import time as _time
 import uuid
 import zipfile
@@ -86,11 +87,48 @@ app = FastAPI(title="CRASH Citizen Reports API")
 # which is exactly the text that must NOT be sent to clients. Now the detail goes
 # to the log with a request ID, and the client gets that ID plus a generic
 # message — enough to correlate a user report with a log line, and nothing more.
+def _log_level(raw):
+    """Map LOG_LEVEL to a logging level, falling back to INFO.
+
+    `logging.basicConfig(level=...)` raises ValueError on an unrecognised level, and
+    that happens at import time — before uvicorn can bind — so a typo such as
+    LOG_LEVEL=verbose took the WHOLE site down, static map and analytics included.
+    Same failure class as the MONGODB_URI one hardened further below. Fall back to
+    INFO instead of crashing.
+    """
+    level = getattr(logging, str(raw).upper(), None)
+    return level if isinstance(level, int) else logging.INFO
+
+
 logging.basicConfig(
-    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+    level=_log_level(os.environ.get("LOG_LEVEL", "INFO")),
     format="%(asctime)s %(levelname)-8s [%(name)s] [req=%(request_id)s] %(message)s",
 )
 log = logging.getLogger("crash")
+
+
+def _env_int(name, default):
+    """Parse an int env var, falling back to `default` rather than crashing at import."""
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        log.warning("%s=%r is not an integer; using %s", name, raw, default)
+        return default
+
+
+def _env_float(name, default):
+    """Parse a float env var, falling back to `default` rather than crashing at import."""
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        log.warning("%s=%r is not a number; using %s", name, raw, default)
+        return default
 
 _request_id: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
 
@@ -249,6 +287,7 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
 # report endpoints, which already degrade gracefully.
 _client = None                 # tests monkeypatch this directly
 _client_error = None           # remembered so a broken URI isn't re-parsed per request
+_client_lock = threading.Lock()  # both clients are reached from threadpool workers
 
 
 def _get_client():
@@ -258,22 +297,30 @@ def _get_client():
         return _client
     if not MONGODB_URI or _client_error is not None:
         return None
-    try:
-        # A short server-selection timeout means the report routes fail fast
-        # instead of hanging a worker for the driver's 30s default.
-        _client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000, appname="crash-reports")
-    except Exception as exc:  # noqa: BLE001 — deliberately broad; see below
-        # Broad on purpose. The entire point of this block is that NOTHING the
-        # driver raises while parsing a user-supplied URI may reach the import
-        # and take the whole site down (finding F008). Narrowing to PyMongoError
-        # would let a ValueError or TypeError from a malformed URI escape and
-        # reinstate exactly the bug this fixes.
-        # Never log the URI itself — it carries the password.
-        _client_error = exc
-        log.error("MONGODB_URI could not be parsed; citizen reports are disabled: %s",
-                  type(exc).__name__)
-        return None
-    return _client
+    # Double-checked: a sync endpoint runs in a threadpool, so two cold-start
+    # requests could both construct a client — the loser was leaked, keeping its
+    # monitor threads and socket pool alive for the process lifetime.
+    with _client_lock:
+        if _client is not None:
+            return _client
+        if _client_error is not None:
+            return None
+        try:
+            # A short server-selection timeout means the report routes fail fast
+            # instead of hanging a worker for the driver's 30s default.
+            _client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000, appname="crash-reports")
+        except Exception as exc:  # noqa: BLE001 — deliberately broad; see below
+            # Broad on purpose. The entire point of this block is that NOTHING the
+            # driver raises while parsing a user-supplied URI may reach the import
+            # and take the whole site down (finding F008). Narrowing to PyMongoError
+            # would let a ValueError or TypeError from a malformed URI escape and
+            # reinstate exactly the bug this fixes.
+            # Never log the URI itself — it carries the password.
+            _client_error = exc
+            log.error("MONGODB_URI could not be parsed; citizen reports are disabled: %s",
+                      type(exc).__name__)
+            return None
+        return _client
 
 
 def get_collection():
@@ -362,7 +409,14 @@ class Report(BaseModel):
             raise ValueError("datetime must be 'YYYY-MM-DD HH:MM'") from exc
         # A far-future date silently stretches the frontend's analysis window and
         # corrupts the per-month KPIs, so reject it here rather than downstream.
-        if parsed > _dt.datetime.now() + _dt.timedelta(minutes=5):
+        # The client sends LOCAL wall-clock time (an <input type="datetime-local">),
+        # and timezone offsets span UTC-12..UTC+14 — so a client's "now" legitimately
+        # reads up to 14h ahead of this server's UTC clock. Render containers run
+        # UTC, so comparing against the server's naive now() rejected every report
+        # from a UTC+5:30 Chennai client. Compare against UTC now with the widest
+        # possible positive offset instead; either way, no timezone explains >14h.
+        ceiling = _dt.datetime.now(_dt.UTC).replace(tzinfo=None) + _dt.timedelta(hours=14, minutes=5)
+        if parsed > ceiling:
             raise ValueError("datetime cannot be in the future")
         if parsed < _dt.datetime(2000, 1, 1):
             raise ValueError("datetime is implausibly old")
@@ -373,7 +427,10 @@ class Report(BaseModel):
 # These are registered BEFORE the static mount below, so they take precedence over
 # the catch-all file handler. /health, /report and /reports never collide with any
 # frontend file name.
-@app.get("/health")
+# HEAD as well as GET: @app.get registers no HEAD, so a HEAD probe fell through to
+# the static catch-all below, where "health"/"" has no allowlisted extension and
+# resolved to 404 — an uptime monitor would have seen the service as absent.
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     """Quick connectivity check — pings MongoDB so a 200 means the DB is reachable.
 
@@ -654,11 +711,11 @@ ASK_SYSTEM_PROMPT = (
 # credit on every call. The client also supplies `digest`, which is concatenated
 # into the system prompt — so without caps this endpoint is a free LLM proxy that
 # anyone can point at any prompt, billed to this key.
-ASK_TIMEOUT_SECONDS = float(os.environ.get("ASK_TIMEOUT_SECONDS", "25"))
+ASK_TIMEOUT_SECONDS = _env_float("ASK_TIMEOUT_SECONDS", 25.0)
 ASK_MAX_QUESTION_CHARS = 1000
 ASK_MAX_DIGEST_CHARS = 20000
-ASK_RATE_LIMIT = int(os.environ.get("ASK_RATE_LIMIT", "20"))          # requests...
-ASK_RATE_WINDOW_SECONDS = int(os.environ.get("ASK_RATE_WINDOW_SECONDS", "60"))   # ...per window, per IP
+ASK_RATE_LIMIT = _env_int("ASK_RATE_LIMIT", 20)          # requests...
+ASK_RATE_WINDOW_SECONDS = _env_int("ASK_RATE_WINDOW_SECONDS", 60)   # ...per window, per IP
 
 # In-process fixed-window counter. Deliberately simple: Render free runs a single
 # instance, and the goal is to blunt runaway cost, not to be a shared quota
@@ -669,14 +726,15 @@ _ask_hits: dict[str, list[float]] = {}
 def _client_ip(request: Request) -> str:
     """Best-effort client identity for rate limiting.
 
-    Render terminates TLS and forwards the real address in X-Forwarded-For, so the
-    left-most entry is used when present. This is spoofable, which is acceptable
-    here: the limiter exists to cap accidental and casual abuse, and a determined
-    attacker rotating the header is a problem for a real WAF, not this counter.
+    Render terminates TLS and APPENDS the real peer address, so the LAST entry in
+    X-Forwarded-For is the trustworthy hop. The left-most entry is client-supplied:
+    taking it let an attacker rotate a fake value per request and remove the only
+    limit on Anthropic spend. The header is still spoofable without a trusted-proxy
+    configuration — this blunts casual abuse, it is not a WAF.
     """
     forwarded = request.headers.get("X-Forwarded-For", "")
     if forwarded:
-        return forwarded.split(",")[0].strip()[:64]
+        return forwarded.split(",")[-1].strip()[:64]
     return request.client.host if request.client else "unknown"
 
 
@@ -770,61 +828,72 @@ def _parse_ask_json(text):
 
 
 _anthropic_client = None
+_anthropic_lock = threading.Lock()
 
 
 def _get_anthropic():
     """Lazily build the Anthropic client — imported HERE (not at module load) so the
-    rest of the app runs even if the SDK/key aren't present yet. Clean 503 if missing."""
+    rest of the app runs even if the SDK/key aren't present yet. Clean 503 if missing.
+
+    The ASYNC client: the /ask route is `async def` and awaits it, so an in-flight
+    Anthropic call holds no worker thread. With the sync client the route had to run
+    in a threadpool, and ~40 concurrent /ask calls starved the pool that also serves
+    GET /app.js and /data/accidents.json — a public, unauthenticated endpoint could
+    freeze the whole site for up to the request timeout.
+    """
     global _anthropic_client
     if _anthropic_client is not None:
         return _anthropic_client
     if not ANTHROPIC_API_KEY:
         raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY is not configured on the server.")
-    try:
-        from anthropic import Anthropic
-    except Exception as exc:
-        raise _fail(503, "The AI assistant is unavailable.", exc, "anthropic SDK import failed") from exc
-    # On a corporate TLS-inspecting proxy, Python's default certifi bundle can't verify
-    # the re-signed certificate (CERTIFICATE_VERIFY_FAILED), so the AI call fails. Give
-    # THIS client an httpx transport that verifies against the OS trust store (which
-    # trusts the proxy CA, like the browser does). Scoped to the Anthropic client only —
-    # a GLOBAL truststore patch recurses in pymongo's SSL setup on some Python builds.
-    http_client = None
-    try:
-        import ssl
-
-        import httpx
-        import truststore
-        ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        # An explicit transport timeout as well: without one httpx would wait
-        # indefinitely to connect, holding a worker thread the whole time.
-        http_client = httpx.Client(verify=ctx, timeout=httpx.Timeout(ASK_TIMEOUT_SECONDS, connect=10.0))
-    except Exception as exc:  # noqa: BLE001 — optional transport, must never be fatal
-        # truststore absent (e.g. prod with standard CAs) — fall back to the SDK
-        # default. Broad on purpose: this is an optional convenience for
-        # TLS-inspecting corporate proxies, and no failure to build it should
-        # stop the bot working. Deliberate and safe, but logged: previously this
-        # swallowed the error silently, so a genuine TLS misconfiguration looked
-        # identical to "truststore simply isn't installed".
-        log.info("truststore transport unavailable, using the SDK default: %s", exc)
+    with _anthropic_lock:
+        if _anthropic_client is not None:
+            return _anthropic_client
+        try:
+            from anthropic import AsyncAnthropic
+        except Exception as exc:
+            raise _fail(503, "The AI assistant is unavailable.", exc, "anthropic SDK import failed") from exc
+        # On a corporate TLS-inspecting proxy, Python's default certifi bundle can't verify
+        # the re-signed certificate (CERTIFICATE_VERIFY_FAILED), so the AI call fails. Give
+        # THIS client an httpx transport that verifies against the OS trust store (which
+        # trusts the proxy CA, like the browser does). Scoped to the Anthropic client only —
+        # a GLOBAL truststore patch recurses in pymongo's SSL setup on some Python builds.
         http_client = None
-    # An explicit timeout and retry budget. The SDK's default timeout is 10
-    # MINUTES: a slow upstream would pin a worker for that long, and with the
-    # frontend giving up after 30s the work was wasted anyway. max_retries is
-    # capped so one bad request cannot silently cost three upstream calls.
-    options = {
-        "api_key": ANTHROPIC_API_KEY,
-        "timeout": ASK_TIMEOUT_SECONDS,
-        "max_retries": 1,
-    }
-    if http_client is not None:
-        options["http_client"] = http_client
-    _anthropic_client = Anthropic(**options)
-    return _anthropic_client
+        try:
+            import ssl
+
+            import httpx
+            import truststore
+            ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            # An explicit transport timeout as well: without one httpx would wait
+            # indefinitely to connect. AsyncClient, to match AsyncAnthropic.
+            http_client = httpx.AsyncClient(verify=ctx, timeout=httpx.Timeout(ASK_TIMEOUT_SECONDS, connect=10.0))
+        except Exception as exc:  # noqa: BLE001 — optional transport, must never be fatal
+            # truststore absent (e.g. prod with standard CAs) — fall back to the SDK
+            # default. Broad on purpose: this is an optional convenience for
+            # TLS-inspecting corporate proxies, and no failure to build it should
+            # stop the bot working. Deliberate and safe, but logged: previously this
+            # swallowed the error silently, so a genuine TLS misconfiguration looked
+            # identical to "truststore simply isn't installed".
+            log.info("truststore transport unavailable, using the SDK default: %s", exc)
+            http_client = None
+        # An explicit timeout and retry budget. The SDK's default timeout is 10
+        # MINUTES: a slow upstream would pin a worker for that long, and with the
+        # frontend giving up after 30s the work was wasted anyway. max_retries is
+        # capped so one bad request cannot silently cost three upstream calls.
+        options = {
+            "api_key": ANTHROPIC_API_KEY,
+            "timeout": ASK_TIMEOUT_SECONDS,
+            "max_retries": 1,
+        }
+        if http_client is not None:
+            options["http_client"] = http_client
+        _anthropic_client = AsyncAnthropic(**options)
+        return _anthropic_client
 
 
 @app.post("/ask")
-def ask(req: AskRequest, request: Request):
+async def ask(req: AskRequest, request: Request):
     """Answer a question about the Chennai accident data using the frontend-supplied digest.
 
     Returns {"answer": <natural-language text>, "filters": <subset for the map, or null>}.
@@ -842,7 +911,7 @@ def ask(req: AskRequest, request: Request):
     client = _get_anthropic()             # clean 503 if key/SDK missing
     system = ASK_SYSTEM_PROMPT + "\n\nDATA SUMMARY:\n" + (digest or "(no data summary was provided)")
     try:
-        msg = client.messages.create(
+        msg = await client.messages.create(
             model=ANTHROPIC_MODEL,
             max_tokens=700,
             system=system,
@@ -865,7 +934,7 @@ def ask(req: AskRequest, request: Request):
 
 # The site HOME ("/") is the marketing landing page. index.html — the live app —
 # stays reachable at /index.html.
-@app.get("/", include_in_schema=False)
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def home():
     """Serve the editorial landing page as the site home."""
     return FileResponse(os.path.join(FRONTEND_DIR, "landing.html"))

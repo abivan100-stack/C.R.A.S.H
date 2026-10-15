@@ -94,6 +94,13 @@
     BBOX: { latMin: 12.80, latMax: 13.22, lngMin: 80.03, lngMax: 80.32 },
     CELL: 0.0022,
 
+    /* Sanity box for an incoming citizen report, deliberately WIDER than BBOX so a
+       report from a map-edge pick is never rejected. It mirrors the backend's own
+       bounds (LAT_MIN/MAX, LNG_MIN/MAX in backend/main.py) so the frontend validator
+       and the server agree on what a Chennai coordinate is. Rejects the stray
+       out-of-city value that otherwise re-frames the whole map to the data extent. */
+    REPORT_BOUNDS: { latMin: 12.60, latMax: 13.40, lngMin: 79.90, lngMax: 80.45 },
+
     // Hotspot engine tuning
     TOP_N: 10,
     SUPPRESS: 2,

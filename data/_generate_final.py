@@ -1,6 +1,6 @@
 """FINAL enriched accidents.json — a realistic, city-wide accident simulation.
 
-  * ~29 real Chennai junctions/areas with tiered, realistic densities — the worst
+  * 30 real Chennai junctions/areas with tiered, realistic densities — the worst
     black-spots (Kathipara/Guindy, Adyar/Madhya Kailash, Koyambedu) are heaviest;
     the rest taper down. The TOP-10 emerges from the simulation, not a fixed list.
   * Hotspot clusters are dense (tight scatter); background areas are lighter/looser.
@@ -23,7 +23,8 @@ random.seed(131313)
 
 # Scales every area's per-severity accident counts up/down while preserving the
 # relative area distribution, all correlations (cause/vehicle/time/weather) and
-# the schema. Base counts sum to 7291; 1.37 lands the total near ~10,000.
+# the schema. Base counts sum to 7422 across the 30 AREAS rows; 1.37 lands the total
+# at 10,169 (per-row round() adds one over the 10,168 product).
 COUNT_SCALE = 1.37
 
 LAT_MIN, LAT_MAX = 12.80, 13.22   # extended south to include Kattankulathur (GST Rd / SRM)

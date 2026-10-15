@@ -614,7 +614,7 @@
     return '<div class="acc-pop-sev"><span class="acc-pop-dot" style="background:' + (SEV_COLOR[p.projectedSeverity] || SEV_COLOR.slight) + '"></span>' + (SEV_LABEL[p.projectedSeverity] || p.projectedSeverity) + '</div>' +
       '<div class="acc-pop-row" style="color:var(--accent); font-weight:600;">◇ Projected incident</div>' +
       '<div class="acc-pop-row">' + scenarioLabel(s) + '</div>' +
-      '<div class="acc-pop-area">' + (cell ? cell._area : '—') + '</div>';
+      '<div class="acc-pop-area">' + esc(cell ? cell._area : '—') + '</div>';
   }
   function rankPopup(rank, h) {
     return '<div class="acc-pop-sev" style="color:var(--accent); font-weight:600;">◆ Projected hotspot #' + rank + '</div>' +
