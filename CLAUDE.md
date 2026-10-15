@@ -41,7 +41,7 @@ cross-device notification bug. Region: Singapore. Health check: `/health`.
 records, anchored to 15+ real Chennai junctions (Kathipara, Guindy, Adyar,
 Koyambedu, Anna Salai, Velachery, Tambaram, Porur, Vandalur, Poonamallee,
 Saidapet, Teynampet, Padi, and more), covering Jul 2024–Jun 2026. Seeded
-(`random.seed(42)`) for reproducibility. Actual count is **10,169** across 30
+(`random.seed(131313)`) for reproducibility. Actual count is **10,169** across 30
 areas; severity split 637 fatal (6.3%) / 3,256 serious (32.0%) / 6,276 slight
 (61.7%). Correlations genuinely present: over-speeding is the top cause;
 two-wheelers ~40% of vehicles involved.
@@ -207,11 +207,19 @@ Eight parallel subagents produced 326 raw findings, deduplicated to 260.
 See `audit/` — `00-baseline.md`, `01-findings.md`, `02-plan.md`,
 `03-deferred.md`, `04-summary.md`.
 
+**Follow-up bug-check pass.** A second full-repo review (four parallel reviewers,
+every finding reproduced before it was fixed) closed 21 further defects: the
+timezone date rejection above, import-time env crashes, the spoofable `/ask`
+rate-limit key, the sync `/ask` threadpool starvation, HEAD 404s, the city-PDF
+month window, the Emerging qualify count, unescaped report sinks, the compare-page
+data-parity gap, and the notification baseline. The `audit/` files still describe
+the first pass.
+
 **The project now has tests, and they are the gate.** There was no test
 suite, no linter and no CI before this. Now:
 
 ```
-npm test          # 83 JS (node:test) + 255 pytest
+npm test          # 126 JS (node:test) + 262 pytest
 npm run lint      # ruff (zero findings) + parse-check on all 12 JS files
 ```
 
@@ -233,6 +241,16 @@ zero dependencies.
   Adding a new asset type means updating `SITE_DIRS` / `ROOT_EXTENSIONS`
   in `backend/main.py`.
 - `backend/requirements.txt` is fully pinned. Upgrade deliberately.
+- The frontend report validators (`app.js` `isValidReport`, `analytics.js`
+  `validReport`, `compare.js` `validReport`) must stay in step — all three check
+  the four vocabularies **and** bound coordinates to `C.REPORT_BOUNDS`.
+  `tests/js/report-validation.test.js` enforces it.
+- `/report` compares the client's LOCAL wall-clock `datetime` against **UTC now
+  widened by the +14h maximum timezone offset** — never the server's naive
+  `now()`, which rejected every UTC+5:30 Chennai report on a UTC host.
+- Never key a lookup on an untrusted string with a bare `OBJ[value]`; use
+  `hasOwnProperty` / `isCause` / `isSeverity`. It applies to severities, areas,
+  causes and the intervention model's cause tables alike.
 
 **Known liability, kept by decision:** `/health` pings MongoDB and is
 Render's `healthCheckPath`, so an Atlas outage takes the whole site down.

@@ -135,8 +135,8 @@ must be green before anything is committed:
 
 ```bash
 npm test            # both suites
-npm run test:js     # Node's built-in runner — 83 tests, zero dependencies
-npm run test:py     # pytest — 255 tests, no network calls (mongomock + stubs)
+npm run test:js     # Node's built-in runner — 126 tests, zero dependencies
+npm run test:py     # pytest — 262 tests, no network calls (mongomock + stubs)
 npm run lint        # ruff + a parse check on all 12 JS files
 ```
 
@@ -264,7 +264,7 @@ Env:     MONGODB_URI · ANTHROPIC_API_KEY · PYTHON_VERSION=3.12.7
 `data/accidents.json` contains **10,169** synthetic accident records across 30
 Chennai areas, modelled on real junctions (Kathipara, Guindy, Adyar, Koyambedu,
 Anna Salai, Velachery, and more), spanning **Jul 2024 – Jun 2026**. The dataset
-is seeded (`random.seed(42)`) for reproducibility. Not an official record.
+is seeded (`random.seed(131313)`) for reproducibility. Not an official record.
 
 Severity split: **637 fatal (6.3%)**, **3,256 serious (32.0%)**, **6,276 slight
 (61.7%)**.

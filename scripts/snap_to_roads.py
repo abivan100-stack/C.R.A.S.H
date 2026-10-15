@@ -51,7 +51,9 @@ WEIGHT = {
     "residential": 1.85, "living_street": 2.15, "service": 2.55, "track": 2.90,
 }
 DEFAULT_W = 1.40
-SEARCH_R  = 300.0     # metres: hard cap — a point never moves farther than this to reach a road
+SEARCH_R  = 300.0     # metres: search radius. A point normally moves <= this, but when NO road is
+                      # within the radius the single nearest road is used instead (see the else at ~line 141),
+                      # so it is not a hard cap on movement.
 
 HIGHWAY = {"motorway", "trunk", "primary", "secondary",
            "motorway_link", "trunk_link", "primary_link", "secondary_link"}
