@@ -21,7 +21,7 @@ def ask_client(app_module, monkeypatch):
 
     class FakeMessages:
         @staticmethod
-        def create(**kwargs):
+        async def create(**kwargs):
             calls.append(kwargs)
             return type("Msg", (), {"content": [FakeBlock()]})()
 
@@ -97,6 +97,31 @@ def test_the_limit_is_per_client_not_global(ask_client):
     # A different visitor must not be punished for the first one's traffic.
     assert client.post("/ask", json={"question": "x"},
                        headers={"X-Forwarded-For": "2.2.2.2"}).status_code == 200
+
+
+def test_the_rate_limit_key_is_the_proxy_added_hop_not_the_client_supplied_one(ask_client):
+    """Render APPENDS the real peer, so only the LAST X-Forwarded-For entry is
+    trustworthy. Keying on the left-most one let a caller rotate a fake value per
+    request and remove the only cap on Anthropic spend."""
+    client, _, module = ask_client
+    for i in range(module.ASK_RATE_LIMIT):
+        client.post("/ask", json={"question": f"q{i}"},
+                    headers={"X-Forwarded-For": "10.9.9.9, 203.0.113.7"})
+
+    # Same real peer, a DIFFERENT spoofed left-most value: it must stay blocked.
+    rotated = client.post("/ask", json={"question": "x"},
+                          headers={"X-Forwarded-For": "172.16.0.1, 203.0.113.7"})
+    assert rotated.status_code == 429
+
+
+def test_ask_is_async_so_a_slow_model_call_holds_no_worker_thread(app_module):
+    """The route was sync `def`, so it ran in a shared threadpool and ~40 concurrent
+    /ask calls starved the pool that also serves /app.js and /data/accidents.json."""
+    import inspect
+
+    imports = [r for r in app_module.app.routes if getattr(r, "path", None) == "/ask"]
+    assert imports, "the /ask route disappeared"
+    assert inspect.iscoroutinefunction(imports[0].endpoint), "/ask must be async def"
 
 
 def test_an_empty_question_is_answered_locally_and_not_rate_limited(ask_client):
