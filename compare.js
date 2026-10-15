@@ -396,6 +396,59 @@
     renderThemeToggle(); render();
   }
 
+  /* ---- citizen + seed reports (parity with the Map and Analytics tabs) ----
+     Compare used to load ONLY accidents.json while Analytics merged seed + shared
+     + local reports, so once any citizen report existed the same area showed two
+     different totals on two tabs. This mirrors analytics.js's loaders exactly,
+     including the vocabulary check that lives at this trust boundary. */
+  function validReport(r) {
+    return r && typeof r === 'object' &&
+      typeof r.lat === 'number' && isFinite(r.lat) &&
+      typeof r.lng === 'number' && isFinite(r.lng) &&
+      r.lat >= C.REPORT_BOUNDS.latMin && r.lat <= C.REPORT_BOUNDS.latMax &&
+      r.lng >= C.REPORT_BOUNDS.lngMin && r.lng <= C.REPORT_BOUNDS.lngMax &&
+      C.isSeverity(r.severity) &&
+      typeof r.datetime === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d/.test(r.datetime) &&
+      C.isCause(r.cause) && C.isVehicle(r.vehicle) &&
+      C.isArea(r.area) && C.isWeather(r.weather);
+  }
+  function loadCitizen() {
+    try {
+      const raw = localStorage.getItem('citizen_reports');
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter(validReport) : [];
+    } catch (e) { return []; }
+  }
+  function loadSeed(arr) { return Array.isArray(arr) ? arr.filter(validReport) : []; }
+  async function fetchSharedReports() {
+    if (typeof fetch !== 'function') return [];
+    const API = (typeof window !== 'undefined' && window.API_BASE) || '';
+    const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : 0;
+    try {
+      const res = await fetch(API + '/reports', ctrl ? { signal: ctrl.signal } : undefined);
+      if (!res.ok) return [];
+      const arr = await res.json();
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(validReport).map((r) => ({
+        lat: r.lat, lng: r.lng, severity: r.severity, datetime: r.datetime,
+        weather: r.weather, cause: r.cause, vehicle: r.vehicle, area: r.area,
+        citizen: true, shared: true,
+      }));
+    } catch (e) { return []; }
+    finally { if (timer) clearTimeout(timer); }
+  }
+  function mergeReports(shared, local) {
+    const seen = Object.create(null), out = [];
+    const sig = (r) => [Number(r.lat).toFixed(5), Number(r.lng).toFixed(5), r.severity,
+      r.datetime, r.weather, r.cause, r.vehicle, r.area].join('|');
+    const add = (r) => { const s = sig(r); if (!seen[s]) { seen[s] = true; out.push(r); } };
+    (shared || []).forEach(add);
+    (local || []).forEach(add);
+    return out;
+  }
+
   async function boot() {
     renderThemeToggle();
     const tt = document.getElementById('themeToggle'); if (tt) tt.addEventListener('click', toggleTheme);
@@ -405,7 +458,12 @@
     try { const res = await fetch('./data/accidents.json?v=9'); if (!res.ok) throw new Error('HTTP ' + res.status); data = await res.json(); }
     catch (err) { console.error(err); const m = document.querySelector('main'); if (m) m.insertAdjacentHTML('afterbegin', '<div style="padding:16px;border:1px solid var(--border);border-radius:8px;color:var(--text-2);">Could not load ./data/accidents.json — run via the local server.</div>'); return; }
 
-    DATA = data; precompute(); computeAll();
+    let seed = [];
+    try { const sres = await fetch('./data/citizen_seed.json?v=9'); if (sres.ok) seed = await sres.json(); } catch (e) { /* optional */ }
+
+    const shared = await fetchSharedReports();
+    DATA = data.concat(loadSeed(seed)).concat(mergeReports(shared, loadCitizen()));
+    precompute(); computeAll();
 
     // initial selection: URL params, else top-2 by risk
     const params = new URLSearchParams(window.location.search);

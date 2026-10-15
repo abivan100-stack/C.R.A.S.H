@@ -121,3 +121,50 @@ test('stopPolling clears a timeout, not an interval', () => {
   // Mismatched clearInterval/setTimeout would leave the poll running forever.
   assert.match(SOURCE, /function stopPolling\(\) \{ if \(pollTimer\) clearTimeout\(pollTimer\)/);
 });
+
+/* --- the pre-baseline window (a report filed during a backend outage) --------- */
+
+/* The predicate as implemented: a report is new to this session if it was filed
+   after the page loaded, or if the baseline has already been seeded. */
+function freshOnBaseline(seeded, createdAtMs, sessionStart) {
+  return seeded || (isFinite(createdAtMs) && createdAtMs > sessionStart);
+}
+
+const SESSION_START = 1_000_000;
+
+test('a pre-existing report is swallowed by the baseline (no toast flood on load)', () => {
+  assert.equal(freshOnBaseline(false, SESSION_START - 60_000, SESSION_START), false);
+});
+
+test('a report filed after load is toasted even before the baseline exists', () => {
+  /* The old rule (baselineSeeded alone) dropped this — the exact case on a Render
+     instance that had spun down: the first poll fails, another device files a
+     report, the next successful poll is the baseline, and the report was lost. */
+  assert.equal(freshOnBaseline(false, SESSION_START + 5_000, SESSION_START), true);
+});
+
+test('once the baseline is seeded every fresh-by-signature report is toasted', () => {
+  assert.equal(freshOnBaseline(true, SESSION_START - 60_000, SESSION_START), true);
+});
+
+test('an unparseable timestamp does not toast a pre-baseline report', () => {
+  assert.equal(freshOnBaseline(false, NaN, SESSION_START), false);
+});
+
+test('the source uses the created-after-session rule, not the seeded-only rule', () => {
+  assert.doesNotMatch(SOURCE, /if \(baselineSeeded\) fresh\.push\(r\)/,
+    'a report filed during an outage is swallowed by the baseline again');
+  assert.match(SOURCE, /freshOnBaseline\(baselineSeeded, Date\.parse\(r\.created_at \|\| r\.datetime\)\)/);
+  assert.match(SOURCE, /function freshOnBaseline\(seeded, createdAtMs\)/);
+});
+
+/* --- double-toast guard ------------------------------------------------------- */
+
+test('notify() toasts only the first sighting of a signature', () => {
+  /* A backend poll can return a just-submitted report before the local crash:report
+     dispatch runs, and both called notify() — two identical "New report" toasts. */
+  assert.match(SOURCE, /if \(first\) showToast\(n\)/,
+    'the unconditional showToast is back — a poll/local race double-toasts');
+  assert.match(SOURCE, /var first = knownSigs\[n\.sig\] !== true/);
+  assert.doesNotMatch(SOURCE, /^\s*showToast\(n\);\s*$/m, 'an unconditional showToast remains');
+});
