@@ -38,7 +38,10 @@
     if (cause === 'Signal jumping')     return BY_CAUSE['Signal jumping'];
     if (cause === 'Pothole / bad road') return BY_CAUSE['Pothole / bad road'];
     if (cause === 'Hit and run' || (nightShare || 0) > 0.55) return NIGHT;
-    if (BY_CAUSE[cause]) return BY_CAUSE[cause];
+    /* hasOwnProperty, not a bare lookup: `cause` arrives from POST /report, and a
+       plain `BY_CAUSE['constructor']` resolves Object.prototype (the same class of
+       bug the severity lookup had). Nothing outside the table belongs here. */
+    if (Object.prototype.hasOwnProperty.call(BY_CAUSE, cause)) return BY_CAUSE[cause];
     return DEFAULT;
   }
 
@@ -99,7 +102,13 @@
     'Hit and run': 'police',
     'Vehicle defect': 'transport',
   };
-  function authorityFor(cause) { return AUTHORITY[CAUSE_AUTHORITY[cause] || 'traffic']; }
+  function authorityFor(cause) {
+    // Own-property check only: `cause` is caller-controlled, and CAUSE_AUTHORITY['__proto__']
+    // would resolve Object.prototype (truthy), so the `|| 'traffic'` fallback never fired
+    // and AUTHORITY[...] came back undefined.
+    var key = Object.prototype.hasOwnProperty.call(CAUSE_AUTHORITY, cause) ? CAUSE_AUTHORITY[cause] : 'traffic';
+    return AUTHORITY[key] || AUTHORITY.traffic;
+  }
 
   root.CRASH_AUTHORITIES = { for: authorityFor, byKey: AUTHORITY, byCause: CAUSE_AUTHORITY };
 })(typeof window !== 'undefined' ? window : this);
