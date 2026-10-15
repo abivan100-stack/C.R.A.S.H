@@ -74,7 +74,9 @@
       if (ym < mn) mn = ym;
       if (ym > mx) mx = ym;
     }
-    return { min: mn, max: mx, count: mx - mn + 1 };
+    /* count is used as a divisor (report.js "per month"), so an empty set must not
+       yield -Infinity. precompute([]) already returns monthCount 1; match it. */
+    return { min: mn, max: mx, count: records.length ? (mx - mn + 1) : 1 };
   }
 
   /* ---- Grid cells: partition records into ~250 m cells ---- */
@@ -94,7 +96,7 @@
       if (!c) {
         c = { key: k, ci: ci, cj: cj, count: 0, score: 0,
               fatal: 0, serious: 0, slight: 0, night: 0,
-              areas: {}, cause: {},
+              areas: Object.create(null), cause: Object.create(null),
               recent: 0, baseline: 0, recentScore: 0,
               rF: 0, rS: 0, rL: 0,
               sumLat: 0, sumLng: 0, months: null };
@@ -189,8 +191,10 @@
     // How many cells actually QUALIFY, before the display cap. Callers that show
     // a count must use this: `emerging.length` is the length of a list truncated
     // to EMERGE_TOP_N (6), so a KPI built from it was structurally incapable of
-    // exceeding 6 while 25 cells genuinely qualified.
-    picked.qualifyingCount = nmsFilter(cand, Infinity, SUPPRESS).length;
+    // exceeding 6 while 25 cells genuinely qualified. It must be the raw qualify
+    // count too — applying SUPPRESS here returned only the de-clustered subset
+    // (25 qualifying read as 15), understating the KPI all over again.
+    picked.qualifyingCount = cand.length;
     return picked;
   }
 
