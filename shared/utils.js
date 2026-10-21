@@ -25,10 +25,10 @@
   /* ---- Night check: hour < 6 or >= 18 ---- */
   function isNight(dt) { var h = hourOf(dt); return h < 6 || h >= 18; }
 
-  /* ---- HTML-escape a string (null-safe, covers & < > ") ---- */
+  /* ---- HTML-escape a string (null-safe, covers & < > " ') ---- */
   function escapeHtml(s) {
-    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' }[c];
     });
   }
 
