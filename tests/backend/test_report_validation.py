@@ -177,6 +177,30 @@ def test_a_well_formed_recent_datetime_is_accepted(db_client, valid_report):
     assert post(db_client, valid_report, datetime="2025-06-01 14:30").status_code == 200
 
 
+def test_a_timestamp_from_a_client_ahead_of_the_server_clock_is_accepted(db_client, valid_report):
+    """The client sends LOCAL wall-clock time (an <input type="datetime-local">),
+    and this server runs UTC on Render. A real Chennai client (UTC+5:30) therefore
+    sends a timestamp ~5h30m ahead of the server clock. The old check compared it to
+    the server's naive now()+5min, so it rejected every report from the real audience
+    — and the frontend reported that as a network outage. A mid-range positive offset
+    must be accepted."""
+    import datetime as dt
+
+    utc_now = dt.datetime.now(dt.UTC).replace(tzinfo=None)
+    ahead = (utc_now + dt.timedelta(hours=6)).strftime("%Y-%m-%d %H:%M")
+    assert post(db_client, valid_report, datetime=ahead).status_code == 200
+
+
+def test_a_timestamp_no_timezone_can_explain_is_still_rejected(db_client, valid_report):
+    """The bound is widened to the real span of UTC offsets (UTC-12..UTC+14), not
+    removed: a date beyond any possible client clock still stretches the KPI window."""
+    import datetime as dt
+
+    utc_now = dt.datetime.now(dt.UTC).replace(tzinfo=None)
+    too_far = (utc_now + dt.timedelta(hours=15)).strftime("%Y-%m-%d %H:%M")
+    assert post(db_client, valid_report, datetime=too_far).status_code == 422
+
+
 # --- shape --------------------------------------------------------------------
 
 def test_unknown_fields_are_rejected(db_client, valid_report):

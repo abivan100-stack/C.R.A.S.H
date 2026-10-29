@@ -224,6 +224,7 @@
   function notify(report) {
     if (!report) return;
     var n = makeNotification(report);
+    var first = knownSigs[n.sig] !== true;   // only the FIRST sighting of a signature toasts
     knownSigs[n.sig] = true;   // a surfaced report is never re-notified by the backend poll
     var beforeLen = items.length;
     items = items.filter(function (x) { return x.sig !== n.sig; });   // de-dupe by content
@@ -231,7 +232,7 @@
     items.unshift(n);
     if (items.length > MAX_ITEMS) items.length = MAX_ITEMS;
     if (panelOpen) { n.read = true; readSet[n.sig] = true; saveReadState(); }   // already on screen
-    showToast(n);
+    if (first) showToast(n);   // a poll landing before the local dispatch must not double-toast
     unread = countUnread();
     updateBadge();
     // STEP 3 — smooth: add the one new row in place (no full rebuild → no flicker,
@@ -345,6 +346,15 @@
   // That baseline pass seeds knownSigs WITHOUT toasting, so pre-existing reports never
   // appear as "just now" on load — only reports first seen in LATER polls count as new.
   var baselineSeeded = false;
+  var sessionStart = Date.now();
+  /* A report is "new to this session" if it was filed after the page loaded. The old
+     rule (baselineSeeded alone) absorbed any report filed while the backend was down
+     BEFORE the first successful poll and never toasted it — which is the normal path
+     on a Render free instance that has spun down, exactly when a cross-device
+     notification matters most. */
+  function freshOnBaseline(seeded, createdAtMs) {
+    return seeded || (isFinite(createdAtMs) && createdAtMs > sessionStart);
+  }
   // only poll when the app is served by the backend (the single-origin shell)
   var POLL_ENABLED = (typeof window !== 'undefined' && window.CRASH_SHELL === true);
 
@@ -387,9 +397,11 @@
           var sig = signature(r);
           if (knownSigs[sig] || clearedSet[sig]) continue;   // already surfaced, or explicitly cleared
           knownSigs[sig] = true;
-          if (baselineSeeded) fresh.push(r);   // before the baseline exists, just record what's already there (no toast)
+          // Toast a report filed after this page loaded, even before the baseline
+          // exists; only genuinely pre-existing reports are swallowed (no toast flood).
+          if (freshOnBaseline(baselineSeeded, Date.parse(r.created_at || r.datetime))) fresh.push(r);
         }
-        baselineSeeded = true;                 // first successful poll defines "already existed" — nothing above toasts
+        baselineSeeded = true;                 // first successful poll defines what "already existed"
         for (var j = 0; j < fresh.length; j++) notify(fromBackend(fresh[j]));
         pollFailures = 0;                      // recovered
         setSyncOffline(false);
@@ -479,6 +491,7 @@
     readState: function () { return Object.keys(readSet); },
     relativeTime: relativeTime,
     navigate: navigateToReport,
+    freshOnBaseline: freshOnBaseline,   // pure predicate, exercised by the poll tests
     poll: pollBackend,            // STEP 2 — run one backend poll now (returns a promise)
     startPolling: startPolling,   // begin the ~8s background poll (auto-started on boot)
     stopPolling: stopPolling,

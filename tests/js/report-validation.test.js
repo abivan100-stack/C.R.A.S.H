@@ -49,6 +49,8 @@ function isValidReport(r) {
   return !!(r && typeof r === 'object' &&
     typeof r.lat === 'number' && isFinite(r.lat) &&
     typeof r.lng === 'number' && isFinite(r.lng) &&
+    r.lat >= C.REPORT_BOUNDS.latMin && r.lat <= C.REPORT_BOUNDS.latMax &&
+    r.lng >= C.REPORT_BOUNDS.lngMin && r.lng <= C.REPORT_BOUNDS.lngMax &&
     C.isSeverity(r.severity) &&
     typeof r.datetime === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d/.test(r.datetime) &&
     C.isCause(r.cause) && C.isVehicle(r.vehicle) &&
@@ -109,6 +111,20 @@ test('NaN coordinates are rejected — they pass typeof === "number"', () => {
   assert.equal(isValidReport(good({ lng: Infinity })), false);
 });
 
+
+test('an out-of-city coordinate is rejected, a real one is kept', () => {
+  /* A stray 0,0 report would drag fitBounds/setMaxBounds to the data extent and
+     re-frame the whole map to the Gulf of Guinea. The sanity box is wider than
+     BBOX so a map-edge pick is still accepted. */
+  assert.equal(isValidReport(good({ lat: 0, lng: 0 })), false);
+  assert.equal(isValidReport(good({ lat: 19.07, lng: 72.87 })), false, 'Mumbai');
+  assert.equal(isValidReport(good({ lat: 13.5, lng: 80.2 })), false, 'just past the box');
+
+  // A report just outside BBOX but inside REPORT_BOUNDS must survive.
+  assert.equal(isValidReport(good({ lat: C.BBOX.latMax + 0.1, lng: C.BBOX.lngMax + 0.05 })), true);
+  for (const r of SEED) assert.equal(isValidReport(r), true, 'a shipped seed report was dropped');
+});
+
 /* --- the downstream crashes no longer reproduce ---------------------------- */
 
 test('area:"__proto__" no longer reaches the top-area lookup that threw', () => {
@@ -162,5 +178,22 @@ test('app.js and analytics.js both check all four vocabularies', () => {
     assert.match(body, /\bisSeverity\(/, `${file} ${fn}() does not call isSeverity()`);
     assert.doesNotMatch(body, /typeof\s+r\.(area|cause|vehicle|weather)\s*===?\s*'string'/,
       `${file} ${fn}() still type-checks a vocabulary field instead of validating it`);
+  }
+});
+
+test('both frontend validators bound coordinates to REPORT_BOUNDS', () => {
+  /* A finite-but-out-of-city lat/lng is not a Chennai accident; it re-frames the map
+     to the raw data extent. app.js and analytics.js are deliberate duplicates, so
+     this stops one being bounded and the other forgotten. */
+  for (const [file, fn] of [['app.js', 'isValidReport'], ['analytics.js', 'validReport']]) {
+    const lines = readText(file).split('\n');
+    const start = lines.findIndex((l) => l.includes('function ' + fn + '('));
+    let end = start;
+    while (end < lines.length && !/^\s*\}\s*$/.test(lines[end])) end++;
+    const body = lines.slice(start, end + 1).join('\n');
+    for (const bound of ['latMin', 'latMax', 'lngMin', 'lngMax']) {
+      assert.match(body, new RegExp('REPORT_BOUNDS\\.' + bound + '\\b'),
+        `${file} ${fn}() does not check REPORT_BOUNDS.${bound}`);
+    }
   }
 });

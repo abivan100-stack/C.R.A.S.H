@@ -46,6 +46,14 @@ def test_api_routes_win_over_the_static_mount(client):
     assert response.json()["detail"] == "MONGODB_URI is not configured."
 
 
+def test_head_requests_reach_the_api_routes(client):
+    """@app.get registers no HEAD, so HEAD /health and HEAD / fell through to the
+    static catch-all, where the path has no allowlisted extension and 404'd — a
+    HEAD-based uptime monitor or link checker would see the service as absent."""
+    assert client.head("/health").status_code == 503
+    assert client.head("/").status_code == 200
+
+
 # --- Behaviour with no configuration -----------------------------------------
 
 def test_unconfigured_db_routes_do_not_crash(client):

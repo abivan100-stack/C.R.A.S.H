@@ -124,6 +124,23 @@ test('gridCells returns an empty array for no records', () => {
   assert.deepEqual(CE.gridCells([], BBOX, CELL, RECENT_MONTHS, 1), []);
 });
 
+test('cell accumulators have no prototype, so an Object.prototype name cannot resolve', () => {
+  /* area/cause arrive from POST /report and become object keys. On a plain `{}`,
+     area:"__proto__" was silently dropped and "constructor"/"toString" resolved
+     inherited members. A null-prototype accumulator closes that at the source. */
+  const records = [rec('fatal', 13.0, 80.2, { area: '__proto__', cause: 'constructor' })];
+  const [cell] = CE.gridCells(records, BBOX, CELL, RECENT_MONTHS, 1);
+
+  assert.equal(Object.getPrototypeOf(cell.areas), null);
+  assert.equal(Object.getPrototypeOf(cell.cause), null);
+  assert.ok('__proto__' in cell.areas, 'the hostile area was dropped instead of counted');
+});
+
+test('monthMeta on an empty set does not yield a negative divisor', () => {
+  /* count feeds report.js's "per month" divisor; Infinity-Infinity+1 was -Infinity. */
+  assert.equal(CE.monthMeta([]).count, 1);
+});
+
 /* --- topJunctions -------------------------------------------------------- */
 
 test('topJunctions ranks by score, breaking ties on raw count', () => {
@@ -244,6 +261,22 @@ test('computeEmerging is capped at EMERGE_TOP_N — callers must not treat its l
   assert.equal(out.length, EMERGE_TOP_N);
   assert.ok(cells.length > EMERGE_TOP_N,
     'many more cells qualify than are returned — see the "emerging count" finding');
+});
+
+test('computeEmerging reports the raw qualify count, not the de-clustered subset', () => {
+  /* The KPI must count every cell that meets recent>=MIN and lift>=THRESHOLD. The
+     display list is non-max-suppressed so the map shows distinct junctions, but
+     applying SUPPRESS to the *count* reported 15 where 25 cells qualified. */
+  const bunched = [
+    emergingCell('a', 0, 24, 18),
+    emergingCell('b', 1, 24, 18),   // within SUPPRESS(2) of 'a'
+    emergingCell('c', 2, 24, 18),
+  ];
+  const out = CE.computeEmerging(bunched, RECENT_MONTHS, 24,
+    EMERGE_MIN_RECENT, EMERGE_LIFT, EMERGE_TOP_N, SUPPRESS);
+
+  assert.equal(out.qualifyingCount, 3, 'a suppressed-but-qualifying cell was not counted');
+  assert.ok(out.length < 3, 'the display list should still be de-clustered');
 });
 
 test('computeEmerging orders by priority, not by raw recent volume', () => {

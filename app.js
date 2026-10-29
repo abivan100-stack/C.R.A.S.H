@@ -15,6 +15,7 @@ const isSeverity = C.isSeverity, sevOf = C.sevOf;
 const CAUSES = C.CAUSES;
 const VEHICLES = C.VEHICLES;
 const BBOX = C.BBOX;
+const REPORT_BOUNDS = C.REPORT_BOUNDS;
 const CELL = C.CELL;
 const TOP_N = C.TOP_N;
 const SUPPRESS = C.SUPPRESS;
@@ -779,7 +780,11 @@ function selectHotspot(id, opts) {
   opts = opts || {};
   app.selected = id;
   app.dossierTab = 'zone';    // selecting a place always shows its zone dossier
-  const h = app.cellById[id];
+  // Resolve against the FULL-data cells too: under an active filter a cell from the
+  // Emerging watch-list or the Strategy priority queue may be absent from the
+  // filtered set, and a bare app.cellById lookup then left `h` undefined — the
+  // dossier updated but the map never panned, so the row read as a dead button.
+  const h = app.cellById[id] || app.cellByIdFull[id];
   // remember stable info so the selection survives filter changes even if the
   // cell temporarily has no incidents under the active filter
   if (h) app.selInfo = { id: h.id, ci: h.ci, cj: h.cj, lat: h.lat, lng: h.lng, area: h.area };
@@ -1137,7 +1142,7 @@ function renderCity() {
   if (!c) return;
   const recs = currentRecords();
   const anyFilter = app.filters.sev !== 'all' || app.filters.time !== 'all' || app.filters.weather !== 'all' ||
-    app.filters.dow !== 'all' || app.filters.cause !== 'all';
+    app.filters.dow !== 'all' || app.filters.cause !== 'all' || app.filters.source !== 'all';
   c.innerHTML =
     '<div style="flex:none; padding:15px 18px 13px; border-bottom:1px solid var(--border);">' +
       '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">Contributing factors</div>' +
@@ -1245,7 +1250,7 @@ function renderEmerging() {
     '<div style="flex:none; padding:15px 18px 13px; border-bottom:1px solid var(--border);">' +
       '<div style="font:500 9.5px \'IBM Plex Mono\',monospace; letter-spacing:0.18em; color:var(--text-2); text-transform:uppercase;">Emerging hotspots</div>' +
       '<div style="display:flex; align-items:baseline; gap:9px; margin-top:5px;">' +
-        '<span style="font:600 30px \'Newsreader\',sans-serif; line-height:1; font-variant-numeric:tabular-nums;">' + list.length + '</span>' +
+        '<span style="font:600 30px \'Newsreader\',sans-serif; line-height:1; font-variant-numeric:tabular-nums;">' + (list.qualifyingCount != null ? list.qualifyingCount : list.length) + '</span>' +
         '<span style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2);">zones trending up</span>' +
       '</div>' +
       '<div style="font:400 11px \'Roboto\',sans-serif; color:var(--text-2); margin-top:7px; line-height:1.5;">Rising fastest by monthly incident rate — last 6 months vs the prior 18. Watch these before they reach the top index.</div>' +
@@ -1493,7 +1498,7 @@ function renderDossier() {
   ).join('');
 
   const recBlock =
-    '<div style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:2px; letter-spacing:0.02em;">Dominant cause · ' + domCause + ' · ' + domPct + '%</div>' +
+    '<div style="font:400 11px \'IBM Plex Mono\',monospace; color:var(--text-2); margin-top:2px; letter-spacing:0.02em;">Dominant cause · ' + esc(domCause) + ' · ' + domPct + '%</div>' +
     '<div style="font:400 12.5px \'Roboto\',sans-serif; line-height:1.6; color:var(--text); margin-top:7px;">' + intervention.fix + '.</div>' +
     '<div style="display:flex; align-items:center; gap:8px; margin-top:11px; font:500 10px \'IBM Plex Mono\',monospace; letter-spacing:0.08em; color:var(--text-2); text-transform:uppercase;">' +
       '<span>Capital cost</span>' + costMeter(intervention.cost) + '<span style="color:var(--text); letter-spacing:0.02em;">' + intervention.cost + '</span>' +
@@ -1793,6 +1798,8 @@ function isValidReport(r) {
   return r && typeof r === 'object' &&
     typeof r.lat === 'number' && isFinite(r.lat) &&
     typeof r.lng === 'number' && isFinite(r.lng) &&
+    r.lat >= REPORT_BOUNDS.latMin && r.lat <= REPORT_BOUNDS.latMax &&
+    r.lng >= REPORT_BOUNDS.lngMin && r.lng <= REPORT_BOUNDS.lngMax &&
     isSeverity(r.severity) &&
     typeof r.datetime === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d/.test(r.datetime) &&
     C.isCause(r.cause) && C.isVehicle(r.vehicle) &&

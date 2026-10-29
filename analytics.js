@@ -482,6 +482,8 @@
     return r && typeof r === 'object' &&
       typeof r.lat === 'number' && isFinite(r.lat) &&
       typeof r.lng === 'number' && isFinite(r.lng) &&
+      r.lat >= C.REPORT_BOUNDS.latMin && r.lat <= C.REPORT_BOUNDS.latMax &&
+      r.lng >= C.REPORT_BOUNDS.lngMin && r.lng <= C.REPORT_BOUNDS.lngMax &&
       C.isSeverity(r.severity) &&
       typeof r.datetime === 'string' && /^\d{4}-\d\d-\d\d \d\d:\d\d/.test(r.datetime) &&
       C.isCause(r.cause) && C.isVehicle(r.vehicle) &&

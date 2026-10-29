@@ -150,3 +150,41 @@ def test_no_credential_shaped_string_is_committed_in_config(secret):
     for path in (RENDER_YAML, REQUIREMENTS, ROOT / "package.json"):
         code = "\n".join(_code_lines(path))
         assert secret not in code, f"{secret!r} appears in {path.name}"
+
+
+# --- a config typo must not take the whole site down ---------------------------
+
+def _fresh_import(monkeypatch):
+    """Import backend.main from scratch under the current environment."""
+    import importlib
+    import sys
+
+    monkeypatch.delenv("MONGODB_URI", raising=False)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
+    sys.modules.pop("backend.main", None)
+    return importlib.import_module("backend.main")
+
+
+def test_an_unknown_log_level_does_not_crash_the_import(monkeypatch):
+    """`logging.basicConfig(level=...)` raises ValueError on an unrecognised level, at
+    import time — before uvicorn can bind — so LOG_LEVEL=verbose took the entire site
+    down, static map and analytics included. It must fall back to INFO instead."""
+    monkeypatch.setenv("LOG_LEVEL", "verbose")
+    module = _fresh_import(monkeypatch)          # previously raised ValueError
+    assert module._log_level("verbose") == module.logging.INFO
+    assert module._log_level("DEBUG") == module.logging.DEBUG
+    assert module._log_level("warning") == module.logging.WARNING
+    import sys
+    sys.modules.pop("backend.main", None)
+
+
+def test_a_malformed_numeric_env_value_falls_back_instead_of_crashing(monkeypatch):
+    """ASK_RATE_LIMIT / ASK_TIMEOUT_SECONDS were parsed with a bare int()/float() at
+    import time: a value like "20/s" was a fatal, site-wide configuration error."""
+    monkeypatch.setenv("ASK_RATE_LIMIT", "20/s")
+    monkeypatch.setenv("ASK_TIMEOUT_SECONDS", "25s")
+    module = _fresh_import(monkeypatch)          # previously raised ValueError
+    assert module.ASK_RATE_LIMIT == 20
+    assert module.ASK_TIMEOUT_SECONDS == 25.0
+    import sys
+    sys.modules.pop("backend.main", None)

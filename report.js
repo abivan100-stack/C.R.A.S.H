@@ -66,15 +66,20 @@
     }).sort((a, b) => b.prevent - a.prevent);
   }
   function cityData(records) {
-    CE.precompute(records, (window.CRASH_CONSTANTS && window.CRASH_CONSTANTS.MAX_WINDOW_MONTHS));
-    const mm = CE.monthMeta(records);
+    // precompute() anchors the month window to the NEWEST record and clamps it to
+    // MAX_WINDOW_MONTHS; it is the authoritative month count. monthMeta() reports the
+    // raw oldest->newest span, so passing ITS count to gridCells/computeEmerging gave
+    // them a length the records' _month field was never indexed against — a stray old
+    // report stretched the divisor (the same F036 defect analytics.js avoids).
+    const pre = CE.precompute(records, (window.CRASH_CONSTANTS && window.CRASH_CONSTANTS.MAX_WINDOW_MONTHS));
+    const mm = CE.monthMeta(records);          // used ONLY for the printed date range
     const sev = { fatal: 0, serious: 0, slight: 0 }, cause = {}, veh = {};
     for (const a of records) { sev[a.severity]++; cause[a.cause] = (cause[a.cause] || 0) + 1; veh[a.vehicle] = (veh[a.vehicle] || 0) + 1; }
-    const cells = CE.gridCells(records, BBOX, CELL, RECENT_MONTHS, mm.count, function (s) { return W[s]; });
+    const cells = CE.gridCells(records, BBOX, CELL, RECENT_MONTHS, pre.monthCount, function (s) { return W[s]; });
     const top = CE.topJunctions(cells, TOP_N, SUPPRESS);
     const sevCity = sev.fatal + sev.serious; let sevTop = 0; top.forEach((c) => { sevTop += c.fatal + c.serious; });
-    return { mm, total: records.length, sev, cause, veh, top, highRisk: cells.filter((c) => c.score >= HIGH_RISK_MIN).length,
-      sevCity, sevTop, leveragePct: sevCity ? Math.round(100 * sevTop / sevCity) : 0, emerging: CE.computeEmerging(cells, RECENT_MONTHS, mm.count, EMERGE_MIN_RECENT, EMERGE_LIFT, EMERGE_TOP_N, SUPPRESS), queue: priorityQueue(top) };
+    return { mm, monthCount: pre.monthCount, total: records.length, sev, cause, veh, top, highRisk: cells.filter((c) => c.score >= HIGH_RISK_MIN).length,
+      sevCity, sevTop, leveragePct: sevCity ? Math.round(100 * sevTop / sevCity) : 0, emerging: CE.computeEmerging(cells, RECENT_MONTHS, pre.monthCount, EMERGE_MIN_RECENT, EMERGE_LIFT, EMERGE_TOP_N, SUPPRESS), queue: priorityQueue(top) };
   }
   function zoneData(records) {
     const sev = { fatal: 0, serious: 0, slight: 0 }, cause = {}, veh = {}, weather = { clear: 0, rain: 0, fog: 0 };
@@ -102,7 +107,7 @@
 
   function today() { const d = new Date(); return pad2(d.getDate()) + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear(); }
   function todayFile() { const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
-  function ymRange(mm) { const y0 = Math.floor(mm.min / 12), m0 = mm.min % 12, y1 = Math.floor(mm.max / 12), m1 = mm.max % 12; return MON[m0] + ' ' + y0 + ' – ' + MON[m1] + ' ' + y1; }
+  function ymRange(mm) { if (!isFinite(mm.min) || !isFinite(mm.max)) return '—'; const y0 = Math.floor(mm.min / 12), m0 = mm.min % 12, y1 = Math.floor(mm.max / 12), m1 = mm.max % 12; return MON[m0] + ' ' + y0 + ' – ' + MON[m1] + ' ' + y1; }
 
   function header(doc, title, subtitle, metaLines) {
     let y = 46;
@@ -194,7 +199,7 @@
     y = kpiRow(doc, y, [
       { v: fmt(d.total), l: 'Incidents' }, { v: fmt(d.sev.fatal), l: 'Fatalities' }, { v: fmt(d.sev.fatal + d.sev.serious), l: 'Severe' },
       // qualifyingCount, not .length — the list is capped at EMERGE_TOP_N for display.
-      { v: fmt(d.highRisk), l: 'Risk zones' }, { v: fmt(d.emerging.qualifyingCount != null ? d.emerging.qualifyingCount : d.emerging.length), l: 'Emerging' }, { v: fmt(Math.round(d.total / d.mm.count)), l: 'Per month' },
+      { v: fmt(d.highRisk), l: 'Risk zones' }, { v: fmt(d.emerging.qualifyingCount != null ? d.emerging.qualifyingCount : d.emerging.length), l: 'Emerging' }, { v: fmt(Math.round(d.total / d.monthCount)), l: 'Per month' },
     ]);
     y = callout(doc, y, d.leveragePct + '%', 'of the city’s severe crashes occur in the top ' + d.top.length + ' junction cells (' + fmt(d.sevTop) + ' of ' + fmt(d.sevCity) + ' fatal + serious).');
     y = sectionTitle(doc, y, 'Top 10 ranked junctions');

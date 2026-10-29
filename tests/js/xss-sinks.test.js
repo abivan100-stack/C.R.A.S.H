@@ -26,10 +26,15 @@ const ROOT = path.join(__dirname, '..', '..');
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
 /* Fields of an accident record / hotspot that an attacker controls via POST /report. */
-const TAINTED = ['area', 'cause', 'vehicle', 'weather', 'datetime', 'domCause', 'dom'];
+const TAINTED = ['area', 'cause', 'vehicle', 'weather', 'datetime', 'domCause', 'domVehicle', 'dom'];
 
 /* Files that build HTML from record data. */
 const FILES = ['app.js', 'analytics.js', 'simulate.js', 'compare.js'];
+
+/* Record-derived LOCALS: a builder can copy a tainted field into a bare local and
+   interpolate the local, which the dotted pattern above cannot see. These are the
+   names that actually carried record data into a sink. */
+const BARE_LOCALS = ['domCause', 'domVehicle'];
 
 /* A string concatenation of the form `+ something.area` that is NOT wrapped in esc().
    Chart.js label/tooltip callbacks render to canvas and are excluded by checking
@@ -51,6 +56,16 @@ function unescapedSinks(source) {
         }
       }
     }
+    for (const name of BARE_LOCALS) {
+      const re = new RegExp(`\\+\\s*${name}\\b`, 'g');
+      let m;
+      while ((m = re.exec(line)) !== null) {
+        const before = line.slice(0, m.index);
+        if (!/esc\($/.test(before.trimEnd())) {
+          hits.push(`line ${i + 1}: ${m[0].trim()} (bare local)  ::  ${line.trim().slice(0, 110)}`);
+        }
+      }
+    }
   });
   return hits;
 }
@@ -68,6 +83,19 @@ test('every file that builds HTML from records defines the esc alias', () => {
     assert.match(read(file), /esc\s*=\s*CU\.escapeHtml/,
       `${file} builds HTML from record data but has no escape helper`);
   }
+});
+
+test('the sinks a line-regex cannot see are escaped', () => {
+  /* These three shapes slip the heuristic above (a bare local, an array literal
+     joined into innerHTML, and a ternary), so they are pinned explicitly. */
+  assert.match(read('app.js'), /\+\s*esc\(domCause\)/,
+    'app.js: the dossier dominant-cause local reaches innerHTML unescaped');
+  assert.match(read('compare.js'), /esc\(String\(r\[0\]\)\)/,
+    'compare.js: the facts table does not escape its record-derived cells');
+  assert.match(read('compare.js'), /esc\(String\(r\[2\]\)\)/,
+    'compare.js: the facts table does not escape its record-derived cells');
+  assert.match(read('simulate.js'), /esc\(cell \? cell\._area/,
+    'simulate.js: the projected-point popup interpolates cell._area unescaped');
 });
 
 /* --- the payloads this is defending against --------------------------------- */

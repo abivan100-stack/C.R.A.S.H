@@ -30,9 +30,8 @@ test('escapeHtml escapes ampersands so entities cannot be smuggled through', () 
   assert.equal(CU.escapeHtml('&lt;script&gt;'), '&amp;lt;script&amp;gt;');
 });
 
-test('escapeHtml does NOT escape single quotes — callers must use double-quoted attributes', () => {
-  // Documented limitation, asserted so a future single-quoted sink is a visible failure.
-  assert.equal(CU.escapeHtml("' onload='x"), "' onload='x");
+test('escapeHtml escapes the single quote, making it safe in a \'…\' attribute', () => {
+  assert.equal(CU.escapeHtml("' onload='x"), '&#x27; onload=&#x27;x');
 });
 
 test('escapeHtml is null-safe and always returns a string', () => {
