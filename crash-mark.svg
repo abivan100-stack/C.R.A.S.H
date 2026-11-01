@@ -1,0 +1,8 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- C.R.A.S.H mark: the hotspot cell. A diamond grid cell holds one solid
+       rhombus, the ranked hotspot at its centre. Sharp print geometry, no
+       letterforms. Accent 2F5C87 tile, canvas F4F0E7 glyph. -->
+  <rect width="64" height="64" rx="4" fill="#2F5C87"/>
+  <path d="M32 12 L52 32 L32 52 L12 32 Z" fill="none" stroke="#F4F0E7" stroke-width="5"/>
+  <path d="M32 25.6 L38.4 32 L32 38.4 L25.6 32 Z" fill="#F4F0E7"/>
+</svg>
