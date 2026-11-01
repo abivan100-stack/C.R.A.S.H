@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- C.R.A.S.H brand mark: the favicon artwork as the standalone mark.
-       Colors match crash.css theme accent #2F5C87 and canvas #F4F0E7. -->
-  <rect x="0" y="0" width="64" height="64" rx="14" fill="#2F5C87"/>
-  <path d="M32 47 C24 37 18 30 18 21 A14 14 0 1 1 46 21 C46 30 40 37 32 47 Z"
-        fill="#F4F0E7"/>
-  <circle cx="32" cy="21" r="6" fill="#2F5C87"/>
+  <!-- C.R.A.S.H mark: a bloom arc forms the C, the hotspot dot sits in its mouth.
+       The dot doubles as the wordmark's period and the risk bloom's centre.
+       Theme accent 2F5C87 on canvas F4F0E7, from crash.css tokens. -->
+  <rect width="64" height="64" rx="8" fill="#2F5C87"/>
+  <path d="M37.72 21.93 A14 14 0 1 0 37.72 42.07" fill="none" stroke="#F4F0E7" stroke-width="6"/>
+  <circle cx="47.5" cy="32" r="4.2" fill="#F4F0E7"/>
 </svg>
