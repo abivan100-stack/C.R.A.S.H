@@ -97,3 +97,69 @@
   border-radius: 50%;
   display: inline-block;
 }
+
+/* Simulation controls */
+.simctl-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.simctl-seg {
+  min-width: 150px;
+}
+
+.simctl-seg-row {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.simctl-seg-row button {
+  font: 500 11px 'IBM Plex Mono', monospace;
+  color: var(--text-2);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.simctl-seg-row button:last-child {
+  border-right: none;
+}
+
+.simctl-seg-row button[aria-pressed="true"] {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.simctl-horizon {
+  width: 150px;
+}
+
+.simctl-empty {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 26px 20px;
+  text-align: center;
+}
+
+.simctl-empty-title {
+  font: 600 14px 'Roboto', sans-serif;
+  color: var(--text);
+}
+
+.simctl-empty-note {
+  font: 400 12px 'Roboto', sans-serif;
+  color: var(--text-3);
+  margin-top: 5px;
+}
+
+.simctl-results .analytic-card {
+  margin-top: 14px;
+}
