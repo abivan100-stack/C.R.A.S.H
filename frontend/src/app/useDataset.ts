@@ -3,7 +3,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BBOX, CELL, EMERGE_LIFT, EMERGE_MIN_RECENT, EMERGE_TOP_N, MAX_WINDOW_MONTHS, RECENT_MONTHS, SUPPRESS, TOP_N } from '../domain/constants.ts';
 import { computeEmerging, gridCells, monthMeta, precompute, topJunctions } from '../domain/engine.ts';
 import type { AccidentRecord, EmergingList, GridCell } from '../domain/engine.ts';
-import { mergeCitizenReports, fetchAccidents, fetchSharedReports, readLocalReports, type CitizenRecord } from './api.ts';
+import {
+  mergeCitizenReports,
+  fetchAccidents,
+  fetchSharedReports,
+  readLocalReports,
+  reportSignature,
+  type CitizenRecord,
+} from './api.ts';
+import { attachVisibilityPoll } from './polling.ts';
+
+export const REPORT_POLL_MS = 8000;
+
+export interface ReportNotification {
+  id: string;
+  area: string;
+  severity: string;
+  datetime: string;
+}
 
 export interface Dataset {
   loading: boolean;
@@ -18,7 +35,10 @@ export interface Dataset {
   monthCount: number;
   range: { min: number; max: number; count: number };
   citizen: CitizenRecord[];
+  notifications: ReportNotification[];
+  unread: number;
   addCitizenReport: (report: CitizenRecord) => void;
+  clearNotifications: () => void;
 }
 
 function derive(base: readonly AccidentRecord[], citizen: readonly CitizenRecord[]) {
@@ -33,7 +53,10 @@ function derive(base: readonly AccidentRecord[], citizen: readonly CitizenRecord
 
 export function useDataset(): Dataset {
   const [base, setBase] = useState<AccidentRecord[]>([]);
-  const [citizen, setCitizen] = useState<CitizenRecord[]>([]);
+  const [shared, setShared] = useState<CitizenRecord[]>([]);
+  const [local, setLocal] = useState<CitizenRecord[]>(() => readLocalReports());
+  const [notifications, setNotifications] = useState<ReportNotification[]>([]);
+  const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const alive = useRef(true);
@@ -42,10 +65,10 @@ export function useDataset(): Dataset {
     alive.current = true;
     (async () => {
       try {
-        const [accidents, shared] = await Promise.all([fetchAccidents(), fetchSharedReports()]);
+        const [accidents, sharedReports] = await Promise.all([fetchAccidents(), fetchSharedReports()]);
         if (!alive.current) return;
         setBase(accidents);
-        setCitizen(mergeCitizenReports(shared, readLocalReports()));
+        setShared(sharedReports);
         setError(null);
       } catch (e) {
         if (!alive.current) return;
@@ -59,11 +82,50 @@ export function useDataset(): Dataset {
     };
   }, []);
 
-  const addCitizenReport = useCallback((report: CitizenRecord) => {
-    setCitizen((prev) => [...prev, report]);
+  /* Cross-device sync: poll for shared reports while visible, immediately on
+     return to the tab (attachVisibilityPoll pauses while hidden). */
+  useEffect(() => {
+    const stop = attachVisibilityPoll(REPORT_POLL_MS, () => {
+      if (!alive.current) return;
+      void fetchSharedReports().then((reports) => {
+        if (!alive.current || reports.length === 0) return;
+        setShared((prev) => {
+          const known = new Set(prev.map(reportSignature));
+          const fresh = reports.filter((r) => !known.has(reportSignature(r)));
+          if (fresh.length === 0) return prev;
+          setNotifications((n) => [
+            ...fresh.map((r) => ({ id: String(r.id ?? reportSignature(r)), area: r.area, severity: r.severity, datetime: r.datetime })),
+            ...n,
+          ].slice(0, 40));
+          setUnread((u) => u + fresh.length);
+          return mergeCitizenReports(reports, prev);
+        });
+      });
+    });
+    return stop;
   }, []);
 
+  const addCitizenReport = useCallback((report: CitizenRecord) => {
+    setLocal((prev) => [...prev, report]);
+  }, []);
+
+  const clearNotifications = useCallback(() => {
+    setNotifications([]);
+    setUnread(0);
+  }, []);
+
+  const citizen = useMemo(() => mergeCitizenReports(shared, local), [shared, local]);
   const derived = useMemo(() => derive(base, citizen), [base, citizen]);
 
-  return { loading, error, base, citizen, addCitizenReport, ...derived };
+  return {
+    loading,
+    error,
+    base,
+    citizen,
+    notifications,
+    unread,
+    addCitizenReport,
+    clearNotifications,
+    ...derived,
+  };
 }

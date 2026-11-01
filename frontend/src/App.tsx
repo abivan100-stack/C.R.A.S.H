@@ -5,6 +5,7 @@ import { useTheme } from './app/theme.ts';
 import { Icon } from './components/Icon.tsx';
 import { ReportForm } from './components/ReportForm.tsx';
 import { ReportList } from './components/ReportList.tsx';
+import { Notifications } from './components/Notifications.tsx';
 import type { CitizenRecord } from './app/api.ts';
 
 type Tab = 'map' | 'analytics' | 'report' | 'simulate' | 'bot';
@@ -21,6 +22,7 @@ export function App(): JSX.Element {
   const dataset = useDataset();
   const { theme, toggle } = useTheme();
   const [tab, setTab] = useState<Tab>('report');
+  const [notifyOpen, setNotifyOpen] = useState(false);
 
   const onSaved = (report: CitizenRecord): void => dataset.addCitizenReport(report);
 
@@ -48,6 +50,13 @@ export function App(): JSX.Element {
               </button>
             ))}
           </div>
+          <Notifications
+            open={notifyOpen}
+            unread={dataset.unread}
+            items={dataset.notifications}
+            onToggle={() => setNotifyOpen((o) => !o)}
+            onClear={dataset.clearNotifications}
+          />
           <button className="icon-btn" type="button" aria-label="Toggle theme" onClick={toggle}>
             <Icon name={theme === 'light' ? 'moon' : 'sun'} size={16} />
           </button>
@@ -66,7 +75,7 @@ export function App(): JSX.Element {
         {tab === 'report' ? (
           <section className="app-section active" role="tabpanel" aria-label="Reports">
             <div className="report-root">
-              <ReportForm records={dataset.records} onSaved={onSaved} />
+              <ReportForm records={dataset.records} theme={theme} onSaved={onSaved} />
               <ReportList reports={dataset.citizen} />
             </div>
           </section>

@@ -6,9 +6,11 @@ import { uniqueAreas } from '../domain/geo.ts';
 import { nowLocalInput, toStoredDatetime, validateReport, type ReportDraft, type ReportField, type ReportIssue } from '../domain/report.ts';
 import { readLocalReports, submitReport, writeLocalReports, type CitizenRecord } from '../app/api.ts';
 import { Icon } from './Icon.tsx';
+import { ReportMapPicker, locateMe } from './ReportMapPicker.tsx';
 
 interface Props {
   records: readonly AccidentRecord[];
+  theme: 'light' | 'dark';
   onSaved: (report: CitizenRecord) => void;
 }
 
@@ -29,7 +31,7 @@ function locationText(draft: ReportDraft): string {
   return `${draft.lat.toFixed(5)}, ${draft.lng.toFixed(5)}${draft.pickedArea ? ` - ${draft.pickedArea}` : ''}`;
 }
 
-export function ReportForm({ records, onSaved }: Props): JSX.Element {
+export function ReportForm({ records, theme, onSaved }: Props): JSX.Element {
   const areas = useMemo(() => uniqueAreas(records), [records]);
   const [draft, setDraft] = useState<ReportDraft>({ ...EMPTY, datetime: nowLocalInput() });
   const [issues, setIssues] = useState<ReportIssue[]>([]);
@@ -43,6 +45,21 @@ export function ReportForm({ records, onSaved }: Props): JSX.Element {
     setDraft((d) => ({ ...d, [key]: value }));
     setError('');
     setIssues([]);
+  }
+
+  function handlePick(plat: number, plng: number, area: string | null): void {
+    setDraft((d) => ({ ...d, lat: plat, lng: plng, pickedArea: area, area: area ?? d.area }));
+    setError('');
+    setIssues([]);
+  }
+
+  async function useMyLocation(): Promise<void> {
+    const point = await locateMe();
+    if (!point) {
+      setError('Your location could not be read. Drop a pin on the map instead.');
+      return;
+    }
+    handlePick(point.lat, point.lng, null);
   }
 
   function changeArea(value: string): void {
@@ -114,10 +131,22 @@ export function ReportForm({ records, onSaved }: Props): JSX.Element {
         <div className="af-grid">
           <div className="af-field full">
             <div className="af-label">Location</div>
+            <ReportMapPicker
+              theme={theme}
+              records={records}
+              lat={draft.lat}
+              lng={draft.lng}
+              onPick={handlePick}
+              onInvalid={(message) => setError(message)}
+            />
+            <button className="af-geo-btn" type="button" title="Center the map on your current position" onClick={() => void useMyLocation()}>
+              <span className="af-geo-emoji" aria-hidden="true">📍</span>
+              <span className="af-geo-label">Use my current location</span>
+            </button>
             <div className={`af-readout${invalid('location')}`}>{locationText(draft)}</div>
             <div className="af-hint">
-              Pick an area below to place the report at its centre, or draw the exact spot on the map after the map shell
-              lands. The coordinates are stored exactly as chosen.
+              Click the map to drop a pin, drag it to fine-tune, or pick an area below. Either sets the exact
+              coordinates stored with the report.
             </div>
           </div>
 
