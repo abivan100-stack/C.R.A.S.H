@@ -145,3 +145,208 @@
   background: var(--accent-soft);
   color: var(--accent);
 }
+
+/* Map legend, blooms and emerging pulse */
+.maplegend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  background: var(--attrib-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font: 400 10px 'IBM Plex Mono', monospace;
+  color: var(--text-2);
+}
+
+.maplegend span { display: inline-flex; align-items: center; gap: 5px; }
+.maplegend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.maplegend i.ring { background: transparent; border: 1.5px solid var(--accent); }
+.maplegend i.pulse { background: transparent; border: 2px solid var(--accent); animation: pulseRing 1.8s ease-out infinite; }
+
+@keyframes pulseRing {
+  0% { transform: scale(0.7); opacity: 1; }
+  70% { transform: scale(1.35); opacity: 0.25; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .maplegend i.pulse, .pulse-marker { animation: none; }
+}
+
+/* Dossier panel */
+.dossier {
+  width: 336px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.dossier-head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dossier-label {
+  font: 500 9.5px 'IBM Plex Mono', monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.dossier-area {
+  font: 600 16px Newsreader, serif;
+  color: var(--text);
+  margin-top: 3px;
+}
+
+.dossier-coords {
+  font: 400 10px 'IBM Plex Mono', monospace;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.dossier-close {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: var(--radius);
+  color: var(--text-2);
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.dossier-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dossier-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.dossier-kpis div {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--bg);
+}
+
+.dossier-kpis b {
+  font: 600 15px 'IBM Plex Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.dossier-kpis span {
+  font: 400 8.5px 'IBM Plex Mono', monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.dossier-sec-title {
+  font: 500 9.5px 'IBM Plex Mono', monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+.dz-hours {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 38px;
+}
+
+.dz-hours i {
+  flex: 1;
+  background: var(--accent-soft);
+  border-radius: 1px;
+  min-height: 3px;
+}
+
+.dossier-note {
+  font: 400 10px 'IBM Plex Mono', monospace;
+  color: var(--text-3);
+  margin-top: 7px;
+}
+
+.dossier-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dossier-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  font: 400 11.5px Roboto, sans-serif;
+  color: var(--text-2);
+  background: var(--bg);
+  z-index: 0;
+}
+
+.dossier-row i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent-soft);
+  z-index: -1;
+}
+
+.dossier-row b {
+  font: 500 11px 'IBM Plex Mono', monospace;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.dossier-iv {
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius);
+  background: var(--accent-faint);
+  padding: 12px;
+}
+
+.dossier-iv-fix {
+  font: 500 12.5px Roboto, sans-serif;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.dossier-iv-meta {
+  font: 400 10px 'IBM Plex Mono', monospace;
+  color: var(--text-3);
+  margin-top: 5px;
+}
+
+.dossier-iv-prevent {
+  font: 500 11.5px 'IBM Plex Mono', monospace;
+  color: var(--accent);
+  margin-top: 7px;
+}
