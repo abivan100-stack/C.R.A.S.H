@@ -8,13 +8,15 @@ import { ReportList } from './components/ReportList.tsx';
 import { Notifications } from './components/Notifications.tsx';
 import { BotPanel } from './components/BotPanel.tsx';
 import { AnalyticsPage } from './components/AnalyticsPage.tsx';
+import { ComparePage } from './components/ComparePage.tsx';
 import type { CitizenRecord } from './app/api.ts';
 
-type Tab = 'map' | 'analytics' | 'report' | 'simulate' | 'bot';
+type Tab = 'map' | 'analytics' | 'compare' | 'report' | 'simulate' | 'bot';
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'map', label: 'Map' },
   { id: 'analytics', label: 'Analytics' },
+  { id: 'compare', label: 'Compare' },
   { id: 'report', label: 'Reports' },
   { id: 'simulate', label: 'Simulate' },
   { id: 'bot', label: 'C.R.A.S.H Bot' },
@@ -85,6 +87,7 @@ export function App(): JSX.Element { // migrated shell
 
         {tab === 'map' ? <Placeholder title="Map" text={dataset.loading ? 'Loading incident data…' : 'The React map shell lands in a later migration step.'} /> : null}
         {tab === 'analytics' ? <AnalyticsPage records={dataset.records} monthCount={dataset.monthCount} theme={theme} /> : null}
+        {tab === 'compare' ? <ComparePage records={dataset.records} monthCount={dataset.monthCount} theme={theme} /> : null}
         {tab === 'simulate' ? <Placeholder title="Simulate" text="The intervention simulator is ported in a later migration step." /> : null}
         {tab === 'bot' ? <BotPanel records={dataset.records} /> : null}
       </main>
