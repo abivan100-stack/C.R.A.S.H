@@ -6,6 +6,7 @@ import { Icon } from './components/Icon.tsx';
 import { ReportForm } from './components/ReportForm.tsx';
 import { ReportList } from './components/ReportList.tsx';
 import { Notifications } from './components/Notifications.tsx';
+import { BotPanel } from './components/BotPanel.tsx';
 import type { CitizenRecord } from './app/api.ts';
 
 type Tab = 'map' | 'analytics' | 'report' | 'simulate' | 'bot';
@@ -18,7 +19,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'bot', label: 'C.R.A.S.H Bot' },
 ];
 
-export function App(): JSX.Element {
+export function App(): JSX.Element { // migrated shell
   const dataset = useDataset();
   const { theme, toggle } = useTheme();
   const [tab, setTab] = useState<Tab>('report');
@@ -84,7 +85,7 @@ export function App(): JSX.Element {
         {tab === 'map' ? <Placeholder title="Map" text={dataset.loading ? 'Loading incident data…' : 'The React map shell lands in a later migration step.'} /> : null}
         {tab === 'analytics' ? <Placeholder title="Analytics" text="The analytics studio is ported in a later migration step." /> : null}
         {tab === 'simulate' ? <Placeholder title="Simulate" text="The intervention simulator is ported in a later migration step." /> : null}
-        {tab === 'bot' ? <Placeholder title="C.R.A.S.H Bot" text="The bot slice is ported in a later migration step." /> : null}
+        {tab === 'bot' ? <BotPanel records={dataset.records} /> : null}
       </main>
     </>
   );
