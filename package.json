@@ -2,7 +2,7 @@
   "name": "crash-chennai-road-accident-safety-hub",
   "version": "1.0.0",
   "private": true,
-  "description": "CRASH — Chennai Road Accident Safety Hub: an interactive Leaflet + Chart.js road-accident hotspot dashboard with a FastAPI + MongoDB citizen-reports backend. Vanilla JS with no build step; the whole app is served by the Python backend on a single origin.",
+  "description": "CRASH — Chennai Road Accident Safety Hub: an interactive React 18 + TypeScript road-accident hotspot dashboard with a FastAPI + MongoDB citizen-reports backend, served from a single origin.",
   "keywords": [
     "chennai",
     "road-safety",
@@ -26,11 +26,28 @@
   "scripts": {
     "start": "python -m uvicorn backend.main:app --reload",
     "start:prod": "python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000",
-    "test": "npm run test:js && npm run test:py",
+    "test": "npm run test:js && npm run test:ts && npm run test:py",
     "test:js": "node --test \"tests/js/**/*.test.js\"",
+    "test:ts": "node --test \"frontend/src/**/*.test.ts\"",
     "test:py": "python -m pytest",
-    "lint": "npm run lint:js && npm run lint:py",
+    "typecheck": "tsc --noEmit",
+    "build": "vite build",
+    "release": "vite build && node scripts/release.mjs",
+    "dev": "vite",
+    "lint": "npm run typecheck && npm run lint:js && npm run lint:py",
     "lint:js": "node --check app.js && node --check analytics.js && node --check bot.js && node --check compare.js && node --check intervention-model.js && node --check maptiler.js && node --check notifications.js && node --check report.js && node --check simulate.js && node --check shared/constants.js && node --check shared/utils.js && node --check shared/engine.js",
     "lint:py": "python -m ruff check ."
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^6.1.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
   }
 }

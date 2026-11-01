@@ -1,0 +1,47 @@
+/* Area comparison layout. */
+
+.compare-picks {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 18px 0 16px;
+  flex-wrap: wrap;
+}
+
+.compare-picks .af-field {
+  min-width: 200px;
+  flex: 1 1 200px;
+}
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 400 12px 'Roboto', sans-serif;
+  color: var(--text-2);
+}
+
+.compare-table th {
+  text-align: left;
+  font: 500 10px 'IBM Plex Mono', monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-table td:first-child {
+  color: var(--text-3);
+  font: 400 11.5px 'IBM Plex Mono', monospace;
+}
+
+.compare-table td.win {
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--accent-line);
+}
