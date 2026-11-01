@@ -16,7 +16,7 @@ function rec(overrides: Partial<AccidentRecord> = {}): AccidentRecord {
 const records = [
   rec(),
   rec({ severity: 'slight', citizen: true, weather: 'clear', cause: 'Hit and run', _dow: 5, _night: true, _h: 20, datetime: '2025-06-14 20:00' }),
-  rec({ severity: 'serious', _dow: 0, weather: 'fog', cause: 'Signal jumping', _night: true, _h: 21 }),
+  rec({ severity: 'serious', _dow: 0, weather: 'fog', cause: 'Signal jumping', _night: true, _h: 21, datetime: '2025-06-10 21:00' }),
 ];
 
 test('the default filters keep every record', () => {
