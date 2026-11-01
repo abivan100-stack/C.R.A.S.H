@@ -34,3 +34,5 @@ Thumbs.db
 scripts/chennai_drive.graphml
 scripts/cache/
 .vercel
+
+/dist/
