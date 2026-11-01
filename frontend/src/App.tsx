@@ -7,6 +7,7 @@ import { ReportForm } from './components/ReportForm.tsx';
 import { ReportList } from './components/ReportList.tsx';
 import { Notifications } from './components/Notifications.tsx';
 import { BotPanel } from './components/BotPanel.tsx';
+import { AnalyticsPage } from './components/AnalyticsPage.tsx';
 import type { CitizenRecord } from './app/api.ts';
 
 type Tab = 'map' | 'analytics' | 'report' | 'simulate' | 'bot';
@@ -83,7 +84,7 @@ export function App(): JSX.Element { // migrated shell
         ) : null}
 
         {tab === 'map' ? <Placeholder title="Map" text={dataset.loading ? 'Loading incident data…' : 'The React map shell lands in a later migration step.'} /> : null}
-        {tab === 'analytics' ? <Placeholder title="Analytics" text="The analytics studio is ported in a later migration step." /> : null}
+        {tab === 'analytics' ? <AnalyticsPage records={dataset.records} monthCount={dataset.monthCount} theme={theme} /> : null}
         {tab === 'simulate' ? <Placeholder title="Simulate" text="The intervention simulator is ported in a later migration step." /> : null}
         {tab === 'bot' ? <BotPanel records={dataset.records} /> : null}
       </main>

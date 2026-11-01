@@ -1,0 +1,99 @@
+/* Analytics studio layout, in the existing token system. */
+
+.analytic-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 10px;
+  margin: 18px 0 14px;
+}
+
+.analytic-kpi {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.analytic-kpi-value {
+  font: 500 22px 'IBM Plex Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.analytic-kpi-label {
+  font: 500 9.5px 'IBM Plex Mono', monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.analytic-leverage {
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius);
+  background: var(--accent-faint);
+  padding: 12px 14px;
+  font: 400 12px 'Roboto', sans-serif;
+  color: var(--text-2);
+  margin-bottom: 16px;
+}
+
+.analytic-leverage b {
+  color: var(--accent);
+  font: 600 14px 'IBM Plex Mono', monospace;
+}
+
+.analytic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.analytic-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 14px 16px 16px;
+  min-width: 0;
+}
+
+.analytic-card-head {
+  margin-bottom: 10px;
+}
+
+.analytic-card-title {
+  font: 600 13px 'Roboto', sans-serif;
+  color: var(--text);
+}
+
+.analytic-card-note {
+  font: 400 10.5px 'IBM Plex Mono', monospace;
+  color: var(--text-3);
+  margin-top: 3px;
+}
+
+.analytic-legend {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.analytic-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 12px 'Roboto', sans-serif;
+  color: var(--text-2);
+}
+
+.analytic-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
