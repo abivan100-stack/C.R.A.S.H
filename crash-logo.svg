@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 64">
+  <!-- C.R.A.S.H horizontal logo lockup: mark + serif wordmark + caps subtitle.
+       Fonts loaded by crash.css: Newsreader (serif), Barlow Semi Condensed (caps).
+       Standalone-viewing falls back to Georgia / Arial Narrow. -->
+  <g transform="translate(0,0)">
+    <rect x="0" y="0" width="64" height="64" rx="14" fill="#2F5C87"/>
+    <path d="M32 47 C24 37 18 30 18 21 A14 14 0 1 1 46 21 C46 30 40 37 32 47 Z"
+          fill="#F4F0E7"/>
+    <circle cx="32" cy="21" r="6" fill="#2F5C87"/>
+  </g>
+  <text x="84" y="40"
+        font-family="Newsreader, Georgia, 'Times New Roman', serif"
+        font-weight="600" font-size="30" letter-spacing="1"
+        fill="#221F18">C.R.A.S.H.</text>
+  <text x="84" y="57"
+        font-family="'Barlow Semi Condensed', 'Arial Narrow', sans-serif"
+        font-weight="600" font-size="10.5" letter-spacing="2.4"
+        fill="#6E675A">CHENNAI ROAD ACCIDENT SAFETY HUB</text>
+</svg>

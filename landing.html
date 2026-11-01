@@ -2,6 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CRASH — Chennai Road Accident Safety Hub</title>
 <meta name="description" content="CRASH reads two years of Greater Chennai road-accident data, ranks the deadliest junctions by a severity-weighted risk score, and turns every hotspot into an evidence-based intervention — a live map, analytics, area-compare, an AI data assistant, intervention simulation, and citizen reporting.">
@@ -121,11 +122,11 @@
   .brand { display: flex; align-items: center; gap: 11px; color: var(--text); flex: none; }
   .nav-divider { flex: none; width: 1px; height: 24px; background: var(--border); }
   .brand-mark {
-    width: 34px; height: 34px; border-radius: var(--radius); border: 1px solid var(--accent-line);
-    background: var(--accent-faint); color: var(--accent);
+    width: 34px; height: 34px; border-radius: var(--radius);
     display: grid; place-items: center; flex: none;
   }
-  .brand-mark svg { width: 18px; height: 18px; }
+  /* The brand mark is the finished crash-mark.svg tile; no extra tile chrome. */
+  .brand-mark img { width: 34px; height: 34px; display: block; border-radius: var(--radius); }
   .brand-word { font-family: var(--f-display); font-weight: 600; font-size: 19px; letter-spacing: 0.02em; line-height: 1; }
   .brand-sub { font-family: var(--f-mono); font-size: 9px; letter-spacing: 0.13em; color: var(--text-3); text-transform: uppercase; margin-top: 3px; display: block; }
   .nav-links { display: flex; gap: 17px; }
@@ -448,7 +449,7 @@
 <header class="nav" id="nav" data-open="false">
   <div class="wrap nav-inner">
     <a class="brand" href="./landing.html" aria-label="CRASH home">
-      <span class="brand-mark"><svg aria-hidden="true"><use href="./vendor/icons.svg#i-map-pin"/></svg></span>
+      <img class="brand-mark" src="./crash-mark.svg" alt="" aria-hidden="true">
       <span>
         <span class="brand-word">CRASH</span>
         <span class="brand-sub">Chennai Road Accident Safety Hub</span>
@@ -795,7 +796,7 @@
     <div class="foot-top">
       <div>
         <a class="brand" href="./landing.html" aria-label="CRASH home">
-          <span class="brand-mark"><svg aria-hidden="true"><use href="./vendor/icons.svg#i-map-pin"/></svg></span>
+          <img class="brand-mark" src="./crash-mark.svg" alt="" aria-hidden="true">
           <span><span class="brand-word">CRASH</span><span class="brand-sub">Chennai Road Accident Safety Hub</span></span>
         </a>
         <p class="desc">A road-safety intelligence hub that turns Greater Chennai's accident record into a ranked, actionable map of risk.</p>
