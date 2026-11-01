@@ -1,4 +1,4 @@
-﻿/* Parity harness for the typed domain core (issue #4).
+/* Parity harness for the typed domain core (issue #4).
 
    Proves the TypeScript vocabularies accept and reject exactly what the legacy
    frontend constants and the backend validation accept and reject, so the two

@@ -1,0 +1,55 @@
+/* React-specific additions that do not belong to the legacy sheet. */
+
+.report-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.report-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.report-rank {
+  font: 500 12px 'IBM Plex Mono', monospace;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.report-main {
+  min-width: 0;
+}
+
+.report-area {
+  display: block;
+  font: 500 13px 'Roboto', sans-serif;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.report-sub {
+  display: block;
+  margin-top: 3px;
+  font: 400 11px 'IBM Plex Mono', monospace;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-sev {
+  font: 500 10.5px 'IBM Plex Mono', monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.app-loading {
+  padding: 40px 22px;
+  color: var(--text-3);
+  font: 400 12px 'IBM Plex Mono', monospace;
+}

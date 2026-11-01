@@ -1,45 +1,35 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 
-/* Dev convenience: the repo-root static assets (vendor libs, crash.css, data,
-   shared legacy modules) live outside the Vite root, so serve them through the
-   dev server. Production builds never use this. */
-function repoRootStatics() {
-  const root = path.resolve(__dirname, '..');
-  return {
-    name: 'crash-repo-root-statics',
-    configureServer(server: { middlewares: { use: (fn: unknown) => void } }) {
-      server.middlewares.use(async (req: { url?: string }, res: { setHeader: (k: string, v: string) => void; end: (b: Buffer | string) => void }, next: () => void) => {
-        const url = (req.url || '').split('?')[0];
-        const prefixes = ['/vendor/', '/data/', '/shared/', '/crash.css', '/favicon.svg', '/crash-mark.svg', '/crash-logo.svg'];
-        if (!prefixes.some((p) => url.startsWith(p))) return next();
-        try {
-          const file = path.join(root, decodeURIComponent(url));
-          const buf = await readFile(file);
-          const ext = path.extname(file);
-          const types: Record<string, string> = {
-            '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
-            '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2',
-          };
-          res.setHeader('Content-Type', types[ext] || 'application/octet-stream');
-          res.end(buf);
-        } catch {
-          next();
-        }
-      });
-    },
-  };
-}
+/* Dev server: everything that production serves from the single FastAPI origin
+   (static assets, dataset, API) is proxied there, so the React app talks to the
+   exact same URLs and payloads it will in production. */
+const BACKEND = 'http://localhost:8000';
 
 export default defineConfig({
   root: 'frontend',
-  plugins: [react(), repoRootStatics()],
-  server: { port: 5173 },
+  plugins: [react()],
+  server: {
+    port: 5173,
+    proxy: {
+      '/data': BACKEND,
+      '/vendor': BACKEND,
+      '/shared': BACKEND,
+      '/crash.css': BACKEND,
+      '/favicon.svg': BACKEND,
+      '/crash-mark.svg': BACKEND,
+      '/crash-logo.svg': BACKEND,
+      '/report': BACKEND,
+      '/reports': BACKEND,
+      '/ask': BACKEND,
+      '/health': BACKEND,
+      '/export': BACKEND,
+    },
+  },
   build: {
-    // Hash-free subdirectory is not servable by the backend allowlist, so emit
-    // the entry HTML and every asset flat.
+    /* The backend's static allowlist serves root-level files and shared/ and
+       vendor/ only, so the entry HTML and every hashed asset are emitted flat
+       and copied to the repo root at release time. */
     outDir: '../dist',
     emptyOutDir: true,
     assetsDir: '',

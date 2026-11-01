@@ -1,5 +1,5 @@
-﻿/* =============================================================================
-   CRASH â€” Typed hotspot engine.
+/* =============================================================================
+   CRASH - Typed hotspot engine.
    Pure computation: cell gridding, severity-weighted ranking, non-max
    suppression, emerging-hotspot detection. No DOM, no rendering, no globals:
    the same behaviour as shared/engine.js, ported to typed modules.
@@ -15,7 +15,7 @@ export function sevWeight(severity: unknown): number {
 
 /** A raw incident as the API and the static dataset deliver it. */
 export interface AccidentRecord {
-  id?: number;
+  id?: number | string;
   lat: number;
   lng: number;
   severity: string;
@@ -230,7 +230,7 @@ export function gridCells(
   return cells;
 }
 
-/** Top N junctions: sort by score desc, NMS, normalise to 1â€“100. */
+/** Top N junctions: sort by score desc, NMS, normalise to 1-100. */
 export function topJunctions(cells: readonly GridCell[], topN: number, suppress: number): GridCell[] {
   const byScore = cells.slice().sort((a, b) => b.score - a.score || b.count - a.count);
   const pick = nmsFilter(byScore, topN, suppress);

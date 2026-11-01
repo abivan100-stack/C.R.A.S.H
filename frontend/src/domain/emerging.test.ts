@@ -1,4 +1,4 @@
-﻿/* Emerging-hotspot threshold semantics (issue #6).
+/* Emerging-hotspot threshold semantics (issue #6).
 
    Locks the exact qualify rules: minimum recent count, rate lift versus the
    prior window, zero-baseline handling, raw qualify count, and non-max
