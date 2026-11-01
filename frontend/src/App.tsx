@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useDataset } from './app/useDataset.ts';
 import { useTheme } from './app/theme.ts';
@@ -15,6 +15,11 @@ import type { CitizenRecord } from './app/api.ts';
 
 type Tab = 'map' | 'analytics' | 'compare' | 'report' | 'simulate' | 'bot';
 
+function tabFromHash(): Tab {
+  const h = (typeof window !== 'undefined' ? window.location.hash : '').replace('#', '');
+  return (['map', 'analytics', 'compare', 'report', 'simulate', 'bot'] as Tab[]).includes(h as Tab) ? (h as Tab) : 'report';
+}
+
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'map', label: 'Map' },
   { id: 'analytics', label: 'Analytics' },
@@ -27,8 +32,19 @@ const TABS: Array<{ id: Tab; label: string }> = [
 export function App(): JSX.Element { // migrated shell
   const dataset = useDataset();
   const { theme, toggle } = useTheme();
-  const [tab, setTab] = useState<Tab>('report');
+  const [tab, setTabState] = useState<Tab>(() => (typeof window !== 'undefined' ? tabFromHash() : 'report'));
   const [notifyOpen, setNotifyOpen] = useState(false);
+
+  function setTab(next: Tab): void {
+    setTabState(next);
+    try { history.replaceState(null, '', '#' + next); } catch { /* file preview */ }
+  }
+
+  useEffect(() => {
+    const sync = (): void => setTabState(tabFromHash());
+    window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, []);
 
   const onSaved = (report: CitizenRecord): void => dataset.addCitizenReport(report);
 
