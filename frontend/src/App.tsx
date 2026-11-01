@@ -10,6 +10,7 @@ import { BotPanel } from './components/BotPanel.tsx';
 import { AnalyticsPage } from './components/AnalyticsPage.tsx';
 import { ComparePage } from './components/ComparePage.tsx';
 import { SimulatePage } from './components/SimulatePage.tsx';
+import { MapPage } from './components/MapPage.tsx';
 import type { CitizenRecord } from './app/api.ts';
 
 type Tab = 'map' | 'analytics' | 'compare' | 'report' | 'simulate' | 'bot';
@@ -86,23 +87,12 @@ export function App(): JSX.Element { // migrated shell
           </section>
         ) : null}
 
-        {tab === 'map' ? <Placeholder title="Map" text={dataset.loading ? 'Loading incident data…' : 'The React map shell lands in a later migration step.'} /> : null}
+        {tab === 'map' ? <MapPage records={dataset.records} monthCount={dataset.monthCount} theme={theme} /> : null}
         {tab === 'analytics' ? <AnalyticsPage records={dataset.records} monthCount={dataset.monthCount} theme={theme} /> : null}
         {tab === 'compare' ? <ComparePage records={dataset.records} monthCount={dataset.monthCount} theme={theme} /> : null}
         {tab === 'simulate' ? <SimulatePage records={dataset.records} monthCount={dataset.monthCount} /> : null}
         {tab === 'bot' ? <BotPanel records={dataset.records} /> : null}
       </main>
     </>
-  );
-}
-
-function Placeholder({ title, text }: { title: string; text: string }): JSX.Element {
-  return (
-    <section className="app-section active" role="tabpanel" aria-label={title}>
-      <div className="section">
-        <div className="slabel">{title}</div>
-        <div className="stitle">{text}</div>
-      </div>
-    </section>
   );
 }

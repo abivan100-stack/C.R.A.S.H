@@ -53,3 +53,95 @@
   color: var(--text-3);
   font: 400 12px 'IBM Plex Mono', monospace;
 }
+
+/* Map shell: filter button + panel, on top of the legacy tokens. */
+.mapfilter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 500 11.5px 'IBM Plex Mono', monospace;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 7px 11px;
+  cursor: pointer;
+}
+
+.mapfilter-count {
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 600 9.5px 'IBM Plex Mono', monospace;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.mapfilter-panel {
+  width: 262px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14);
+}
+
+.mapfilter-panel .af-field {
+  margin: 0;
+}
+
+.mapfilter-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border-soft);
+  padding-top: 10px;
+  font: 400 10.5px 'IBM Plex Mono', monospace;
+  color: var(--text-3);
+}
+
+.mapfilter-reset {
+  font: 500 10.5px 'IBM Plex Mono', monospace;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.segctl {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.segctl button {
+  flex: 1;
+  font: 500 10.5px 'IBM Plex Mono', monospace;
+  color: var(--text-2);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  padding: 6px 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.segctl button:last-child {
+  border-right: none;
+}
+
+.segctl button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
