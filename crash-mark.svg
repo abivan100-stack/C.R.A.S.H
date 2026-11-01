@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- C.R.A.S.H mark: the Newsreader semibold C and period, outlined.
-       The typeface is the wordmark typeface, so mark and name share a voice.
-       Accent 2F5C87 tile, canvas F4F0E7 glyph. -->
-  <!-- Brand mark. -->
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- C.R.A.S.H mark: the hotspot cell. A diamond grid cell holds one solid
+       rhombus, the ranked hotspot at its centre. Sharp print geometry, no
+       letterforms. Accent 2F5C87 tile, canvas F4F0E7 glyph. -->
   <rect width="64" height="64" rx="4" fill="#2F5C87"/>
-  <g transform="translate(7.18 50.36) scale(0.02657 -0.02657)"><path d="M898 91Q966 91 1028.0 102.5Q1090 114 1161 142L1102 98L1268 388H1324L1283 52Q1201 17 1088.0 -3.5Q975 -24 846 -24Q670 -24 528.5 21.0Q387 66 287.0 154.0Q187 242 134.0 368.5Q81 495 81 658Q81 870 178.0 1029.0Q275 1188 455.0 1276.0Q635 1364 885 1364Q948 1364 1011.0 1356.5Q1074 1349 1160 1329L1090 1313L1221 1406H1252L1318 921L1261 909L1067 1231L1136 1159Q1055 1210 985.5 1229.5Q916 1249 838 1249Q719 1249 628.0 1215.5Q537 1182 475.5 1118.0Q414 1054 382.0 960.0Q350 866 350 744Q350 582 390.5 460.5Q431 339 505.0 256.5Q579 174 679.0 132.5Q779 91 898 91Z" fill="#F4F0E7"/><g transform="translate(1401 0)"><path d="M236 277Q301 277 343.5 234.0Q386 191 386 130Q386 68 343.5 25.0Q301 -18 236 -18Q171 -18 128.0 25.0Q85 68 85 130Q85 191 128.0 234.0Q171 277 236 277Z" fill="#F4F0E7"/></g></g>
+  <path d="M32 12 L52 32 L32 52 L12 32 Z" fill="none" stroke="#F4F0E7" stroke-width="5"/>
+  <path d="M32 25.6 L38.4 32 L32 38.4 L25.6 32 Z" fill="#F4F0E7"/>
 </svg>
