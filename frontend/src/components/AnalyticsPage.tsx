@@ -5,6 +5,10 @@ import { CAUSES, DOW, SEV, isSeverity } from '../domain/constants.ts';
 import type { AccidentRecord } from '../domain/engine.ts';
 import { BASE_OPTIONS, catAxis, readPalette, themeChartDefaults, valAxis } from '../lib/charts.ts';
 import { fmt } from '../lib/utils.ts';
+import { cityReportData } from '../domain/reportData.ts';
+import { monthMeta } from '../domain/engine.ts';
+import { exportCityPdf } from '../lib/pdf.ts';
+import { Icon } from './Icon.tsx';
 
 interface Props {
   records: readonly AccidentRecord[];
@@ -134,6 +138,17 @@ export function AnalyticsPage({ records, monthCount, theme }: Props): JSX.Elemen
           <div className="stitle">The city's road-safety picture, at a glance.</div>
           <div className="sdesc">
             Severity, cause, vehicle, timing, weather and concentration — computed live from the same records that drive the map.
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <button
+              className="rc-btn"
+              type="button"
+              onClick={() => {
+                exportCityPdf(cityReportData(records, monthCount, monthMeta(records)));
+              }}
+            >
+              <Icon name="file-text" size={14} /> Download city PDF report
+            </button>
           </div>
 
           <div className="analytic-kpis">
